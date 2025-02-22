@@ -5,16 +5,24 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
+import { v2 as cloudinary } from "cloudinary";
+
+import { uploadMedia } from "./controller/cloudinaryController.js";
 
 dotenv.config();
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3002;
 const URI = process.env.MONGO_URI;
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "*",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     credentials: true,
   })
@@ -33,4 +41,7 @@ mongoose
   .then(() => console.log("Connected to Database"))
   .catch((err) => console.log(err));
 
-app.use("/api/v1/user", userRouter);
+app.use("/api/v1/users", userRouter);
+// uploadMedia(
+//   "https://res.cloudinary.com/demo/image/upload/getting-started/shoes.jpg"
+// );

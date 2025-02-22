@@ -3,8 +3,8 @@ import {
   register,
   login,
   logout,
-  updateUserDetails,
-  getMyProfile
+  updateUser,
+  getMyProfile,
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 
@@ -16,9 +16,9 @@ router.post("/login", login);
 
 //* GET APIs *//
 router.get("/me", isAuthenticated, getMyProfile);
-router.get("/logout", logout);
+router.get("/logout", isAuthenticated, logout);
 
 //* PUT APIs *//
-router.put("/update/:id", isAuthenticated, updateUserDetails);
+router.put("/profile-details", isAuthenticated, updateUser);
 
 export default router;
