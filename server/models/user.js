@@ -1,21 +1,60 @@
-import mongoose, { Types } from "mongoose";
+import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+    phone_number: {
+      type: Number,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    profile_photo: {
+      url: {
+        type: String,
+      },
+      public_id: {
+        type: String,
+      },
+    },
+    oauth: [
+      {
+        auth_id: { type: String },
+        auth_provider: { type: String },
+      },
+    ],
+    lended: [
+      {
+        borrower_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+        amount: { type: Number },
+      },
+    ],
+    borrowed: [
+      {
+        lender_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+        amount: { type: Number },
+      },
+    ],
+    settled: [
+      {
+        user_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+      },
+    ],
+    daily_limit: { type: Number },
+    password: {
+      type: String,
+      required: true,
+      select: false,
+    },
   },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  password: {
-    type: String,
-    required: true,
-    select: false,
-  },
-});
+  { timestamps: true }
+);
 
 const user = mongoose.model("user", userSchema);
 export default user;
