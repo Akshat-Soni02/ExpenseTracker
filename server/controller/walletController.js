@@ -20,6 +20,13 @@ export const createWallet = async (req, res, next) => {
       wallet: newWallet,
     });
   } catch (error) {
+    if (error.code === 11000) {
+      // Duplicate key error (E11000)
+      return res.status(400).json({
+        error:
+          "A wallet with this title already exists. Please choose a different name.",
+      });
+    }
     console.log("Error creating wallet", error);
     next(error);
   }
@@ -43,6 +50,13 @@ export const updateWallet = async (req, res, next) => {
       wallet: updateWallet,
     });
   } catch (error) {
+    if (error.code === 11000) {
+      // Duplicate key error (E11000)
+      return res.status(400).json({
+        error:
+          "A wallet with this title already exists. Please choose a different name.",
+      });
+    }
     console.log("Error updaing wallet", error.message);
     next(error);
   }

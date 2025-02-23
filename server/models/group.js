@@ -2,7 +2,11 @@ import mongoose from "mongoose";
 
 const transactionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
-  exchange_status: { type: String, enum: ["owe", "owed"], required: true },
+  exchange_status: {
+    type: String,
+    enum: ["lended", "borrowed"],
+    required: true,
+  },
 });
 
 const groupSchema = new mongoose.Schema({
@@ -21,6 +25,8 @@ const groupSchema = new mongoose.Schema({
   simplify_debts: { type: Boolean, default: false },
   settle_up_date: { type: Date },
 });
+
+groupSchema.index({ creator_id: 1, group_title: 1 }, { unique: true });
 
 const group = mongoose.model("group", groupSchema);
 export default group;

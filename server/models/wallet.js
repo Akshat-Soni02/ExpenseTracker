@@ -16,5 +16,7 @@ const walletSchema = new mongoose.Schema({
   ],
 });
 
+walletSchema.index({ creator_id: 1, wallet_title: 1 }, { unique: true });
+
 const wallet = mongoose.model("wallet", walletSchema);
 export default wallet;
