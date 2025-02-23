@@ -7,12 +7,13 @@ const settlementSchema = new mongoose.Schema(
       url: { type: String },
       public_id: { type: String },
     },
-    wallet_id: { type: mongoose.Schema.Types.ObjectId, ref: "wallet" },
+    payer_wallet_id: { type: mongoose.Schema.Types.ObjectId, ref: "wallet" },
     payer_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
       required: true,
     },
+    receiver_wallet_id: { type: mongoose.Schema.Types.ObjectId, ref: "wallet" },
     receiver_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
