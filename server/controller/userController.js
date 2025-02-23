@@ -3,6 +3,7 @@ import user from "../models/user.js";
 import { sendCookie } from "../utils/features.js";
 import bcrypt from "bcrypt";
 import { uploadMedia } from "./cloudinaryController.js";
+import { getUserWallets } from "./walletController.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -36,7 +37,7 @@ export const register = async (req, res, next) => {
       return next(new ErrorHandler("User Already Exist", 404));
 
     const filePath = path.resolve(__dirname, "../assets/panda.jpg");
-    const result = await updateProfilePhoto(filePath, next);
+    const result = await uploadMedia(filePath, "userProfiles", next);
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await user.create({
@@ -115,13 +116,88 @@ export const updateUser = async (req, res, next) => {
   }
 };
 
-export const updateProfilePhoto = async (profile_path, next) => {
+export const getFriendlyUsers = async (req, res) => {
   try {
-    console.log(profile_path);
-    const result = await uploadMedia(profile_path, "userProfiles");
-    console.log("Profile Picture updated successfully");
-    return result;
+    const id = req.user.id;
+    const curUser = await user.findById(id).select("lended borrowed settled");
+
+    const friendsMap = new Map();
+
+    curUser.lended.forEach(({ borrower_id, amount }) => {
+      const strId = borrower_id.toString();
+      if (!friendsMap.has(strId)) friendsMap.set(strId, 0);
+      friendsMap.set(strId, friendsMap.get(strId) + amount);
+      console.log(amount);
+    });
+
+    curUser.borrowed.forEach(({ lender_id, amount }) => {
+      const strId = lender_id.toString();
+      if (!friendsMap.has(strId)) friendsMap.set(strId, 0);
+      friendsMap.set(strId, friendsMap.get(strId) - amount);
+    });
+
+    curUser.settled.forEach(({ user_id, amount }) => {
+      const strId = user_id.toString();
+      if (!friendsMap.has(strId)) friendsMap.set(strId, amount);
+    });
+
+    const friendIds = [...friendsMap.keys()];
+
+    const friends = await user
+      .find({ _id: { $in: friendIds } })
+      .select("name profile_photo");
+
+    // Attach amounts to friend data
+    const friendsWithAmounts = friends.map((friend) => ({
+      id: friend._id,
+      name: friend.name,
+      profile_photo: friend.profile_photo,
+      amount: friendsMap.get(friend._id.toString()) || 0,
+    }));
+
+    res.status(200).json({
+      success: true,
+      people: friendsWithAmounts,
+    });
   } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const getCurrentExhanges = async (req, res, next) => {
+  try {
+    const id = req.user.id;
+    const curUser = await user.findById(id).select("lended borrowed");
+    let lendedAmount = 0,
+      borrowedAmount = 0;
+    curUser.lended.forEach(({ borrower_id, amount }) => {
+      lendedAmount = lendedAmount + amount;
+    });
+    curUser.borrowed.forEach(({ lender_id, amount }) => {
+      borrowedAmount = borrowedAmount + amount;
+    });
+    res.status(200).json({
+      success: true,
+      lendedAmount,
+      borrowedAmount,
+    });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const getMyWallets = async (req, res, next) => {
+  try {
+    const id = req.user._id;
+    const wallets = await getUserWallets(id, next);
+    res.status(200).json({
+      success: true,
+      wallets,
+    });
+  } catch (error) {
+    console.log("Error fetching my wallets", error);
     next(error);
   }
 };

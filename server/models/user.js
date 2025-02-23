@@ -43,6 +43,7 @@ const userSchema = new mongoose.Schema(
     settled: [
       {
         user_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+        amount: { type: Number, default: 0 },
       },
     ],
     daily_limit: { type: Number },

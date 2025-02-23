@@ -1,5 +1,4 @@
 import express from "express";
-import userRouter from "./routes/user.js";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -7,7 +6,8 @@ import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
 import { v2 as cloudinary } from "cloudinary";
 
-import { uploadMedia } from "./controller/cloudinaryController.js";
+import userRouter from "./routes/user.js";
+import walletRouter from "./routes/wallet.js";
 
 dotenv.config();
 cloudinary.config({
@@ -42,6 +42,4 @@ mongoose
   .catch((err) => console.log(err));
 
 app.use("/api/v1/users", userRouter);
-// uploadMedia(
-//   "https://res.cloudinary.com/demo/image/upload/getting-started/shoes.jpg"
-// );
+app.use("/api/v1/wallets", walletRouter);
