@@ -27,14 +27,14 @@ export const createExpense = async (req, res, next) => {
       // }
 
       //Update Wallet
-      // if(wallet_id){
-      //   const currWallet = await wallet.findById(wallet_id).select("amount lower_limit");
-      //   if(total_amount>currWallet.amount-currWallet.lower_limit){
-      //     return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-      //   }
-      //   currWallet.amount = currWallet.amount - total_amount;
-      //   await currWallet.save();
-      // }
+      if(wallet_id){
+        const currWallet = await wallet.findById(wallet_id).select("amount");
+        if(total_amount>currWallet.amount){
+          return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
+        }
+        currWallet.amount = currWallet.amount - total_amount;
+        await currWallet.save();
+      }
 
       //Update Group
       if(group_id){
@@ -103,65 +103,67 @@ export const createExpense = async (req, res, next) => {
     }
 
       //Update User
-      // const currUser = await user.findById(req.user._id);
+      const currUser = await user.findById(req.user._id);
       
-      // //Update lenders
-      // const lendedMap = new Map(currUser.lended.map(b => [b.borrower_id.toString(), b.amount]));
+      //Update lenders
+      const lendedMap = new Map(currUser.lended.map(b => [b.borrower_id.toString(), b.amount]));
 
-      // // Update existing borrowers and add new ones
-      // for (const [borrowerId, amount] of Object.entries(borrowers)) {
-      //   if (lendedMap.has(borrowerId)) {
-      //     lendedMap.set(borrowerId, lendedMap.get(borrowerId) + amount);
-      //   } else {
-      //     lendedMap.set(borrowerId, amount);
-      //   }
-      // }
+      // Update existing borrowers and add new ones
+      for (const [borrowerId, amount] of Object.entries(borrowers)) {
+        if (lendedMap.has(borrowerId)) {
+          lendedMap.set(borrowerId, lendedMap.get(borrowerId) + amount);
+        } else {
+          lendedMap.set(borrowerId, amount);
+        }
+      }
   
-      // // Convert Map back to an array of objects
-      // const updatedLended = Array.from(lendedMap, ([borrower_id, amount]) => ({
-      //   borrower_id,
-      //   amount,
-      // }));
+      // Convert Map back to an array of objects
+      const updatedLended = Array.from(lendedMap, ([borrower_id, amount]) => ({
+        borrower_id,
+        amount,
+      }));
 
-      // await user.updateOne({ _id: req.user._id }, { $set: { lended: updatedLended } });
+      await user.updateOne({ _id: req.user._id }, { $set: { lended: updatedLended } });
 
 
       
-      //update borrowers
-      // const lender_id =  Object.keys(lenders)[0];
-      // for (const [borrowerId, amount] of Object.entries(borrowers)) {
-      //   const currUser = await user.findById(borrowerId);
-      //   const borrowedMap = new Map(currUser.borrowed.map(b => [b.lender_id.toString(), b.amount]));
-      //   if (borrowedMap.has( lender_id)) {
-      //     borrowedMap.set(lender_id, borrowedMap.get(lender_id) + amount);
-      //   } else {
-      //     borrowedMap.set(lender_id, amount);
-      //   }
-      //   const updatedBorrowed = Array.from(borrowedMap, ([lender_id, amount]) => ({
-      //     lender_id,
-      //     amount,
-      //   }));
-      //   await user.updateOne({ _id: borrowerId }, { $set: { borrowed: updatedBorrowed } });
-      // }
+      // update borrowers
+      const lender_id =  Object.keys(lenders)[0];
+      for (const [borrowerId, amount] of Object.entries(borrowers)) {
+        const currUser = await user.findById(borrowerId);
+        const borrowedMap = new Map(currUser.borrowed.map(b => [b.lender_id.toString(), b.amount]));
+        if (borrowedMap.has( lender_id)) {
+          borrowedMap.set(lender_id, borrowedMap.get(lender_id) + amount);
+        } else {
+          borrowedMap.set(lender_id, amount);
+        }
+        const updatedBorrowed = Array.from(borrowedMap, ([lender_id, amount]) => ({
+          lender_id,
+          amount,
+        }));
+        await user.updateOne({ _id: borrowerId }, { $set: { borrowed: updatedBorrowed } });
+      }
 
   
-      // const newExpense = await expense.create({
-      //   description,
-      //   lenders,
-      //   borrowers,
-      //   wallet_id,
-      //   total_amount,
-      //   expense_category,
-      //   notes,
-      //   group_id,
-      //   media: mediaData,
-      //   creator_id: req.user._id,
-      // });
+      const newExpense = await expense.create({
+        description,
+        lenders,
+        borrowers,
+        group_id,
+        wallet_id,
+        media: null,
+        total_amount,
+        expense_category,
+        creator_id: req.user._id,
+        notes,
+        
+        
+      });
   
       res.status(201).json({
         success: true,
         message: "Expense created successfully",
-        // expense: newExpense,
+        expense: newExpense,
       });
     } catch (error) {
       console.log("here");
@@ -169,39 +171,142 @@ export const createExpense = async (req, res, next) => {
     }
   };
   
-
+//Updating an expense, changes group, wallet, user
 export const updateExpense = async (req, res, next) => {
     try {
         const { expense_id } = req.params;
-        const { description, lenders, borrowers, total_amount, expense_category, notes } = req.body;
+        const { description, lenders, borrowers, total_amount, expense_category, notes, wallet_id } = req.body;
 
         const existingExpense = await expense.findById(expense_id);
-        if (!existingExpense) {
-            return next(new ErrorHandler("Expense not found", 404));
-        }
+        // if (!existingExpense) {
+        //     return next(new ErrorHandler("Expense not found", 404));
+        // }
 
-        if (existingExpense.creator_id.toString() !== req.user._id.toString()) {
-            return next(new ErrorHandler("Unauthorized to update this expense", 403));
-        }
+        // if (existingExpense.creator_id.toString() !== req.user._id.toString()) {
+        //     return next(new ErrorHandler("Unauthorized to update this expense", 403));
+        // }
 
-        if (description) existingExpense.description = description;
-        if (lenders) existingExpense.lenders = lenders;
-        if (borrowers) existingExpense.borrowers = borrowers;
-        if (total_amount) existingExpense.total_amount = total_amount;
-        if (expense_category) existingExpense.expense_category = expense_category;
-        if (notes) existingExpense.notes = notes;
 
-        if (req.file) {
-            const result = await uploadMedia(req.file.path, "expenseReceipts", next);
-            if (result) {
-                existingExpense.media = {
-                url: result.secure_url,
-                public_id: result.public_id,
-                };
+        // if(wallet_id){
+        //   const currWallet = await wallet.findById(wallet_id).select("amount");
+        //   if(existingExpense.total_amount>currWallet.amount){
+        //     return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
+        //   }
+        //   const prevWallet = await wallet.findById(existingExpense.wallet_id).select("amount");
+        //   prevWallet.amount = prevWallet.amount + existingExpense.total_amount;
+        //   await prevWallet.save();
+        //   currWallet.amount = currWallet.amount - existingExpense.total_amount;
+        //   await currWallet.save();
+        //   existingExpense.wallet_id = wallet_id;
+        // }
+
+
+
+
+        // if (description) existingExpense.description = description;
+        
+        // if (lenders) existingExpense.lenders = lenders;
+        
+        // if (borrowers) {
+
+
+
+          if(existingExpense.group_id){
+            // const lender_id =  Object.keys(existingExpense.lenders)[0];
+            // const currGroup = await group.findById(existingExpense.group_id).select("members");
+            for(const [borrower_id,amount] of Object.entries(borrowers)){
+              const borrower = existingExpense.borrowers.find(b => b.user_id.toString() === borrower_id);
+              console.log(borrower);
+              
+              // const member = currGroup.members.find(m => m.member_id.toString() === lender_id);
+              // if (member) {
+              //   const transaction = member.other_members.find(
+              //     t => t.other_member_id.toString() === borrower_id
+              //   );
+              //   if (transaction) {
+              //     if(transaction.exchange_status === "lended"){
+              //       transaction.amount = transaction.amount + amount;
+              //     }
+              //     else if(transaction.exchange_status === "settled"){
+              //       transaction.amount = amount;
+              //       transaction.exchange_status = "lended";
+              //     }
+              //     else{
+              //       if(transaction.amount==amount){
+              //         transaction.amount = 0;
+              //         transaction.exchange_status = "settled";
+              //       }
+              //       else if(transaction.amount<amount){
+              //         transaction.amount = amount - transaction.amount;
+              //         transaction.exchange_status = "lended";
+              //       }
+              //       else{
+              //         transaction.amount = transaction.amount - amount;
+              //       }
+              //     }
+                   
+              //   }
+              // }
+              // const otherMember = currGroup.members.find(m => m.member_id.toString() === borrower_id);
+              // if (otherMember) {
+              //   const transaction = otherMember.other_members.find(
+              //     t => t.other_member_id.toString() === lender_id
+              //   );
+              //   if (transaction) {
+              //     if(transaction.exchange_status === "borrowed"){
+              //       transaction.amount = transaction.amount + amount;
+              //     }
+              //     else if(transaction.exchange_status === "settled"){
+              //       transaction.amount = amount;
+              //       transaction.exchange_status = "borrowed";
+              //     }
+              //     else{
+              //       if(transaction.amount==amount){
+              //         transaction.amount = 0;
+              //         transaction.exchange_status = "settled";
+              //       }
+              //       else if(transaction.amount<amount){
+              //         transaction.amount = amount - transaction.amount;
+              //         transaction.exchange_status = "borrowed";
+              //       }
+              //       else{
+              //         transaction.amount = transaction.amount - amount;
+              //       }
+              //     } 
+              //   }
+              // }
             }
-        }
+        //     currGroup.save();  
+          }
+        //   existingExpense.borrowers = borrowers
+        
+        // };
+        
+        // if (total_amount) {
+        //   const currWallet = await wallet.findById(existingExpense.wallet_id).select("amount");
+        //   if(total_amount-existingExpense.total_amount>currWallet.amount){
+        //     return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
+        //   }
+        //   currWallet.amount = currWallet.amount + existingExpense.total_amount - total_amount;
+        //   await currWallet.save();
+        //   existingExpense.total_amount = total_amount;
+        // }
+        
+        // if (expense_category) existingExpense.expense_category = expense_category;
+        
+        // if (notes) existingExpense.notes = notes;
 
-        await existingExpense.save();
+        // // if (req.file) {
+        // //     const result = await uploadMedia(req.file.path, "expenseReceipts", next);
+        // //     if (result) {
+        // //         existingExpense.media = {
+        // //         url: result.secure_url,
+        // //         public_id: result.public_id,
+        // //         };
+        // //     }
+        // // }
+
+        // await existingExpense.save();
 
         res.status(200).json({
         success: true,
