@@ -1,6 +1,11 @@
 import express from "express";
 import { isAuthenticated } from "../middlewares/auth.js";
-import { createGroup } from "../controller/groupController.js";
+import {
+  createGroup,
+  updateGroup,
+  leaveGroup,
+  getGroupById,
+} from "../controller/groupController.js";
 
 const router = express.Router();
 
@@ -8,10 +13,11 @@ const router = express.Router();
 router.post("/new", isAuthenticated, createGroup);
 
 //* GET APIs *//
-router.get("/:id", isAuthenticated);
+router.get("/leave/:groupId", isAuthenticated, leaveGroup);
+router.get("/:id", isAuthenticated, getGroupById);
 
 //* PUT APIs *//
-router.put("/:id", isAuthenticated);
+router.put("/:id", isAuthenticated, updateGroup);
 
 //* DELETE APIs *//
 router.delete("/:id", isAuthenticated);

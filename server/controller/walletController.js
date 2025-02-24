@@ -3,6 +3,7 @@ import wallet from "../models/wallet.js";
 
 export const createWallet = async (req, res, next) => {
   try {
+    // wherever we are sending the array of members to the backend, the members array contains only other ids not the creater one, we will push creator id explicitly in the backend
     const id = req.user._id;
     const { amount, wallet_title, lower_limit, members = [] } = req.body;
     members.push({ user_id: id });
@@ -144,6 +145,19 @@ export const walletsAmountTransfer = async (req, res, next) => {
     });
   } catch (error) {
     console.log("Error transferring amount from one account to another", error);
+    next(error);
+  }
+};
+
+//this function takes amount with sign = -ve to reduce, +ve to increase
+export const modifyWalletBalance = async (walletId, amount, next) => {
+  try {
+    const curWallet = await wallet.findById(walletId).select("amount");
+    if (curWallet.amount + amount < 0)
+      next(new ErrorHandler("wallet doesn't have enough balance", 400));
+    curWallet.amount = curWallet.amount + amount;
+    await curWallet.save();
+  } catch (error) {
     next(error);
   }
 };
