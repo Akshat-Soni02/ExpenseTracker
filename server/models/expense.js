@@ -28,7 +28,12 @@ const expenseSchema = new mongoose.Schema(
     total_amount: { type: Number, required: true },
     expense_category: { type: String },
     created_at_date_time: { type: Date, default: Date.now },
-    creator_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+    creator: [
+      {
+        creator_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+        amount: {type: Number},    
+      },
+    ],
     notes: { type: String },
   },
   { Timestamp: true }

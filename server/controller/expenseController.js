@@ -1,46 +1,170 @@
 import expense from "../models/expense.js";
+import wallet from "../models/wallet.js";
+import group from "../models/group.js";
 import ErrorHandler from "../middlewares/error.js";
 import user from "../models/user.js";
 import { uploadMedia } from "./cloudinaryController.js";
 
+
+//creating an expense means changing group states, wallet states also changing personal states with other people
 export const createExpense = async (req, res, next) => {
     try {
-      const { description, lenders, borrowers, wallet_id, total_amount, expense_category, notes, group_id } = req.body;
+      let { description, lenders, borrowers, wallet_id, total_amount, expense_category, notes, group_id } = req.body;
         
-      if (!description || !wallet_id || !total_amount) {
-        return next(new ErrorHandler("Missing required fields", 400));
-      }
+      // if (!description || !total_amount) {
+      //   return next(new ErrorHandler("Missing required fields", 404));
+      // }
   
-      let mediaData = {};
-      if (req.file) {
-        const result = await uploadMedia(req.file.path, "expenseReceipts", next);
-        if (result) {
-          mediaData = {
-            url: result.secure_url,
-            public_id: result.public_id,
-          };
+      // let mediaData = {};
+      // if (req.file) {
+      //   const result = await uploadMedia(req.file.path, "expenseReceipts", next);
+      //   if (result) {
+      //     mediaData = {
+      //       url: result.secure_url,
+      //       public_id: result.public_id,
+      //     };
+      //   }
+      // }
+
+      //Update Wallet
+      // if(wallet_id){
+      //   const currWallet = await wallet.findById(wallet_id).select("amount lower_limit");
+      //   if(total_amount>currWallet.amount-currWallet.lower_limit){
+      //     return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
+      //   }
+      //   currWallet.amount = currWallet.amount - total_amount;
+      //   await currWallet.save();
+      // }
+
+      //Update Group
+      if(group_id){
+        const lender_id =  Object.keys(lenders)[0];
+        const currGroup = await group.findById(group_id).select("members");
+        for(const [borrower_id,amount] of Object.entries(borrowers)){
+          const member = currGroup.members.find(m => m.member_id.toString() === lender_id);
+          if (member) {
+            const transaction = member.other_members.find(
+              t => t.other_member_id.toString() === borrower_id
+            );
+            if (transaction) {
+              if(transaction.exchange_status === "lended"){
+                transaction.amount = transaction.amount + amount;
+              }
+              else if(transaction.exchange_status === "settled"){
+                transaction.amount = amount;
+                transaction.exchange_status = "lended";
+              }
+              else{
+                if(transaction.amount==amount){
+                  transaction.amount = 0;
+                  transaction.exchange_status = "settled";
+                }
+                else if(transaction.amount<amount){
+                  transaction.amount = amount - transaction.amount;
+                  transaction.exchange_status = "lended";
+                }
+                else{
+                  transaction.amount = transaction.amount - amount;
+                }
+              }
+               
+            }
+          }
+          const otherMember = currGroup.members.find(m => m.member_id.toString() === borrower_id);
+          if (otherMember) {
+            const transaction = otherMember.other_members.find(
+              t => t.other_member_id.toString() === lender_id
+            );
+            if (transaction) {
+              if(transaction.exchange_status === "borrowed"){
+                transaction.amount = transaction.amount + amount;
+              }
+              else if(transaction.exchange_status === "settled"){
+                transaction.amount = amount;
+                transaction.exchange_status = "borrowed";
+              }
+              else{
+                if(transaction.amount==amount){
+                  transaction.amount = 0;
+                  transaction.exchange_status = "settled";
+                }
+                else if(transaction.amount<amount){
+                  transaction.amount = amount - transaction.amount;
+                  transaction.exchange_status = "borrowed";
+                }
+                else{
+                  transaction.amount = transaction.amount - amount;
+                }
+              } 
+            }
+          }
         }
-      }
+        currGroup.save();  
+    }
+
+      //Update User
+      // const currUser = await user.findById(req.user._id);
+      
+      // //Update lenders
+      // const lendedMap = new Map(currUser.lended.map(b => [b.borrower_id.toString(), b.amount]));
+
+      // // Update existing borrowers and add new ones
+      // for (const [borrowerId, amount] of Object.entries(borrowers)) {
+      //   if (lendedMap.has(borrowerId)) {
+      //     lendedMap.set(borrowerId, lendedMap.get(borrowerId) + amount);
+      //   } else {
+      //     lendedMap.set(borrowerId, amount);
+      //   }
+      // }
   
-      const newExpense = await expense.create({
-        description,
-        lenders,
-        borrowers,
-        wallet_id,
-        total_amount,
-        expense_category,
-        notes,
-        group_id,
-        media: mediaData,
-        creator_id: req.user._id,
-      });
+      // // Convert Map back to an array of objects
+      // const updatedLended = Array.from(lendedMap, ([borrower_id, amount]) => ({
+      //   borrower_id,
+      //   amount,
+      // }));
+
+      // await user.updateOne({ _id: req.user._id }, { $set: { lended: updatedLended } });
+
+
+      
+      //update borrowers
+      // const lender_id =  Object.keys(lenders)[0];
+      // for (const [borrowerId, amount] of Object.entries(borrowers)) {
+      //   const currUser = await user.findById(borrowerId);
+      //   const borrowedMap = new Map(currUser.borrowed.map(b => [b.lender_id.toString(), b.amount]));
+      //   if (borrowedMap.has( lender_id)) {
+      //     borrowedMap.set(lender_id, borrowedMap.get(lender_id) + amount);
+      //   } else {
+      //     borrowedMap.set(lender_id, amount);
+      //   }
+      //   const updatedBorrowed = Array.from(borrowedMap, ([lender_id, amount]) => ({
+      //     lender_id,
+      //     amount,
+      //   }));
+      //   await user.updateOne({ _id: borrowerId }, { $set: { borrowed: updatedBorrowed } });
+      // }
+
+  
+      // const newExpense = await expense.create({
+      //   description,
+      //   lenders,
+      //   borrowers,
+      //   wallet_id,
+      //   total_amount,
+      //   expense_category,
+      //   notes,
+      //   group_id,
+      //   media: mediaData,
+      //   creator_id: req.user._id,
+      // });
   
       res.status(201).json({
         success: true,
         message: "Expense created successfully",
-        expense: newExpense,
+        // expense: newExpense,
       });
     } catch (error) {
+      console.log("here");
       next(error);
     }
   };

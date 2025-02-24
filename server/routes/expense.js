@@ -16,10 +16,11 @@ const router = express.Router();
 router.post("/new", isAuthenticated, createExpense);
 
 //* GET APIs *//
-router.get("/:id", isAuthenticated, getExpenseById);
+
 router.get("/user/period", isAuthenticated, getUserPeriodExpenses);
 router.get("/user", isAuthenticated, getUserExpenses);
 router.get("/custom", isAuthenticated, getCustomExpenses); // Uses query parameters for custom filtering
+router.get("/:id", isAuthenticated, getExpenseById);
 
 //* PUT APIs *//
 router.put("/:id", isAuthenticated, updateExpense);

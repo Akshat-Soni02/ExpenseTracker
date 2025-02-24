@@ -9,6 +9,7 @@ import { v2 as cloudinary } from "cloudinary";
 import userRouter from "./routes/user.js";
 import walletRouter from "./routes/wallet.js";
 import groupRouter from "./routes/group.js";
+import expenseRouter from "./routes/expense.js";
 
 dotenv.config();
 cloudinary.config({
@@ -45,3 +46,4 @@ mongoose
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/wallets", walletRouter);
 app.use("/api/v1/groups", groupRouter);
+app.use("/api/v1/expenses", expenseRouter);

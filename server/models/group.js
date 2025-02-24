@@ -1,32 +1,39 @@
 import mongoose from "mongoose";
 
 const transactionSchema = new mongoose.Schema({
+  other_member_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user",
+    required: true,
+  },
   amount: { type: Number, required: true },
   exchange_status: {
     type: String,
-    enum: ["lended", "borrowed"],
+    enum: ["lended", "borrowed", "settled"],
     required: true,
   },
 });
 
-const groupSchema = new mongoose.Schema({
-  group_title: { type: String, required: true },
-  members: {
-    type: Map,
-    of: new mongoose.Schema({
-      transactions: {
-        type: Map,
-        of: transactionSchema,
-      },
-    }),
+const memberSchema = new mongoose.Schema({
+  member_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user",
+    required: true,
   },
-  initial_budget: { type: Number, default: 0 },
-  creator_id: { type: String, required: true },
-  simplify_debts: { type: Boolean, default: false },
-  settle_up_date: { type: Date },
+  other_members: [transactionSchema],
 });
 
-groupSchema.index({ creator_id: 1, group_title: 1 }, { unique: true });
+const groupSchema = new mongoose.Schema({
+  group_title: { type: String, required: true },
+  initial_budget: { type: Number, default: 0 },
+  settle_up_date: { type: Date },
+  members: [memberSchema],
+  creator_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user",
+    required: true,
+  },
+});
 
-const group = mongoose.model("group", groupSchema);
-export default group;
+const Group = mongoose.model("group", groupSchema);
+export default Group;
