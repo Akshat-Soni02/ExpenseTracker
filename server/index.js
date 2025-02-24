@@ -10,6 +10,8 @@ import userRouter from "./routes/user.js";
 import walletRouter from "./routes/wallet.js";
 import groupRouter from "./routes/group.js";
 import settlementRouter from "./routes/settlement.js";
+import billRouter from "./routes/bill.js";
+import { scheduleCronJobs } from "./controller/schedulerController.js";
 
 dotenv.config();
 cloudinary.config({
@@ -39,11 +41,14 @@ app.listen(PORT, () => {
 });
 
 mongoose
-  .connect(URI)
+  .connect(URI,{tlsAllowInvalidCertificates: true})
   .then(() => console.log("Connected to Database"))
   .catch((err) => console.log(err));
+
+scheduleCronJobs();
 
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/wallets", walletRouter);
 app.use("/api/v1/groups", groupRouter);
 app.use("/api/v1/settlements", settlementRouter);
+app.use("/api/v1/bills", billRouter);
