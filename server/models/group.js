@@ -35,5 +35,8 @@ const groupSchema = new mongoose.Schema({
   },
 });
 
-const Group = mongoose.model("group", groupSchema);
-export default Group;
+groupSchema.index({ creator_id: 1, group_title: 1 }, { unique: true });
+
+const group = mongoose.model("group", groupSchema);
+group.syncIndexes();
+export default group;
