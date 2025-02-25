@@ -1,6 +1,5 @@
 import budget from "../models/budget.js";
 import ErrorHandler from "../middlewares/error.js";
-import user from "../models/user.js";
 import { uploadMedia } from "./cloudinaryController.js";
 
 export const createBudget = async (req, res, next) => {
@@ -8,8 +7,8 @@ export const createBudget = async (req, res, next) => {
         const { budget_title, amount, budget_category, period } = req.body;
         const user_id = req.user._id; 
 
-        if (!budget_title || !amount || !user_id) {
-            return next(new ErrorHandler("Budget title, amount, and user ID are required", 400));
+        if (!budget_title || !amount) {
+            return next(new ErrorHandler("Budget title and amount are required", 404));
         }
 
         // Creating new budget entry
@@ -39,13 +38,11 @@ export const updateBudget = async (req, res, next) => {
         const { budget_title, amount, budget_category, period } = req.body;
         const user_id = req.user._id; 
     
-        // Find budget by ID and ensure it belongs to the authenticated user
-        const existingBudget = await budget.findbyId(id);
-    
+        const existingBudget = await budget.findById(id);
         if (!existingBudget) {
             return next(new ErrorHandler("Budget not found", 404));
         }
-        if (existingBudget.creator_id.toString() !== req.user._id.toString()) {
+        if (existingBudget.user_id.toString() !== user_id.toString()) {
             return next(new ErrorHandler("Unauthorized to update this budget", 403));
         }
     
@@ -76,3 +73,89 @@ export const updateBudget = async (req, res, next) => {
             next(error);
         }
     };
+
+    export const deleteBudget = async (req, res, next) => {
+        try{
+            // const { budget_id } = req.params;
+            // const user_id = req.user._id; 
+
+            // const existingBudget = await budget.findById(budget_id);
+            // if (!existingBudget) {
+            //     return next(new ErrorHandler("Budget not found", 404));
+            // }
+    
+            // if (existingBudget.user_id.toString() !== user_id.toString()) {
+            //     return next(new ErrorHandler("Unauthorized to delete this budget", 403));
+            // }
+            // await existingBudget.deleteOne();
+    
+            // res.status(200).json({
+            //     success: true,
+            //     message: "Budget deleted successfully",
+            // });
+           
+    
+            const { id } = req.params;
+            const user_id = req.user._id; 
+            const existingBudget = await budget.findById(id);
+            if (!existingBudget) {
+                return next(new ErrorHandler("Budget not found", 404));
+            }
+    
+            if (existingBudget.user_id.toString() !== user_id.toString()) {
+                return next(new ErrorHandler("Unauthorized to delete this budget", 403));
+            }
+            const deletedBudget = await budget.findByIdAndUpdate(
+                id,
+                { budget_title: "Deleted_Budget" }, 
+                {
+                    new: true,
+                    runValidators: true,
+                }
+            );
+    
+            if (!deletedBudget) {
+                return next(new ErrorHandler("Invalid budget ID, unable to delete", 404));
+            }
+    
+            res.status(200).json({
+                success: true,
+                budget: deletedBudget,
+            });
+        }
+        catch(error){
+            console.error("Error deleting budget:", error);
+            next(error);
+        }
+    }
+    
+
+    export const getBudgetById = async (req, res, next) =>{
+        try{
+            const {id} = req.params;
+            const user_id = req.user._id; 
+            const existingBudget = await budget.findById(id);
+            if (!existingBudget) {
+                return next(new ErrorHandler("Budget not found", 404));
+            }
+        
+            // Check if the budget has been "soft deleted"
+            if (existingBudget.budget_title === "Deleted_Budget") {
+                return next(new ErrorHandler("This budget has been deleted", 404));
+            }
+            
+            if (existingBudget.user_id.toString() !== user_id.toString()) {
+                return next(new ErrorHandler("Unauthorized to update this budget", 403));
+            }
+    
+            res.status(200).json({
+                success: true,
+                budget: existingBudget,
+            });
+        }
+        catch(error){
+            console.error("Error getting budget by Id:", error);
+            next(error);
+        }
+    }
+    
