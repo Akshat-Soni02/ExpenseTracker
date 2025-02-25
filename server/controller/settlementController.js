@@ -2,6 +2,7 @@ import settlement from "../models/settlement.js";
 import ErrorHandler from "../middlewares/error.js";
 import { modifyWalletBalance } from "./walletController.js";
 
+//settlement can be created in a group, or personally 
 //creating a settlement means changing group states, also changing personal states with other people
 export const createSettlement = async (req, res, next) => {
   try {
@@ -16,6 +17,11 @@ export const createSettlement = async (req, res, next) => {
       amount,
       group_id,
     } = req.body;
+
+    //first wallet changes
+    //if its group then group changes
+    //then personal changes
+    //then create settlement
 
     if (status === "sent") {
       payer_id = id;
