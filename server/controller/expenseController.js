@@ -4,6 +4,7 @@ import group from "../models/group.js";
 import ErrorHandler from "../middlewares/error.js";
 import user from "../models/user.js";
 import { uploadMedia } from "./cloudinaryController.js";
+import { ConnectionPoolClosedEvent } from "mongodb";
 
 
 //creating an expense means changing group states, wallet states also changing personal states with other people
@@ -185,8 +186,8 @@ export const updateExpense = async (req, res, next) => {
     try {
         const { expense_id } = req.params;
         const { description, lenders, borrowers, total_amount, expense_category, notes, wallet_id } = req.body;
-
         const existingExpense = await expense.findById(expense_id);
+
         // if (!existingExpense) {
         //     return next(new ErrorHandler("Expense not found", 404));
         // }
@@ -214,18 +215,75 @@ export const updateExpense = async (req, res, next) => {
 
         // if (description) existingExpense.description = description;
         
-        // if (lenders) existingExpense.lenders = lenders;
+        if (lenders) {
+          const lender_id =  existingExpense.lenders[0].user_id;
+          //If only lended amount is changed;
+          if(lender_id.toString() === lenders[0].user_id.toString()){
+            const oldAmount = existingExpense.lenders[0].amount;
+            const newAmount = lenders[0].amount;
+            const currGroup = await group.findById(group_id).select("members");
+            for (const { user_id: borrower_id, amount } of existingExpense.borrowers) {
+              const member = currGroup.members.find(m => m.member_id.toString() === lender_id);
+              if (member) {
+                const transaction = member.other_members.find(
+                  t => t.other_member_id.toString() === borrower_id
+                );
+                if (transaction) {
+                  if(transaction.exchange_status === "lended"){
+                    if(transaction.amount-oldAmount+newAmount>0){
+                      transaction.amount = transaction.amount - oldAmount + newAmount;
+                    }
+                    else if(transaction.amount-oldAmount+newAmount==0){
+                      transaction.amount = 0;
+                      transaction.exchange_status = "settled";
+                    }
+                    else{
+                      transaction.amount =   oldAmount - newAmount - transaction.amount;
+                      transaction.exchange_status = "borrowed";
+                    }
+                  }
+                  else if(transaction.exchange_status === "settled"){
+                    if(newAmount>oldAmount){
+                      transaction.amount = newAmount - oldAmount;
+                      transaction.exchange_status = "lended";
+                    }
+                    else if(newAmount<oldAmount){
+                      transaction.amount = oldAmount - newAmount;
+                      transaction.exchange_status = "borrowed";
+                    }
+                  }
+                  else{
+                    if(transaction.amount-oldAmount+newAmount>0){
+                      transaction.amount = transaction.amount - oldAmount + newAmount;
+                    }
+                    else if(transaction.amount-oldAmount+newAmount==0){
+                      transaction.amount = 0;
+                      transaction.exchange_status = "settled";
+                    }
+                    else{
+                      transaction.amount =   oldAmount - newAmount - transaction.amount;
+                      transaction.exchange_status = "lended";
+                    }
+                  }
+                  
+                }
+              }
+            }
+          }  
+        }
+
         
+        //     existingExpense.lenders = lenders;
+        // }
         // if (borrowers) {
 
 
 
-          if(existingExpense.group_id){
-            // const lender_id =  Object.keys(existingExpense.lenders)[0];
-            // const currGroup = await group.findById(existingExpense.group_id).select("members");
-            for(const [borrower_id,amount] of Object.entries(borrowers)){
-              const borrower = existingExpense.borrowers.find(b => b.user_id.toString() === borrower_id);
-              console.log(borrower);
+          // if(existingExpense.group_id){
+          //   const lender_id =  Object.keys(existingExpense.lenders)[0];
+          //   const currGroup = await group.findById(existingExpense.group_id).select("members");
+          //   for (const { user_id: borrower_id, amount } of borrowers) {
+          //     const borrower = existingExpense.borrowers.find(b => b.user_id.toString() === borrower_id);
               
               // const member = currGroup.members.find(m => m.member_id.toString() === lender_id);
               // if (member) {
@@ -284,9 +342,9 @@ export const updateExpense = async (req, res, next) => {
               //     } 
               //   }
               // }
-            }
+            // }
         //     currGroup.save();  
-          }
+          // }
         //   existingExpense.borrowers = borrowers
         
         // };
