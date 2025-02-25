@@ -9,7 +9,7 @@ import { uploadMedia } from "./cloudinaryController.js";
 //creating an expense means changing group states, wallet states also changing personal states with other people
 export const createExpense = async (req, res, next) => {
     try {
-      let { description, lenders, borrowers, wallet_id, total_amount, expense_category, notes, group_id } = req.body;
+      let { description, lenders, borrowers, wallet_id, total_amount, expense_category, notes, group_id,creator } = req.body;
         
       // if (!description || !total_amount) {
       //   return next(new ErrorHandler("Missing required fields", 404));
@@ -26,123 +26,123 @@ export const createExpense = async (req, res, next) => {
       //   }
       // }
 
-      //Update Wallet
-      if(wallet_id){
-        const currWallet = await wallet.findById(wallet_id).select("amount");
-        if(total_amount>currWallet.amount){
-          return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-        }
-        currWallet.amount = currWallet.amount - total_amount;
-        await currWallet.save();
-      }
+    //   //Update Wallet
+    //   if(wallet_id){
+    //     const currWallet = await wallet.findById(wallet_id).select("amount");
+    //     if(total_amount>currWallet.amount){
+    //       return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
+    //     }
+    //     currWallet.amount = currWallet.amount - total_amount;
+    //     await currWallet.save();
+    //   }
 
-      //Update Group
-      if(group_id){
-        const lender_id =  Object.keys(lenders)[0];
-        const currGroup = await group.findById(group_id).select("members");
-        for(const [borrower_id,amount] of Object.entries(borrowers)){
-          const member = currGroup.members.find(m => m.member_id.toString() === lender_id);
-          if (member) {
-            const transaction = member.other_members.find(
-              t => t.other_member_id.toString() === borrower_id
-            );
-            if (transaction) {
-              if(transaction.exchange_status === "lended"){
-                transaction.amount = transaction.amount + amount;
-              }
-              else if(transaction.exchange_status === "settled"){
-                transaction.amount = amount;
-                transaction.exchange_status = "lended";
-              }
-              else{
-                if(transaction.amount==amount){
-                  transaction.amount = 0;
-                  transaction.exchange_status = "settled";
-                }
-                else if(transaction.amount<amount){
-                  transaction.amount = amount - transaction.amount;
-                  transaction.exchange_status = "lended";
-                }
-                else{
-                  transaction.amount = transaction.amount - amount;
-                }
-              }
+    //   //Update Group
+    //   if(group_id){
+    //     const lender_id =  Object.keys(lenders)[0];
+    //     const currGroup = await group.findById(group_id).select("members");
+    //     for(const [borrower_id,amount] of Object.entries(borrowers)){
+    //       const member = currGroup.members.find(m => m.member_id.toString() === lender_id);
+    //       if (member) {
+    //         const transaction = member.other_members.find(
+    //           t => t.other_member_id.toString() === borrower_id
+    //         );
+    //         if (transaction) {
+    //           if(transaction.exchange_status === "lended"){
+    //             transaction.amount = transaction.amount + amount;
+    //           }
+    //           else if(transaction.exchange_status === "settled"){
+    //             transaction.amount = amount;
+    //             transaction.exchange_status = "lended";
+    //           }
+    //           else{
+    //             if(transaction.amount==amount){
+    //               transaction.amount = 0;
+    //               transaction.exchange_status = "settled";
+    //             }
+    //             else if(transaction.amount<amount){
+    //               transaction.amount = amount - transaction.amount;
+    //               transaction.exchange_status = "lended";
+    //             }
+    //             else{
+    //               transaction.amount = transaction.amount - amount;
+    //             }
+    //           }
                
-            }
-          }
-          const otherMember = currGroup.members.find(m => m.member_id.toString() === borrower_id);
-          if (otherMember) {
-            const transaction = otherMember.other_members.find(
-              t => t.other_member_id.toString() === lender_id
-            );
-            if (transaction) {
-              if(transaction.exchange_status === "borrowed"){
-                transaction.amount = transaction.amount + amount;
-              }
-              else if(transaction.exchange_status === "settled"){
-                transaction.amount = amount;
-                transaction.exchange_status = "borrowed";
-              }
-              else{
-                if(transaction.amount==amount){
-                  transaction.amount = 0;
-                  transaction.exchange_status = "settled";
-                }
-                else if(transaction.amount<amount){
-                  transaction.amount = amount - transaction.amount;
-                  transaction.exchange_status = "borrowed";
-                }
-                else{
-                  transaction.amount = transaction.amount - amount;
-                }
-              } 
-            }
-          }
-        }
-        currGroup.save();  
-    }
+    //         }
+    //       }
+    //       const otherMember = currGroup.members.find(m => m.member_id.toString() === borrower_id);
+    //       if (otherMember) {
+    //         const transaction = otherMember.other_members.find(
+    //           t => t.other_member_id.toString() === lender_id
+    //         );
+    //         if (transaction) {
+    //           if(transaction.exchange_status === "borrowed"){
+    //             transaction.amount = transaction.amount + amount;
+    //           }
+    //           else if(transaction.exchange_status === "settled"){
+    //             transaction.amount = amount;
+    //             transaction.exchange_status = "borrowed";
+    //           }
+    //           else{
+    //             if(transaction.amount==amount){
+    //               transaction.amount = 0;
+    //               transaction.exchange_status = "settled";
+    //             }
+    //             else if(transaction.amount<amount){
+    //               transaction.amount = amount - transaction.amount;
+    //               transaction.exchange_status = "borrowed";
+    //             }
+    //             else{
+    //               transaction.amount = transaction.amount - amount;
+    //             }
+    //           } 
+    //         }
+    //       }
+    //     }
+    //     currGroup.save();  
+    // }
 
-      //Update User
-      const currUser = await user.findById(req.user._id);
+    //   //Update User
+    //   const currUser = await user.findById(req.user._id);
       
-      //Update lenders
-      const lendedMap = new Map(currUser.lended.map(b => [b.borrower_id.toString(), b.amount]));
+    //   //Update lenders
+    //   const lendedMap = new Map(currUser.lended.map(b => [b.borrower_id.toString(), b.amount]));
 
-      // Update existing borrowers and add new ones
-      for (const [borrowerId, amount] of Object.entries(borrowers)) {
-        if (lendedMap.has(borrowerId)) {
-          lendedMap.set(borrowerId, lendedMap.get(borrowerId) + amount);
-        } else {
-          lendedMap.set(borrowerId, amount);
-        }
-      }
+    //   // Update existing borrowers and add new ones
+    //   for (const [borrowerId, amount] of Object.entries(borrowers)) {
+    //     if (lendedMap.has(borrowerId)) {
+    //       lendedMap.set(borrowerId, lendedMap.get(borrowerId) + amount);
+    //     } else {
+    //       lendedMap.set(borrowerId, amount);
+    //     }
+    //   }
   
-      // Convert Map back to an array of objects
-      const updatedLended = Array.from(lendedMap, ([borrower_id, amount]) => ({
-        borrower_id,
-        amount,
-      }));
+    //   // Convert Map back to an array of objects
+    //   const updatedLended = Array.from(lendedMap, ([borrower_id, amount]) => ({
+    //     borrower_id,
+    //     amount,
+    //   }));
 
-      await user.updateOne({ _id: req.user._id }, { $set: { lended: updatedLended } });
+    //   await user.updateOne({ _id: req.user._id }, { $set: { lended: updatedLended } });
 
 
       
-      // update borrowers
-      const lender_id =  Object.keys(lenders)[0];
-      for (const [borrowerId, amount] of Object.entries(borrowers)) {
-        const currUser = await user.findById(borrowerId);
-        const borrowedMap = new Map(currUser.borrowed.map(b => [b.lender_id.toString(), b.amount]));
-        if (borrowedMap.has( lender_id)) {
-          borrowedMap.set(lender_id, borrowedMap.get(lender_id) + amount);
-        } else {
-          borrowedMap.set(lender_id, amount);
-        }
-        const updatedBorrowed = Array.from(borrowedMap, ([lender_id, amount]) => ({
-          lender_id,
-          amount,
-        }));
-        await user.updateOne({ _id: borrowerId }, { $set: { borrowed: updatedBorrowed } });
-      }
+      // // update borrowers
+      // const lender_id =  Object.keys(lenders)[0];
+      // for (const [borrowerId, amount] of Object.entries(borrowers)) {
+      //   const currUser = await user.findById(borrowerId);
+      //   const borrowedMap = new Map(currUser.borrowed.map(b => [b.lender_id.toString(), b.amount]));
+      //   if (borrowedMap.has( lender_id)) {
+      //     borrowedMap.set(lender_id, borrowedMap.get(lender_id) + amount);
+      //   } else {
+      //     borrowedMap.set(lender_id, amount);
+      //   }
+      //   const updatedBorrowed = Array.from(borrowedMap, ([lender_id, amount]) => ({
+      //     lender_id,
+      //     amount,
+      //   }));
+      //   await user.updateOne({ _id: borrowerId }, { $set: { borrowed: updatedBorrowed } });
+      // }
 
   
       const newExpense = await expense.create({
@@ -154,7 +154,7 @@ export const createExpense = async (req, res, next) => {
         media: null,
         total_amount,
         expense_category,
-        creator_id: req.user._id,
+        creator,
         notes,
         
         

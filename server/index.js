@@ -48,7 +48,7 @@ mongoose
   .then(() => console.log("Connected to Database"))
   .catch((err) => console.log(err));
 
-scheduleCronJobs();
+// scheduleCronJobs();
 
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/wallets", walletRouter);
@@ -56,5 +56,5 @@ app.use("/api/v1/groups", groupRouter);
 app.use("/api/v1/settlements", settlementRouter);
 app.use("/api/v1/bills", billRouter);
 app.use("/api/v1/budgets",budgetRouter);
-app.user("/api/v1/personalTransactions",personalTransactionRouter);
+app.use("/api/v1/personalTransactions",personalTransactionRouter);
 app.use("/api/v1/expenses", expenseRouter);
