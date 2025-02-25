@@ -9,8 +9,11 @@ import { v2 as cloudinary } from "cloudinary";
 import userRouter from "./routes/user.js";
 import walletRouter from "./routes/wallet.js";
 import groupRouter from "./routes/group.js";
+import budgetRouter from "./routes/budget.js";
 import settlementRouter from "./routes/settlement.js";
+import expenseRouter from "./routes/expense.js";
 import billRouter from "./routes/bill.js";
+import personalTransactionRouter from "./routes/personalTransaction.js";
 import { scheduleCronJobs } from "./controller/schedulerController.js";
 
 dotenv.config();
@@ -45,10 +48,13 @@ mongoose
   .then(() => console.log("Connected to Database"))
   .catch((err) => console.log(err));
 
-scheduleCronJobs();
+// scheduleCronJobs();
 
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/wallets", walletRouter);
 app.use("/api/v1/groups", groupRouter);
 app.use("/api/v1/settlements", settlementRouter);
 app.use("/api/v1/bills", billRouter);
+app.use("/api/v1/budgets",budgetRouter);
+app.use("/api/v1/personalTransactions",personalTransactionRouter);
+app.use("/api/v1/expenses", expenseRouter);
