@@ -181,7 +181,7 @@ export const sendBillJoinInvite = async () => {
 
 export const handleBillRecurrence = async (billId) => {
     try {
-        const curBill = await bill.findById(billId);
+        const curBill = await bill.findById(billId); 
         if(!curBill) new ErrorHandler("Error recurring bill", 400);
         curBill.recurring = false;
         if(curBill.status === "pending") {
