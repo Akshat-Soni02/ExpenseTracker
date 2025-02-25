@@ -9,7 +9,7 @@ import { uploadMedia } from "./cloudinaryController.js";
 //creating an expense means changing group states, wallet states also changing personal states with other people
 export const createExpense = async (req, res, next) => {
     try {
-      let { description, lenders, borrowers, wallet_id, total_amount, expense_category, notes, group_id} = req.body;
+      let { description, lenders, borrowers, wallet_id, total_amount, expense_category, notes, group_id, created_at_date_time} = req.body;
       const user_id = req.user._id;
       // if (!description || !total_amount) {
       //   return next(new ErrorHandler("Missing required fields", 404));
@@ -26,7 +26,32 @@ export const createExpense = async (req, res, next) => {
       //   }
       // }
 
-    //   //Update Wallet
+      // we will create new expense
+      // if we are able to successfully create expense then we will do the below things
+      // first we will update the wallets
+      // then will change the group states
+      // then will change the personal states
+
+      const creator = {
+          creator_id: user_id, 
+          amount: total_amount,
+      };
+
+      const newExpense = await expense.create({
+        description,
+        lenders,
+        borrowers,
+        group_id,
+        wallet_id,
+        total_amount,
+        expense_category,
+        creator,
+        notes,
+      });
+
+      if(!newExpense) next(new ErrorHandler("Cannot create new expense", 400));
+
+      //Update Wallet
       if(wallet_id){
         const currWallet = await wallet.findById(wallet_id).select("amount");
         if(total_amount>currWallet.amount){
@@ -147,27 +172,9 @@ export const createExpense = async (req, res, next) => {
         }));
         await user.updateOne({ _id: borrower_id }, { $set: { borrowed: updatedBorrowed } });
       }
-      const creatorObj = [
-        {
-            creator_id: user_id, 
-            amount: total_amount
-        }
-      ];
+      
   
-      const newExpense = await expense.create({
-        description,
-        lenders,
-        borrowers,
-        group_id,
-        wallet_id,
-        media: null,
-        total_amount,
-        expense_category,
-        creator:creatorObj,
-        notes,
-        
-        
-      });
+      
   
       res.status(201).json({
         success: true,

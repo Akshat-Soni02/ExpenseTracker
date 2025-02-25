@@ -39,7 +39,7 @@ export const createBill = async (req, res, next) => {
     }
 }
 
-export const handleBillStatusUpdate = async (req, res, next) => {
+export const handleBillUserStatusUpdate = async (req, res, next) => {
     try {
         const id = req.user._id.toString();
         const { status } = req.body;
@@ -145,75 +145,5 @@ export const getBillById = async (req, res, next) => {
     } catch (error) {
         console.log("Error fetching bill by id", error);
         next(error);
-    }
-}
-
-export const getRecurringBills = async () => {
-    try {
-        const bills = await bill.find({recurring: true}).select("_id due_date_time");
-        return bills;
-    } catch (error) {
-        console.log("error fetching recurring bills");
-    }
-}
-
-export const getUserBills = async (userId, next) => {
-    try {
-        const curBills = await bill.find({userId});
-        if(!curBills) next(new ErrorHandler("No Bills of the user exists", 400));
-        res.status(200).json({
-            success: true,
-            bills: curBills
-        });
-    } catch (error) {
-        console.log("Error fetching user bills", error);
-        next(error);
-    }
-}
-
-export const sendBillJoinInvite = async () => {
-    try {
-        
-    } catch (error) {
-        
-    }
-}
-
-export const handleBillRecurrence = async (billId) => {
-    try {
-        const curBill = await bill.findById(billId); 
-        if(!curBill) new ErrorHandler("Error recurring bill", 400);
-        curBill.recurring = false;
-        if(curBill.status === "pending") {
-            curBill.status = "missed"
-        }
-        const resetMembers = curBill.members.map((member) => ({
-            ...member,
-            status: "pending",
-        }));
-
-        const filterBill = {
-            bill_title: curBill.bill_title,
-            bill_number: curBill.bill_number + 1,
-            amount: curBill.amount,
-            bill_category: curBill.bill_category,
-            due_date_time: curBill.due_date_time,
-            recurring: true,
-            status: "pending",
-            creator_id: curBill.creator_id,
-            members: resetMembers
-        };
-        await curBill.save();
-        await bill.create(filterBill);
-    } catch (error) {
-        console.log("Error recurring bill", error);
-    }
-}
-
-export const handleBillRemind = async () => {
-    try {
-        
-    } catch (error) {
-        
     }
 }
