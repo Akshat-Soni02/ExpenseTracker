@@ -1,6 +1,6 @@
 import budget from "../models/budget.js";
 import ErrorHandler from "../middlewares/error.js";
-import { uploadMedia } from "./cloudinaryController.js";
+import { uploadMedia } from "../services/cloudinaryService.js";
 
 export const createBudget = async (req, res, next) => {
     try {

@@ -106,15 +106,6 @@ export const getWalletById = async (req, res, next) => {
   }
 };
 
-export const getUserWallets = async (userId, next) => {
-  try {
-    const wallets = (await wallet.find({ "members.user_id": userId, deleted: false })) || [];
-    return wallets;
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const walletsAmountTransfer = async (req, res, next) => {
   // checks
   // amount should be less than amount present in from_account

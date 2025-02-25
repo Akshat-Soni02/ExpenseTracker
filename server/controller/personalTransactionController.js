@@ -1,6 +1,6 @@
 import personalTransaction from "../models/personalTransaction.js";
 import ErrorHandler from "../middlewares/error.js";
-import { uploadMedia } from "./cloudinaryController.js";
+import { uploadMedia } from "../services/cloudinaryService.js";
 
 
 //Creating a personaltransaction will change wallet and user

@@ -3,7 +3,10 @@ import wallet from "../models/wallet.js";
 import group from "../models/group.js";
 import ErrorHandler from "../middlewares/error.js";
 import user from "../models/user.js";
-import { uploadMedia } from "./cloudinaryController.js";
+import { uploadMedia } from "../services/cloudinaryService.js";
+import { modifyWalletBalance } from "../services/walletService.js";
+import { distributeAmount } from "../services/groupService.js";
+import { findUserById } from "../services/userService.js";
 
 
 //creating an expense means changing group states, wallet states also changing personal states with other people
@@ -49,88 +52,17 @@ export const createExpense = async (req, res, next) => {
         notes,
       });
 
-      if(!newExpense) next(new ErrorHandler("Cannot create new expense", 400));
+      if(!newExpense) return next(new ErrorHandler("Cannot create new expense", 400));
 
       //Update Wallet
-      if(wallet_id){
-        const currWallet = await wallet.findById(wallet_id).select("amount");
-        if(total_amount>currWallet.amount){
-          return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-        }
-        currWallet.amount = currWallet.amount - total_amount;
-        await currWallet.save();
-      }
+      if(wallet_id) await modifyWalletBalance({id: wallet_id, amount: total_amount});
 
-    //   //Update Group
-      if(group_id){
-        const lender_id =  lenders[0].user_id;
-        const currGroup = await group.findById(group_id).select("members");
-        for (const { user_id: borrower_id, amount } of borrowers) {
-          const member = currGroup.members.find(m => m.member_id.toString() === lender_id);
-          if (member) {
-            const transaction = member.other_members.find(
-              t => t.other_member_id.toString() === borrower_id
-            );
-            if (transaction) {
-              if(transaction.exchange_status === "lended"){
-                transaction.amount = transaction.amount + amount;
-              }
-              else if(transaction.exchange_status === "settled"){
-                transaction.amount = amount;
-                transaction.exchange_status = "lended";
-              }
-              else{
-                if(transaction.amount==amount){
-                  transaction.amount = 0;
-                  transaction.exchange_status = "settled";
-                }
-                else if(transaction.amount<amount){
-                  transaction.amount = amount - transaction.amount;
-                  transaction.exchange_status = "lended";
-                }
-                else{
-                  transaction.amount = transaction.amount - amount;
-                }
-              }
-               
-            }
-          }
-          const otherMember = currGroup.members.find(m => m.member_id.toString() === borrower_id);
-          if (otherMember) {
-            const transaction = otherMember.other_members.find(
-              t => t.other_member_id.toString() === lender_id
-            );
-            if (transaction) {
-              if(transaction.exchange_status === "borrowed"){
-                transaction.amount = transaction.amount + amount;
-              }
-              else if(transaction.exchange_status === "settled"){
-                transaction.amount = amount;
-                transaction.exchange_status = "borrowed";
-              }
-              else{
-                if(transaction.amount==amount){
-                  transaction.amount = 0;
-                  transaction.exchange_status = "settled";
-                }
-                else if(transaction.amount<amount){
-                  transaction.amount = amount - transaction.amount;
-                  transaction.exchange_status = "borrowed";
-                }
-                else{
-                  transaction.amount = transaction.amount - amount;
-                }
-              } 
-            }
-          }
-        }
-        currGroup.save();  
-    }
+     //Update Group
+      if(group_id) await distributeAmount({groupId: group_id, giverId: lenders[0].user_id, borrowers});
 
       //Update User
       const lender_id =  lenders[0].user_id;
-      
-      const currUser = await user.findById(lender_id);
+      const currUser = await findUserById(lender_id);
       
       //Update lenders
       const lendedMap = new Map(currUser.lended.map(b => [b.borrower_id.toString(), b.amount]));
