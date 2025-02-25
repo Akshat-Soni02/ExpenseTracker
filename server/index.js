@@ -14,7 +14,7 @@ import settlementRouter from "./routes/settlement.js";
 import expenseRouter from "./routes/expense.js";
 import billRouter from "./routes/bill.js";
 import personalTransactionRouter from "./routes/personalTransaction.js";
-import { scheduleCronJobs } from "./controller/schedulerController.js";
+import { scheduleCronJobs } from "./services/schedulerService.js";
 
 dotenv.config();
 cloudinary.config({

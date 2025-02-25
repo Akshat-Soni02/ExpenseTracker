@@ -84,7 +84,7 @@ export const updateGroup = async (req, res, next) => {
       runValidators: true,
     });
     if (!updatedGroup)
-      next(new ErrorHandler("No group found with this id to update", 400));
+      return next(new ErrorHandler("No group found with this id to update", 400));
     res.status(200).json({
       success: true,
       group: updatedGroup,
@@ -165,7 +165,7 @@ export const getGroupById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const curGroup = await group.findById(id);
-    if (!curGroup) next(new ErrorHandler("No group with given id exists", 404));
+    if (!curGroup) return next(new ErrorHandler("No group with given id exists", 404));
     res.status(200).json({
       success: true,
       group: curGroup,

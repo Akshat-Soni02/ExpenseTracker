@@ -1,7 +1,7 @@
 import budget from "../models/budget.js";
 import ErrorHandler from "../middlewares/error.js";
 import { uploadMedia } from "./cloudinaryController.js";
-
+import { findBudgetById } from "../services/budgetService.js";
 export const createBudget = async (req, res, next) => {
     try {
         const { budget_title, amount, budget_category, period } = req.body;
@@ -38,7 +38,7 @@ export const updateBudget = async (req, res, next) => {
         const { budget_title, amount, budget_category, period } = req.body;
         const user_id = req.user._id; 
     
-        const existingBudget = await budget.findById(id);
+        const existingBudget = await findBudgetById(id);
         if (!existingBudget) {
             return next(new ErrorHandler("Budget not found", 404));
         }
@@ -76,28 +76,10 @@ export const updateBudget = async (req, res, next) => {
 
     export const deleteBudget = async (req, res, next) => {
         try{
-            // const { budget_id } = req.params;
-            // const user_id = req.user._id; 
-
-            // const existingBudget = await budget.findById(budget_id);
-            // if (!existingBudget) {
-            //     return next(new ErrorHandler("Budget not found", 404));
-            // }
-    
-            // if (existingBudget.user_id.toString() !== user_id.toString()) {
-            //     return next(new ErrorHandler("Unauthorized to delete this budget", 403));
-            // }
-            // await existingBudget.deleteOne();
-    
-            // res.status(200).json({
-            //     success: true,
-            //     message: "Budget deleted successfully",
-            // });
-           
-    
             const { id } = req.params;
             const user_id = req.user._id; 
-            const existingBudget = await budget.findById(id);
+
+            const existingBudget = await findBudgetById(id);
             if (!existingBudget) {
                 return next(new ErrorHandler("Budget not found", 404));
             }
@@ -105,22 +87,11 @@ export const updateBudget = async (req, res, next) => {
             if (existingBudget.user_id.toString() !== user_id.toString()) {
                 return next(new ErrorHandler("Unauthorized to delete this budget", 403));
             }
-            const deletedBudget = await budget.findByIdAndUpdate(
-                id,
-                { budget_title: "Deleted_Budget" }, 
-                {
-                    new: true,
-                    runValidators: true,
-                }
-            );
-    
-            if (!deletedBudget) {
-                return next(new ErrorHandler("Invalid budget ID, unable to delete", 404));
-            }
+            await existingBudget.deleteOne();
     
             res.status(200).json({
                 success: true,
-                budget: deletedBudget,
+                message: "Budget deleted successfully",
             });
         }
         catch(error){
@@ -134,7 +105,7 @@ export const updateBudget = async (req, res, next) => {
         try{
             const {id} = req.params;
             const user_id = req.user._id; 
-            const existingBudget = await budget.findById(id);
+            const existingBudget = await findBudgetById(id);
             if (!existingBudget) {
                 return next(new ErrorHandler("Budget not found", 404));
             }

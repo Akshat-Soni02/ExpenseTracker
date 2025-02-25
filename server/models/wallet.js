@@ -14,6 +14,7 @@ const walletSchema = new mongoose.Schema({
       user_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
     },
   ],
+  deleted: {type: Boolean, default: false}
 });
 
 walletSchema.index({ creator_id: 1, wallet_title: 1 }, { unique: true });
