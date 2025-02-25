@@ -4,6 +4,8 @@ import user from "../models/user.js";
 import ErrorHandler from "../middlewares/error.js";
 import { uploadMedia } from "./cloudinaryController.js";
 import mongoose from "mongoose";
+import {findPersonalTransactionById,findPersonalTransactionByQuery,updatePersonalTransactionType,updatePersonalTransactionWallet,updatePersonalTransactionAmount} from "../services/personalTransactionService.js"
+import { findWalletById,modifyWalletBalance,transferWalletAmounts } from "../services/walletService.js";
 
 
 //Creating a personaltransaction will change wallet and user
@@ -16,19 +18,13 @@ export const createPersonalTransaction = async (req, res, next)=>{
         }   
 
         //update wallet
-        const currWallet = await wallet.findById(wallet_id).select("amount");
         if(transaction_type==="expense"){
-            if(amount>currWallet.amount){
-                return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-            }
-            currWallet.amount = currWallet.amount - amount;
+            await modifyWalletBalance(wallet_id,-1*amount);
         }
         else{
-            currWallet.amount = currWallet.amount + amount;
+            await modifyWalletBalance(wallet_id,amount);
         }
-        
-        await currWallet.save();
-        
+                
 
         const newPersonalTransaction = await personalTransaction.create({
             transaction_type,
@@ -56,10 +52,12 @@ export const createPersonalTransaction = async (req, res, next)=>{
 export const updatePersonalTransaction = async (req, res, next) => {
     try {
         const { personalTransaction_id } = req.params;
-        const { transaction_type, description, wallet_id, transaction_category,notes,amount } = req.body;
+        const { transaction_type, wallet_id,amount } = req.body;
+        const updatedDetails = req.body;
         const user_id = req.user._id; 
     
-        const existingPersonalTransaction = await personalTransaction.findById(personalTransaction_id);
+        const existingPersonalTransaction = await findPersonalTransactionById(personalTransaction_id);
+
         if (!existingPersonalTransaction) {
             return next(new ErrorHandler("Personal Transaction not found", 404));
         }
@@ -69,82 +67,27 @@ export const updatePersonalTransaction = async (req, res, next) => {
     
         // Update only provided fields
         if (transaction_type){
-            const currWallet = await wallet.findById(existingPersonalTransaction.wallet_id).select("amount");
-            if(transaction_type==="expense"){
-                if(2*existingPersonalTransaction.amount>currWallet.amount){
-                    return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-                }
-                currWallet.amount = currWallet.amount - 2*existingPersonalTransaction.amount;
-            }
-            else{
-                currWallet.amount = currWallet.amount + 2*existingPersonalTransaction.amount;
-            }
-            existingPersonalTransaction.transaction_type = transaction_type;
-            await currWallet.save();
+            await updatePersonalTransactionType(personalTransaction_id,transaction_type,existingPersonalTransaction.amount);
         }
         
         if (wallet_id){
-            const currWallet = await wallet.findById(existingPersonalTransaction.wallet_id).select("amount");
-            const newWallet = await wallet.findById(wallet_id).select("amount");
-            if(existingPersonalTransaction.transaction_type==="expense"){
-                if(existingPersonalTransaction.amount>newWallet.amount){
-                    return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-                }
-                currWallet.amount = currWallet.amount + existingPersonalTransaction.amount;
-                newWallet.amount = newWallet.amount - existingPersonalTransaction.amount;
-            }
-            else{
-                if(existingPersonalTransaction.amount>currWallet.amount){
-                    return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-                }
-                
-                currWallet.amount = currWallet.amount - existingPersonalTransaction.amount;
-                newWallet.amount = newWallet.amount + existingPersonalTransaction.amount;
-            }
-            await currWallet.save();
-            await newWallet.save();
-            existingPersonalTransaction.wallet_id = wallet_id;
-
+            await updatePersonalTransactionWallet(personalTransaction_id,existingPersonalTransaction.wallet_id,wallet_id,existingPersonalTransaction.amount);
         }
 
         if (amount) {
-            const currWallet = await wallet.findById(existingPersonalTransaction.wallet_id).select("amount");
-            if(amount>existingPersonalTransaction.amount){
-                if(existingPersonalTransaction.transaction_type==="expense"){
-                    if(amount-existingPersonalTransaction.amount>currWallet.amount){
-                        return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-                    }
-                    currWallet.amount = currWallet.amount - amount + existingPersonalTransaction.amount;
-                }
-                else{
-                    currWallet.amount = currWallet.amount + amount - existingPersonalTransaction.amount;
-                }
-            }
-            else{
-                if(existingPersonalTransaction.transaction_type==="expense"){
-                    currWallet.amount = currWallet.amount - amount + existingPersonalTransaction.amount;
-                }
-                else{
-                    if(existingPersonalTransaction.amount-amount>currWallet.amount){
-                        return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-                    }
-                    currWallet.amount = currWallet.amount + amount - existingPersonalTransaction.amount;
-                }
-            }
-            await currWallet.save();
-            existingPersonalTransaction.amount = amount;
+            await updatePersonalTransactionAmount(personalTransaction_id,existingPersonalTransaction.wallet_id, existingPersonalTransaction.amount, amount)
         }
-        if (description) existingPersonalTransaction.description = description;
         
-        if (transaction_category) existingPersonalTransaction.transaction_category = transaction_category;
-        if (notes) existingPersonalTransaction.notes = notes;    
-
-        await existingPersonalTransaction.save();
+        const updatedPersonalTransaction = await personalTransaction.findByIdAndUpdate(personalTransaction_id, updatedDetails, {
+            new: true,
+            runValidators: true,
+          });
+    
     
         res.status(200).json({
             success: true,
             message: "Personal Transaction updated successfully",
-            existingPersonalTransaction,
+            updatedPersonalTransaction,
         });
         } 
         catch (error) {
@@ -165,27 +108,20 @@ export const updatePersonalTransaction = async (req, res, next) => {
             const { personalTransaction_id } = req.params;
             const user_id = req.user._id; 
 
-            const existingPersonalTransaction = await personalTransaction.findById(personalTransaction_id);
-            if (!existingPersonalTransaction) {
-                return next(new ErrorHandler("Personal Transaction not found", 404));
-            }
+            const existingPersonalTransaction = await findPersonalTransactionById(personalTransaction_id);
     
             if (existingPersonalTransaction.user_id.toString() !== user_id.toString()) {
                 return next(new ErrorHandler("Unauthorized to delete this Personal Transaction", 403));
             }
             
-            const currWallet = await wallet.findById(existingPersonalTransaction.wallet_id).select("amount");
             if(existingPersonalTransaction.transaction_type==="expense"){
-                currWallet.amount = currWallet.amount + existingPersonalTransaction.amount;
+                await modifyWalletBalance(existingPersonalTransaction.wallet_id,existingPersonalTransaction.amount);
             }
             else{
-                if(existingPersonalTransaction.amount>currWallet.amount){
-                    return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-                }
-                currWallet.amount = currWallet.amount - existingPersonalTransaction.amount;
+                await modifyWalletBalance(existingPersonalTransaction.wallet_id,-1*existingPersonalTransaction.amount);
+
             }
             
-            await currWallet.save();
             
             await existingPersonalTransaction.deleteOne();
     
@@ -204,10 +140,7 @@ export const updatePersonalTransaction = async (req, res, next) => {
         try{
             const {personalTransaction_id} = req.params;
             const user_id = req.user._id; 
-            const existingPersonalTransaction = await personalTransaction.findById(personalTransaction_id);
-            if (!existingPersonalTransaction) {
-                return next(new ErrorHandler("Personal Transaction not found", 404));
-            }
+            const existingPersonalTransaction = await findPersonalTransactionById(personalTransaction_id);
 
             if (existingPersonalTransaction.user_id.toString() !== user_id.toString()) {
                 return next(new ErrorHandler("Unauthorized to update this Personal Transaction", 403));
@@ -246,7 +179,7 @@ export const updatePersonalTransaction = async (req, res, next) => {
                 query.transaction_type = transaction_type;
             }
     
-            const transactions = await personalTransaction.find(query);
+            const transactions = await findPersonalTransactionByQuery(query);
     
             res.status(200).json({
                 success: true,
