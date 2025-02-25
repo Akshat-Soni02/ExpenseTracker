@@ -3,8 +3,11 @@ import {
   register,
   login,
   logout,
-  updateUserDetails,
-  getMyProfile
+  updateUser,
+  getMyProfile,
+  getFriendlyUsers,
+  getCurrentExhanges,
+  getMyWallets,
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 
@@ -16,9 +19,12 @@ router.post("/login", login);
 
 //* GET APIs *//
 router.get("/me", isAuthenticated, getMyProfile);
-router.get("/logout", logout);
+router.get("/logout", isAuthenticated, logout);
+router.get("/friends", isAuthenticated, getFriendlyUsers);
+router.get("/current-exchange-status", isAuthenticated, getCurrentExhanges);
+router.get("/my-wallets", isAuthenticated, getMyWallets);
 
 //* PUT APIs *//
-router.put("/update/:id", isAuthenticated, updateUserDetails);
+router.put("/profile-details", isAuthenticated, updateUser);
 
 export default router;
