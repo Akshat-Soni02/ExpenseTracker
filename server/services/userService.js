@@ -2,6 +2,7 @@ import user from "../models/user.js";
 
 export const findUserById = async (id) => {
   const curUser = await user.findById(id);
+  // console.log("finding user with id", id);
   if (!curUser) throw new Error("No user with given id exists");
   return curUser;
 };
@@ -10,10 +11,12 @@ export const updateFriendlyExchangeStatesOnLending = async ({
   lender_id,
   borrowers,
 }) => {
+  // console.log("In updateFriendlyExchangeStatesOnLending");
   const activeUser = await findUserById(lender_id);
   if (!activeUser)
     throw new Error("No user found to update the friendly states");
 
+  // console.log("active user found in update friendly exchange states");
   for (const { user_id, amount } of borrowers) {
     let prevBorrower = activeUser.lended.find(
       (b) => b.borrower_id.toString() === user_id
@@ -25,13 +28,14 @@ export const updateFriendlyExchangeStatesOnLending = async ({
       (s) => s.user_id.toString() === user_id
     );
 
+    // console.log("borrowers loop running in update friendly exchange states");
     if (prevBorrower) {
       console.log("A previous borrower");
-      console.log("prevamount =", prevBorrower.amount);
-      console.log("New amount =", amount);
+      // console.log("prevamount =", prevBorrower.amount);
+      // console.log("New amount =", amount);
       prevBorrower.amount += amount;
 
-      const prevBorrowerProfile = await findUserById(prevBorrower.borrower_id);
+      const prevBorrowerProfile = await findUserById(prevBorrower.borrower_id.toString()); 
       prevBorrowerProfile.borrowed.forEach((lender) => {
         if (lender.lender_id.toString() === lender_id) {
           lender.amount += amount;
@@ -40,7 +44,8 @@ export const updateFriendlyExchangeStatesOnLending = async ({
 
       await prevBorrowerProfile.save();
     } else if (prevLender) {
-      const prevLenderId = prevLender.lender_id;
+      // console.log("A previous lender");
+      const prevLenderId = prevLender.lender_id.toString();
 
       if (prevLender.amount > amount) {
         prevLender.amount -= amount;
@@ -87,7 +92,8 @@ export const updateFriendlyExchangeStatesOnLending = async ({
         await prevLenderProfile.save();
       }
     } else if (prevSettle) {
-      const prevSettleId = prevSettle.user_id;
+      console.log("A previous settle");
+      const prevSettleId = prevSettle.user_id.toString();
       activeUser.settled = activeUser.settled.filter(
         (settle) => settle.user_id.toString() !== prevSettleId
       );
@@ -110,6 +116,6 @@ export const updateFriendlyExchangeStatesOnLending = async ({
       await newBorrowerProfile.save();
     }
   }
-
+  // console.log("Updated friendly exchange states");
   await activeUser.save();
 };

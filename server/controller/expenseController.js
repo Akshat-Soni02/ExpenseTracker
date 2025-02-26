@@ -130,6 +130,7 @@ export const updateExpense = async (req, res, next) => {
             400
           )
         );
+        // console.log("Reverted expense effects, now registering new expense relations");
       await handleExpenseRelations({
         lender_id: updatedExpense.lenders[0].user_id,
         total_amount: updatedExpense.total_amount,
@@ -137,6 +138,7 @@ export const updateExpense = async (req, res, next) => {
         group_id: updatedExpense?.group_id,
         borrowers: updatedExpense.borrowers,
       });
+      // console.log("new expense relations registered");
       res.status(200).json({
         success: true,
         expense: updatedExpense,

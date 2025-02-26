@@ -10,46 +10,67 @@ export const handleExpenseRelations = async ({
   group_id,
   total_amount,
 }) => {
+  // console.log("In handleExpenseRelations");
   //Update Wallet
   if (wallet_id)
     await modifyWalletBalance({ id: wallet_id, amount: -total_amount });
 
-  console.log("wallet modified");
-
+  // console.log("wallet modified");
+  // console.log("\n\n", lender_id);
+  // console.log(borrowers);
+  // console.log(group_id);
   //Update Group
-  if (group_id)
-    await distributeAmount({
-      groupId: group_id,
-      giverId: lender_id,
-      borrowers,
-    });
+  // console.log(borrowers);
 
-  console.log("group modified");
+
+
+
+  
+  // if (group_id)
+  //   try {
+  //     await distributeAmount({
+  //       groupId: group_id,
+  //       giverId: lender_id,
+  //       borrowers,
+  //     });
+  // } catch (err) {
+  //     console.log("Error distributing amount:", err);
+  // }
+  
+    
+
+  // console.log("group has modified");
 
   //Update Users friendly state
   await updateFriendlyExchangeStatesOnLending({
     lender_id: lender_id,
     borrowers,
   });
+  // console.log("user friendly states modified");
 };
 
 export const revertExpenseEffects = async (curExpense) => {
   try {
+    // console.log("In Revert Effects");
+    // console.log(curExpense.wallet_id)
     if (curExpense.wallet_id) {
       await modifyWalletBalance({
         id: curExpense.wallet_id,
         amount: curExpense.total_amount,
       });
     }
-
     curExpense.borrowers.forEach(async (borrower) => {
+      // console.log("In borrower loop");
+      // console.log(borrower.user_id.toString());
+      // console.log(borrower.amount);
+      console.log(curExpense.lenders[0].user_id.toString());
       await handleExpenseRelations({
-        lender_id: borrower.user_id,
-        borrowers: [{ user_id: curExpense.lender_id, amount: borrower.amount }],
-        group_id: curExpense?.group_id,
+        lender_id: borrower.user_id.toString(),
+        borrowers: [{ user_id: curExpense.lenders[0].user_id.toString(), amount: borrower.amount }],
+        group_id: curExpense?.group_id.toString(),
       });
     });
-    console.log("Successfully reverted the expense with id", curExpense._id);
+    // console.log("Successfully reverted the expense with id", curExpense._id);
   } catch (error) {
     console.log("Error reverting expense", error);
   }
