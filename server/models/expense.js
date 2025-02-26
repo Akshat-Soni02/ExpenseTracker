@@ -19,7 +19,6 @@ const expenseSchema = new mongoose.Schema(
     wallet_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "wallet",
-      required: true,
     },
     media: {
       url: { type: String },
@@ -30,7 +29,7 @@ const expenseSchema = new mongoose.Schema(
     created_at_date_time: { type: Date, default: Date.now },
     creator: {
       creator_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-      amount: {type: Number},
+      amount: { type: Number },
     },
     notes: { type: String },
   },

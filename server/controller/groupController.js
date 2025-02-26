@@ -1,5 +1,6 @@
 import group from "../models/group.js";
 import ErrorHandler from "../middlewares/error.js";
+import { findGroupById, formatMembers } from "../services/groupService.js";
 
 // this is how it should look for members in group
 // {
@@ -25,18 +26,7 @@ import ErrorHandler from "../middlewares/error.js";
 //     ]
 //   }
 
-const formatMembers = (memberIds) => {
-  return memberIds.map((memberId, index) => ({
-    member_id: memberId,
-    other_members: memberIds
-      .filter((otherId) => otherId !== memberId)
-      .map((otherMemberId) => ({
-        other_member_id: otherMemberId,
-        amount: 0,
-        exchange_status: "settled",
-      })),
-  }));
-};
+
 
 export const createGroup = async (req, res, next) => {
   try {
@@ -164,7 +154,7 @@ export const leaveGroup = async (req, res, next) => {
 export const getGroupById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const curGroup = await group.findById(id);
+    const curGroup = await findGroupById(id);
     if (!curGroup) return next(new ErrorHandler("No group with given id exists", 404));
     res.status(200).json({
       success: true,

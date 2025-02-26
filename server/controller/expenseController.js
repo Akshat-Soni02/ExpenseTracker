@@ -1,553 +1,264 @@
 import expense from "../models/expense.js";
-import wallet from "../models/wallet.js";
-import group from "../models/group.js";
 import ErrorHandler from "../middlewares/error.js";
-import user from "../models/user.js";
-import { uploadMedia } from "./cloudinaryController.js";
-import { ConnectionPoolClosedEvent } from "mongodb";
-
+import { uploadMedia } from "../services/cloudinaryService.js";
+import {
+  findExpenseById,
+  findPeriodicExpenses,
+  handleExpenseRelations,
+  revertExpenseEffects,
+  findUserExpenses,
+  findCustomExpenses
+} from "../services/expenseService.js";
 
 //creating an expense means changing group states, wallet states also changing personal states with other people
 export const createExpense = async (req, res, next) => {
-    try {
-      let { description, lenders, borrowers, wallet_id, total_amount, expense_category, notes, group_id, created_at_date_time} = req.body;
-      const user_id = req.user._id;
-      // if (!description || !total_amount) {
-      //   return next(new ErrorHandler("Missing required fields", 404));
-      // }
-  
-      // let mediaData = {};
-      // if (req.file) {
-      //   const result = await uploadMedia(req.file.path, "expenseReceipts", next);
-      //   if (result) {
-      //     mediaData = {
-      //       url: result.secure_url,
-      //       public_id: result.public_id,
-      //     };
-      //   }
-      // }
+  try {
+    let {
+      description,
+      lenders,
+      borrowers,
+      wallet_id,
+      total_amount,
+      expense_category,
+      notes,
+      group_id,
+      created_at_date_time,
+    } = req.body;
+    const user_id = req.user._id;
+    // if (!description || !total_amount) {
+    //   return next(new ErrorHandler("Missing required fields", 404));
+    // }
 
-      // we will create new expense
-      // if we are able to successfully create expense then we will do the below things
-      // first we will update the wallets
-      // then will change the group states
-      // then will change the personal states
+    // let mediaData = {};
+    // if (req.file) {
+    //   const result = await uploadMedia(req.file.path, "expenseReceipts", next);
+    //   if (result) {
+    //     mediaData = {
+    //       url: result.secure_url,
+    //       public_id: result.public_id,
+    //     };
+    //   }
+    // }
 
-      const creator = {
-          creator_id: user_id, 
-          amount: total_amount,
-      };
+    // we will create new expense
+    // if we are able to successfully create expense then we will do the below things
+    // first we will update the wallets
+    // then will change the group states
+    // then will change the personal states
 
-      const newExpense = await expense.create({
-        description,
-        lenders,
-        borrowers,
-        group_id,
-        wallet_id,
-        total_amount,
-        expense_category,
-        creator,
-        notes,
-      });
+    const creator = {
+      creator_id: user_id,
+      amount: total_amount,
+    };
 
-      if(!newExpense) next(new ErrorHandler("Cannot create new expense", 400));
+    const newExpense = await expense.create({
+      description,
+      lenders,
+      borrowers,
+      group_id,
+      wallet_id,
+      total_amount,
+      expense_category,
+      creator,
+      notes,
+      created_at_date_time,
+    });
 
-      //Update Wallet
-      if(wallet_id){
-        const currWallet = await wallet.findById(wallet_id).select("amount");
-        if(total_amount>currWallet.amount){
-          return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-        }
-        currWallet.amount = currWallet.amount - total_amount;
-        await currWallet.save();
-      }
+    if (!newExpense)
+      return next(new ErrorHandler("Cannot create new expense", 400));
 
-    //   //Update Group
-      if(group_id){
-        const lender_id =  lenders[0].user_id;
-        const currGroup = await group.findById(group_id).select("members");
-        for (const { user_id: borrower_id, amount } of borrowers) {
-          const member = currGroup.members.find(m => m.member_id.toString() === lender_id);
-          if (member) {
-            const transaction = member.other_members.find(
-              t => t.other_member_id.toString() === borrower_id
-            );
-            if (transaction) {
-              if(transaction.exchange_status === "lended"){
-                transaction.amount = transaction.amount + amount;
-              }
-              else if(transaction.exchange_status === "settled"){
-                transaction.amount = amount;
-                transaction.exchange_status = "lended";
-              }
-              else{
-                if(transaction.amount==amount){
-                  transaction.amount = 0;
-                  transaction.exchange_status = "settled";
-                }
-                else if(transaction.amount<amount){
-                  transaction.amount = amount - transaction.amount;
-                  transaction.exchange_status = "lended";
-                }
-                else{
-                  transaction.amount = transaction.amount - amount;
-                }
-              }
-               
-            }
-          }
-          const otherMember = currGroup.members.find(m => m.member_id.toString() === borrower_id);
-          if (otherMember) {
-            const transaction = otherMember.other_members.find(
-              t => t.other_member_id.toString() === lender_id
-            );
-            if (transaction) {
-              if(transaction.exchange_status === "borrowed"){
-                transaction.amount = transaction.amount + amount;
-              }
-              else if(transaction.exchange_status === "settled"){
-                transaction.amount = amount;
-                transaction.exchange_status = "borrowed";
-              }
-              else{
-                if(transaction.amount==amount){
-                  transaction.amount = 0;
-                  transaction.exchange_status = "settled";
-                }
-                else if(transaction.amount<amount){
-                  transaction.amount = amount - transaction.amount;
-                  transaction.exchange_status = "borrowed";
-                }
-                else{
-                  transaction.amount = transaction.amount - amount;
-                }
-              } 
-            }
-          }
-        }
-        currGroup.save();  
-    }
+    console.log("valid expense");
 
-      //Update User
-      const lender_id =  lenders[0].user_id;
-      
-      const currUser = await user.findById(lender_id);
-      
-      //Update lenders
-      const lendedMap = new Map(currUser.lended.map(b => [b.borrower_id.toString(), b.amount]));
-      
-      // // Update existing borrowers and add new ones
-      for (const { user_id: borrower_id, amount } of borrowers) {
-        if (lendedMap.has(borrower_id)) {
-          lendedMap.set(borrower_id, lendedMap.get(borrower_id) + amount);
-        } else {
-          lendedMap.set(borrower_id, amount);
-        }
-      }
+    await handleExpenseRelations({
+      lender_id: lenders[0].user_id,
+      total_amount,
+      wallet_id,
+      group_id,
+      borrowers,
+    });
 
-      
-      // // Convert Map back to an array of objects
-      const updatedLended = Array.from(lendedMap, ([borrower_id, amount]) => ({
-        borrower_id,
-        amount,
-      }));
-      console.log(updatedLended);
+    console.log("user friendly states modified");
 
-      await user.updateOne({ _id: lender_id }, { $set: { lended: updatedLended } });
+    res.status(201).json({
+      success: true,
+      message: "Expense created successfully",
+      expense: newExpense,
+    });
+  } catch (error) {
+    console.log("Error creating new expense");
+    next(error);
+  }
+};
 
-
-      
-      // // update borrowers
-      
-      for (const { user_id: borrower_id, amount } of borrowers) {
-        const currUser = await user.findById(borrower_id);
-        const borrowedMap = new Map(currUser.borrowed.map(b => [b.lender_id.toString(), b.amount]));
-        if (borrowedMap.has( lender_id)) {
-          borrowedMap.set(lender_id, borrowedMap.get(lender_id) + amount);
-        } else {
-          borrowedMap.set(lender_id, amount);
-        }
-        const updatedBorrowed = Array.from(borrowedMap, ([lender_id, amount]) => ({
-          lender_id,
-          amount,
-        }));
-        await user.updateOne({ _id: borrower_id }, { $set: { borrowed: updatedBorrowed } });
-      }
-      
-  
-      
-  
-      res.status(201).json({
-        success: true,
-        message: "Expense created successfully",
-        expense: newExpense,
-      });
-    } catch (error) {
-      console.log("here");
-      next(error);
-    }
-  };
-  
 //Updating an expense, changes group, wallet, user
 export const updateExpense = async (req, res, next) => {
-    try {
-        const { expense_id } = req.params;
-        const { description, lenders, borrowers, total_amount, expense_category, notes, wallet_id } = req.body;
-        const existingExpense = await expense.findById(expense_id);
+  try {
+    const { expense_id } = req.params;
+    const updatedDetails = req.body;
+    // the updated details might contain
+    // description,
+    //   lenders,
+    //   borrowers,
+    //   total_amount,
+    //   expense_category,
+    //   notes,
+    //   wallet_id,
 
-        // if (!existingExpense) {
-        //     return next(new ErrorHandler("Expense not found", 404));
-        // }
+    //inorder to update expense, first we will find the expense
+    // then if this update is not in members then its alright
+    // else we need to revert the earlier expense and add the new changes in it
 
-        // if (existingExpense.creator_id.toString() !== req.user._id.toString()) {
-        //     return next(new ErrorHandler("Unauthorized to update this expense", 403));
-        // }
+    const existingExpense = await expense.findById(expense_id);
+    if (!existingExpense) {
+      return next(new ErrorHandler("Expense not found with the given id", 404));
+    }
 
-
-        // if(wallet_id){
-        //   const currWallet = await wallet.findById(wallet_id).select("amount");
-        //   if(existingExpense.total_amount>currWallet.amount){
-        //     return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-        //   }
-        //   const prevWallet = await wallet.findById(existingExpense.wallet_id).select("amount");
-        //   prevWallet.amount = prevWallet.amount + existingExpense.total_amount;
-        //   await prevWallet.save();
-        //   currWallet.amount = currWallet.amount - existingExpense.total_amount;
-        //   await currWallet.save();
-        //   existingExpense.wallet_id = wallet_id;
-        // }
-
-
-
-
-        // if (description) existingExpense.description = description;
-        
-        if (lenders) {
-          const lender_id =  existingExpense.lenders[0].user_id;
-          //If only lended amount is changed;
-          if(lender_id.toString() === lenders[0].user_id.toString()){
-            const oldAmount = existingExpense.lenders[0].amount;
-            const newAmount = lenders[0].amount;
-            const currGroup = await group.findById(group_id).select("members");
-            for (const { user_id: borrower_id, amount } of existingExpense.borrowers) {
-              const member = currGroup.members.find(m => m.member_id.toString() === lender_id);
-              if (member) {
-                const transaction = member.other_members.find(
-                  t => t.other_member_id.toString() === borrower_id
-                );
-                if (transaction) {
-                  if(transaction.exchange_status === "lended"){
-                    if(transaction.amount-oldAmount+newAmount>0){
-                      transaction.amount = transaction.amount - oldAmount + newAmount;
-                    }
-                    else if(transaction.amount-oldAmount+newAmount==0){
-                      transaction.amount = 0;
-                      transaction.exchange_status = "settled";
-                    }
-                    else{
-                      transaction.amount =   oldAmount - newAmount - transaction.amount;
-                      transaction.exchange_status = "borrowed";
-                    }
-                  }
-                  else if(transaction.exchange_status === "settled"){
-                    if(newAmount>oldAmount){
-                      transaction.amount = newAmount - oldAmount;
-                      transaction.exchange_status = "lended";
-                    }
-                    else if(newAmount<oldAmount){
-                      transaction.amount = oldAmount - newAmount;
-                      transaction.exchange_status = "borrowed";
-                    }
-                  }
-                  else{
-                    if(transaction.amount-oldAmount+newAmount>0){
-                      transaction.amount = transaction.amount - oldAmount + newAmount;
-                    }
-                    else if(transaction.amount-oldAmount+newAmount==0){
-                      transaction.amount = 0;
-                      transaction.exchange_status = "settled";
-                    }
-                    else{
-                      transaction.amount =   oldAmount - newAmount - transaction.amount;
-                      transaction.exchange_status = "lended";
-                    }
-                  }
-                  
-                }
-              }
-            }
-          }  
-        }
-
-        
-        //     existingExpense.lenders = lenders;
-        // }
-        // if (borrowers) {
-
-
-
-          // if(existingExpense.group_id){
-          //   const lender_id =  Object.keys(existingExpense.lenders)[0];
-          //   const currGroup = await group.findById(existingExpense.group_id).select("members");
-          //   for (const { user_id: borrower_id, amount } of borrowers) {
-          //     const borrower = existingExpense.borrowers.find(b => b.user_id.toString() === borrower_id);
-              
-              // const member = currGroup.members.find(m => m.member_id.toString() === lender_id);
-              // if (member) {
-              //   const transaction = member.other_members.find(
-              //     t => t.other_member_id.toString() === borrower_id
-              //   );
-              //   if (transaction) {
-              //     if(transaction.exchange_status === "lended"){
-              //       transaction.amount = transaction.amount + amount;
-              //     }
-              //     else if(transaction.exchange_status === "settled"){
-              //       transaction.amount = amount;
-              //       transaction.exchange_status = "lended";
-              //     }
-              //     else{
-              //       if(transaction.amount==amount){
-              //         transaction.amount = 0;
-              //         transaction.exchange_status = "settled";
-              //       }
-              //       else if(transaction.amount<amount){
-              //         transaction.amount = amount - transaction.amount;
-              //         transaction.exchange_status = "lended";
-              //       }
-              //       else{
-              //         transaction.amount = transaction.amount - amount;
-              //       }
-              //     }
-                   
-              //   }
-              // }
-              // const otherMember = currGroup.members.find(m => m.member_id.toString() === borrower_id);
-              // if (otherMember) {
-              //   const transaction = otherMember.other_members.find(
-              //     t => t.other_member_id.toString() === lender_id
-              //   );
-              //   if (transaction) {
-              //     if(transaction.exchange_status === "borrowed"){
-              //       transaction.amount = transaction.amount + amount;
-              //     }
-              //     else if(transaction.exchange_status === "settled"){
-              //       transaction.amount = amount;
-              //       transaction.exchange_status = "borrowed";
-              //     }
-              //     else{
-              //       if(transaction.amount==amount){
-              //         transaction.amount = 0;
-              //         transaction.exchange_status = "settled";
-              //       }
-              //       else if(transaction.amount<amount){
-              //         transaction.amount = amount - transaction.amount;
-              //         transaction.exchange_status = "borrowed";
-              //       }
-              //       else{
-              //         transaction.amount = transaction.amount - amount;
-              //       }
-              //     } 
-              //   }
-              // }
-            // }
-        //     currGroup.save();  
-          // }
-        //   existingExpense.borrowers = borrowers
-        
-        // };
-        
-        // if (total_amount) {
-        //   const currWallet = await wallet.findById(existingExpense.wallet_id).select("amount");
-        //   if(total_amount-existingExpense.total_amount>currWallet.amount){
-        //     return next(new ErrorHandler("Insufficient Balance in the wallet.", 402));
-        //   }
-        //   currWallet.amount = currWallet.amount + existingExpense.total_amount - total_amount;
-        //   await currWallet.save();
-        //   existingExpense.total_amount = total_amount;
-        // }
-        
-        // if (expense_category) existingExpense.expense_category = expense_category;
-        
-        // if (notes) existingExpense.notes = notes;
-
-        // // if (req.file) {
-        // //     const result = await uploadMedia(req.file.path, "expenseReceipts", next);
-        // //     if (result) {
-        // //         existingExpense.media = {
-        // //         url: result.secure_url,
-        // //         public_id: result.public_id,
-        // //         };
-        // //     }
-        // // }
-
-        // await existingExpense.save();
-
-        res.status(200).json({
+    if (
+      updatedDetails.lenders !== undefined ||
+      updatedDetails.borrowers !== undefined
+    ) {
+      await revertExpenseEffects(existingExpense);
+      const updatedExpense = await expense.findByIdAndUpdate(
+        expense_id,
+        updatedDetails,
+        { new: true, runValidators: true }
+      );
+      if (!updatedExpense)
+        return next(
+          new ErrorHandler(
+            `Cannot update expense with id: ${existingExpense._id}`,
+            400
+          )
+        );
+      await handleExpenseRelations({
+        lender_id: updatedExpense.lenders[0].user_id,
+        total_amount: updatedExpense.total_amount,
+        wallet_id: updatedExpense?.wallet_id,
+        group_id: updatedExpense?.group_id,
+        borrowers: updatedExpense.borrowers,
+      });
+      res.status(200).json({
         success: true,
-        message: "Expense updated successfully",
-        expense: existingExpense,
-        });
+        expense: updatedExpense,
+      });
+      return;
     }
-    catch (error) {
-        if (error.code === 11000) {
-            // Duplicate key error (E11000)
-            return res.status(400).json({
-            error:
-                "An expense with this title already exists. Please choose a different name.",
-            });
-        }
-        console.log("Error updaing expense", error.message);
-        next(error);
+
+    const updatedExpense = await expense.findByIdAndUpdate(
+      expense_id,
+      updatedDetails,
+      { new: true, runValidators: true }
+    );
+    if (!updatedExpense)
+      return next(
+        new ErrorHandler(
+          `Cannot update expense with id: ${existingExpense._id}`,
+          400
+        )
+      );
+
+    res.status(200).json({
+      success: true,
+      expense: updatedExpense,
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      // Duplicate key error (E11000)
+      return res.status(400).json({
+        error:
+          "An expense with this title already exists. Please choose a different name.",
+      });
     }
-}
+    console.log("Error updaing expense", error.message);
+    next(error);
+  }
+};
 
 export const deleteExpense = async (req, res, next) => {
-    try{
-        // const { expense_id } = req.params;
+  try {
+    // find the expense
+    // revert all changes
+    // delete expense
 
-        // const existingExpense = await expense.findById(expense_id);
-        // if (!existingExpense) {
-        //     return next(new ErrorHandler("Expense not found", 404));
-        // }
+    const { expense_id } = req.params;
+    const curExpense = await expense.findById(expense_id);
+    if (!curExpense)
+      return next(
+        new ErrorHandler(`Cannot delete expense with id: ${expense_id}`, 400)
+      );
 
-        // if (existingExpense.creator_id.toString() !== req.user._id.toString()) {
-        //     return next(new ErrorHandler("Unauthorized to delete this expense", 403));
-        // }
-        // await existingExpense.deleteOne();
+    await revertExpenseEffects(curExpense);
+    await expense.findByIdAndDelete(expense_id);
 
-        // res.status(200).json({
-        //     success: true,
-        //     message: "Expense deleted successfully",
-        // });
-       
+    res.status(200).json({
+      success: true,
+    });
+  } catch (error) {
+    console.error("Error deleting expense:", error);
+    next(error);
+  }
+};
 
-        const { expense_id } = req.params;
+export const getExpenseById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const curExpense = await findExpenseById(id);
 
-        const deletedExpense = await expense.findByIdAndUpdate(
-            expense_id,
-            { description: "Deleted_Expense" }, 
-            {
-                new: true,
-                runValidators: true,
-            }
-        );
-
-        if (!deletedExpense) {
-            return next(new ErrorHandler("Invalid expense ID, unable to delete", 404));
-        }
-
-        res.status(200).json({
-            success: true,
-            expense: deletedExpense,
-        });
-    }
-    catch(error){
-        console.error("Error deleting expense:", error);
-        next(error);
-    }
-}
-
-
-export const getExpenseById = async (req, res, next) =>{
-    try{
-        const {id} = req.params;
-        const foundExpense = await expense.findById(id);
-        if (!foundExpense) {
-            return next(new ErrorHandler("Expense not found", 404));
-        }
-    
-        // Check if the expense has been "soft deleted"
-        if (foundExpense.description === "Deleted_Expense") {
-            return next(new ErrorHandler("This expense has been deleted", 404));
-        }
-        const userId = req.user._id;
-
-        const isInvolved =
-        foundExpense.creator_id.toString() === userId ||
-        foundExpense.lenders.some((l) => l.user_id.toString() === userId) ||
-        foundExpense.borrowers.some((b) => b.user_id.toString() === userId);
-
-        if (!isInvolved) {
-            return next(new ErrorHandler("You are not authorized to view this expense", 403));
-        }
-
-        res.status(200).json({
-            success: true,
-            expense: foundExpense,
-        });
-    }
-    catch(error){
-        console.error("Error getting expense by Id:", error);
-        next(error);
-    }
-}
+    res.status(200).json({
+      success: true,
+      expense: curExpense,
+    });
+  } catch (error) {
+    console.error(`Error getting expense by Id: ${id}`, error);
+    next(error);
+  }
+};
 
 export const getUserPeriodExpenses = async (req, res, next) => {
-    try{
-        const userId = req.user.id;
-        const { startDate, endDate } = req.query;
+  try {
+    const userId = req.user.id;
+    const { startDate, endDate } = req.query;
 
-        if (!startDate || !endDate) {
-            return next(new ErrorHandler("Please provide startDate and endDate", 400));
-        }
-
-        // Convert to Date objects
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999); // Include entire end day
-
-        // Fetch expenses where user is involved
-        const expenses = await expense.find({
-            $or: [
-                { creator_id: userId },
-                { "lenders.user_id": userId },
-                { "borrowers.user_id": userId },
-            ],
-            created_at_date_time: { $gte: start, $lte: end },
-        }).sort({ created_at_date_time: -1 }); // Sort by most recent
-
-        res.status(200).json({
-            success: true,
-            expenses,
-        });
+    if (!startDate || !endDate) {
+      return next(
+        new ErrorHandler("Please provide startDate and endDate", 400)
+      );
     }
-    catch(error){
-        console.error("Error fetching user period expenses", error);
-        next(error);
-    }
-}
+
+    // Convert to Date objects
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // Include entire end day
+
+    // Fetch expenses where user is involved
+    const expenses = await findPeriodicExpenses({start, end, userId});
+
+    res.status(200).json({
+      success: true,
+      expenses,
+    });
+  } catch (error) {
+    console.error("Error fetching user period expenses", error);
+    next(error);
+  }
+};
 
 export const getUserExpenses = async (req, res, next) => {
-    try{
-        const userId = req.user.id;
-        const { group_id } = req.query; // Optional Group ID
+  try {
+    const userId = req.user.id;
+    const { group_id } = req.query; // Optional Group ID
 
-        let filter = {
-            $or: [
-                { creator_id: userId },
-                { "lenders.user_id": userId },
-                { "borrowers.user_id": userId },
-            ],
-        };
+    const expenses = await findUserExpenses({userId, group_id});
 
-        if (group_id) {
-            filter.group_id = group_id; // Filter by group if provided
-        }
-
-        const expenses = await Expense.find(filter).sort({
-            created_at_date_time: -1,
-        });
-
-        res.status(200).json({
-            success: true,
-            expenses,
-        });
-    }
-    catch(error){
-        console.error("Error fetching user expenses", error);
-        next(error);
-    }
-}
+    res.status(200).json({
+      success: true,
+      expenses,
+    });
+  } catch (error) {
+    console.error("Error fetching user expenses", error);
+    next(error);
+  }
+};
 
 export const getCustomExpenses = async (req, res, next) => {
   try {
@@ -562,39 +273,7 @@ export const getCustomExpenses = async (req, res, next) => {
       category,
     } = req.query;
 
-    let filter = {};
-
-    if (description) {
-      filter.description = { $regex: description, $options: "i" }; // Case-insensitive search
-    }
-
-    if (lender_id) {
-      filter["lenders.user_id"] = lender_id;
-    }
-
-    if (borrower_id) {
-      filter["borrowers.user_id"] = borrower_id;
-    }
-
-    if (group_id) {
-      filter.group_id = group_id;
-    }
-
-    if (wallet_id) {
-      filter.wallet_id = wallet_id;
-    }
-
-    if (category) {
-      filter.expense_category = category;
-    }
-
-    if (min_amount || max_amount) {
-      filter.total_amount = {};
-      if (min_amount) filter.total_amount.$gte = Number(min_amount);
-      if (max_amount) filter.total_amount.$lte = Number(max_amount);
-    }
-
-    const expenses = await expense.find(filter).sort({ created_at_date_time: -1 });
+    const expenses = await findCustomExpenses({description, lender_id, borrower_id, group_id, wallet_id, min_amount, max_amount, category});
 
     res.status(200).json({
       success: true,
@@ -605,6 +284,5 @@ export const getCustomExpenses = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // getExpenseByAutoWalletId

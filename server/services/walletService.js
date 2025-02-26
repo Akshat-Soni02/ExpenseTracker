@@ -33,3 +33,12 @@ export const modifyWalletBalance = async ({id, amount}) => {
     await wallet.findByIdAndUpdate(id, {amount: curWallet.amount + amount}, {new: true, runValidators: true});
     return true;
 };
+
+export const findUserWallets = async (id) => {
+  try {
+    const wallets = (await wallet.find({ "members.user_id": id, deleted: false })) || [];
+    return wallets;
+  } catch (error) {
+    console.log("Error getting user wallets");
+  }
+};
