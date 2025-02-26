@@ -2,8 +2,12 @@ import expense from "../models/expense.js";
 import ErrorHandler from "../middlewares/error.js";
 import { uploadMedia } from "../services/cloudinaryService.js";
 import {
+  findExpenseById,
+  findPeriodicExpenses,
   handleExpenseRelations,
   revertExpenseEffects,
+  findUserExpenses,
+  findCustomExpenses
 } from "../services/expenseService.js";
 
 //creating an expense means changing group states, wallet states also changing personal states with other people
@@ -198,34 +202,14 @@ export const deleteExpense = async (req, res, next) => {
 export const getExpenseById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const foundExpense = await expense.findById(id);
-    if (!foundExpense) {
-      return next(new ErrorHandler("Expense not found", 404));
-    }
-
-    // Check if the expense has been "soft deleted"
-    if (foundExpense.description === "Deleted_Expense") {
-      return next(new ErrorHandler("This expense has been deleted", 404));
-    }
-    const userId = req.user._id;
-
-    const isInvolved =
-      foundExpense.creator_id.toString() === userId ||
-      foundExpense.lenders.some((l) => l.user_id.toString() === userId) ||
-      foundExpense.borrowers.some((b) => b.user_id.toString() === userId);
-
-    if (!isInvolved) {
-      return next(
-        new ErrorHandler("You are not authorized to view this expense", 403)
-      );
-    }
+    const curExpense = await findExpenseById(id);
 
     res.status(200).json({
       success: true,
-      expense: foundExpense,
+      expense: curExpense,
     });
   } catch (error) {
-    console.error("Error getting expense by Id:", error);
+    console.error(`Error getting expense by Id: ${id}`, error);
     next(error);
   }
 };
@@ -247,16 +231,7 @@ export const getUserPeriodExpenses = async (req, res, next) => {
     end.setHours(23, 59, 59, 999); // Include entire end day
 
     // Fetch expenses where user is involved
-    const expenses = await expense
-      .find({
-        $or: [
-          { creator_id: userId },
-          { "lenders.user_id": userId },
-          { "borrowers.user_id": userId },
-        ],
-        created_at_date_time: { $gte: start, $lte: end },
-      })
-      .sort({ created_at_date_time: -1 }); // Sort by most recent
+    const expenses = await findPeriodicExpenses({start, end, userId});
 
     res.status(200).json({
       success: true,
@@ -273,21 +248,7 @@ export const getUserExpenses = async (req, res, next) => {
     const userId = req.user.id;
     const { group_id } = req.query; // Optional Group ID
 
-    let filter = {
-      $or: [
-        { creator_id: userId },
-        { "lenders.user_id": userId },
-        { "borrowers.user_id": userId },
-      ],
-    };
-
-    if (group_id) {
-      filter.group_id = group_id; // Filter by group if provided
-    }
-
-    const expenses = await Expense.find(filter).sort({
-      created_at_date_time: -1,
-    });
+    const expenses = await findUserExpenses({userId, group_id});
 
     res.status(200).json({
       success: true,
@@ -312,41 +273,7 @@ export const getCustomExpenses = async (req, res, next) => {
       category,
     } = req.query;
 
-    let filter = {};
-
-    if (description) {
-      filter.description = { $regex: description, $options: "i" }; // Case-insensitive search
-    }
-
-    if (lender_id) {
-      filter["lenders.user_id"] = lender_id;
-    }
-
-    if (borrower_id) {
-      filter["borrowers.user_id"] = borrower_id;
-    }
-
-    if (group_id) {
-      filter.group_id = group_id;
-    }
-
-    if (wallet_id) {
-      filter.wallet_id = wallet_id;
-    }
-
-    if (category) {
-      filter.expense_category = category;
-    }
-
-    if (min_amount || max_amount) {
-      filter.total_amount = {};
-      if (min_amount) filter.total_amount.$gte = Number(min_amount);
-      if (max_amount) filter.total_amount.$lte = Number(max_amount);
-    }
-
-    const expenses = await expense
-      .find(filter)
-      .sort({ created_at_date_time: -1 });
+    const expenses = await findCustomExpenses({description, lender_id, borrower_id, group_id, wallet_id, min_amount, max_amount, category});
 
     res.status(200).json({
       success: true,
