@@ -55,7 +55,7 @@ export const createSettlement = async (req, res, next) => {
   }
 };
 
-export const updateSettlement = async (req, res, next) => {
+export const updateSettlement = async (req, res, next) => { 
   try {
     const { id } = req.params;
     const { settlement_description, amount } = req.body;

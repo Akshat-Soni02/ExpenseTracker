@@ -99,6 +99,8 @@ export const deleteGroup = async (req, res, next) => {
     //delete all the group expenses and settlements
     //delete the group
     const { id } = req.params;
+    
+
   } catch (error) {}
 };
 
