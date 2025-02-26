@@ -4,6 +4,9 @@ import { modifyWalletBalance } from "./walletController.js";
 
 //creating a settlement means changing group states, also changing personal states with other people
 export const createSettlement = async (req, res, next) => {
+
+  //first we will try to create settlement
+  //if successfull we will first change wallet state then group then personal
   try {
     const id = req.user._id;
     const { status } = req.query;
