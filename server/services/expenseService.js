@@ -100,7 +100,6 @@ export const findPeriodicExpenses = async ({start, end, userId}) => {
 export const findUserExpenses = async ({userId, group_id}) => {
   let filter = {
     $or: [
-      { creator_id: userId },
       { "lenders.user_id": userId },
       { "borrowers.user_id": userId },
     ],

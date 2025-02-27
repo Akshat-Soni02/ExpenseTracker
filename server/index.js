@@ -16,6 +16,7 @@ import billRouter from "./routes/bill.js";
 import personalTransactionRouter from "./routes/personalTransaction.js";
 import testRouter from "./routes/test.js";
 import { scheduleCronJobs } from "./services/schedulerService.js";
+import { sendEmail } from "./services/notificationService.js";
 
 dotenv.config();
 cloudinary.config({
@@ -50,6 +51,7 @@ mongoose
   .catch((err) => console.log(err));
 
 // scheduleCronJobs();
+// sendEmail();
 
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/wallets", walletRouter);

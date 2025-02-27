@@ -137,7 +137,6 @@ export const getBillById = async (req, res, next) => {
     try {
         const {id} = req.params;
         const curBill = await bill.findById(id);
-        await handleBillRecurrence(id, next);
         res.status(200).json({
             success: true,
             bill: curBill
