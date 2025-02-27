@@ -105,9 +105,8 @@ export const updateExpense = async (req, res, next) => {
     //   wallet_id,
 
     //inorder to update expense, first we will find the expense
-    // then if this update is not in members then its alright
+    // then if members is not present in update then its alright
     // else we need to revert the earlier expense and add the new changes in it
-
     const existingExpense = await expense.findById(expense_id);
     if (!existingExpense) {
       return next(new ErrorHandler("Expense not found with the given id", 404));
@@ -286,3 +285,4 @@ export const getCustomExpenses = async (req, res, next) => {
 };
 
 // getExpenseByAutoWalletId
+
