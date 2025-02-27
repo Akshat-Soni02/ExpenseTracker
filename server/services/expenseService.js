@@ -51,7 +51,7 @@ export const handleExpenseRelations = async ({
 
 export const revertExpenseEffects = async (curExpense) => {
   try {
-    // console.log("In Revert Effects");
+    console.log("In Revert Effects");
     // console.log(curExpense.wallet_id)
     if (curExpense.wallet_id) {
       await modifyWalletBalance({

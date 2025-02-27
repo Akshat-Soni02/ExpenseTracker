@@ -3,7 +3,7 @@ import ErrorHandler from "../middlewares/error.js";
 import group from "../models/group.js";
 import{distributeAmount} from "../services/groupService.js";
 import{revertExpenseEffects} from "../services/expenseService.js";
-
+import {updateFriendlyExchangeStatesOnLending} from "../services/userService.js";
 export const updateTransactions = async (req, res, next) => {
     const currGroup = await group.findById("67beffd822af96797e9862f1").select("members");
     
@@ -41,4 +41,16 @@ export const revertExpenseEffect = async (req, res, next) => {
         success: true,
         message: "Expense created successfully"
       });
+}
+
+
+export const updateFriendlyExchangeStatesOnLendings = async (req, res, next) => {
+  lender_id = "67b98aa1a9b4849b4bb2dad6";
+  borrowers = [{ user_id: "67b9b5b18859a4c3049e2939", amount: 1 }];
+  updateFriendlyExchangeStatesOnLending(lender_id, borrowers);
+  
+  res.status(201).json({
+      success: true,
+      message: "Expense created successfully"
+    });
 }
