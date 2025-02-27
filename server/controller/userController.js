@@ -2,11 +2,12 @@ import ErrorHandler from "../middlewares/error.js";
 import user from "../models/user.js";
 import { sendCookie } from "../utils/features.js";
 import bcrypt from "bcrypt";
-import { uploadMedia } from "./cloudinaryController.js";
-import { getUserWallets } from "./walletController.js";
+import { uploadMedia } from "../services/cloudinaryService.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
+import { findUserById } from "../services/userService.js";
+import { findUserWallets } from "../services/walletService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -81,7 +82,7 @@ export const updateUser = async (req, res, next) => {
   try {
     const id = req.user.id;
     const updatedDetails = req.body;
-    const curUser = await user.findById(id);
+    const curUser = await findUserById(id);
 
     if (!curUser) {
       return next(new ErrorHandler("User does not Exist", 404));
@@ -191,7 +192,7 @@ export const getCurrentExhanges = async (req, res, next) => {
 export const getMyWallets = async (req, res, next) => {
   try {
     const id = req.user._id;
-    const wallets = await getUserWallets(id, next);
+    const wallets = await findUserWallets(id);
     res.status(200).json({
       success: true,
       wallets,

@@ -23,7 +23,7 @@ router.get("/custom", isAuthenticated, getCustomExpenses); // Uses query paramet
 router.get("/:id", isAuthenticated, getExpenseById);
 
 //* PUT APIs *//
-router.put("/:id", isAuthenticated, updateExpense);
+router.put("/:expense_id", isAuthenticated, updateExpense);
 
 //* DELETE APIs *//
 router.delete("/:id", isAuthenticated, deleteExpense);

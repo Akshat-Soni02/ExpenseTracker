@@ -1,5 +1,6 @@
 import group from "../models/group.js";
 import ErrorHandler from "../middlewares/error.js";
+import { findGroupById, formatMembers } from "../services/groupService.js";
 
 // this is how it should look for members in group
 // {
@@ -25,18 +26,7 @@ import ErrorHandler from "../middlewares/error.js";
 //     ]
 //   }
 
-const formatMembers = (memberIds) => {
-  return memberIds.map((memberId, index) => ({
-    member_id: memberId,
-    other_members: memberIds
-      .filter((otherId) => otherId !== memberId)
-      .map((otherMemberId) => ({
-        other_member_id: otherMemberId,
-        amount: 0,
-        exchange_status: "settled",
-      })),
-  }));
-};
+
 
 export const createGroup = async (req, res, next) => {
   try {
@@ -84,7 +74,7 @@ export const updateGroup = async (req, res, next) => {
       runValidators: true,
     });
     if (!updatedGroup)
-      next(new ErrorHandler("No group found with this id to update", 400));
+      return next(new ErrorHandler("No group found with this id to update", 400));
     res.status(200).json({
       success: true,
       group: updatedGroup,
@@ -109,6 +99,8 @@ export const deleteGroup = async (req, res, next) => {
     //delete all the group expenses and settlements
     //delete the group
     const { id } = req.params;
+    
+
   } catch (error) {}
 };
 
@@ -164,8 +156,8 @@ export const leaveGroup = async (req, res, next) => {
 export const getGroupById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const curGroup = await group.findById(id);
-    if (!curGroup) next(new ErrorHandler("No group with given id exists", 404));
+    const curGroup = await findGroupById(id);
+    if (!curGroup) return next(new ErrorHandler("No group with given id exists", 404));
     res.status(200).json({
       success: true,
       group: curGroup,

@@ -1,5 +1,6 @@
 import ErrorHandler from "../middlewares/error.js";
 import wallet from "../models/wallet.js";
+import { findWalletById, transferWalletAmounts } from "../services/walletService.js";
 
 export const createWallet = async (req, res, next) => {
   try {
@@ -64,12 +65,12 @@ export const updateWallet = async (req, res, next) => {
 };
 
 export const deleteWallet = async (req, res, next) => {
-  // we are simply replacing title to Deleted_Wallet to avoid deleting transactions related to this wallet, don't fetch these wallets in get request
+  // we are simply making deleted true to avoid deleting transactions related to this wallet, don't fetch these wallets in get request
   try {
     const { id } = req.params;
     const deletedWallet = await wallet.findByIdAndUpdate(
       id,
-      { wallet_title: "Deleted_Wallet" },
+      { deleted: true },
       {
         new: true,
         runValidators: true,
@@ -77,7 +78,7 @@ export const deleteWallet = async (req, res, next) => {
     );
 
     if (!deletedWallet)
-      next(new ErrorHandler("Invalid id to delete wallet", 404));
+      return next(new ErrorHandler("Invalid id to delete wallet", 404));
     res.status(200).json({
       success: true,
       wallet: deleteWallet,
@@ -91,24 +92,16 @@ export const deleteWallet = async (req, res, next) => {
 export const getWalletById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const curWallet = await wallet.findById(id);
-    if (!curWallet)
-      next(new ErrorHandler("Invalid id to get wallet details", 404));
+    const curWallet = await findWalletById(id);
+    
+    if (!curWallet) return next(new ErrorHandler("Invalid id to get wallet details", 404));
+    
     res.status(200).json({
       success: true,
       wallet: curWallet,
     });
   } catch (error) {
     console.log("Error getting wallet by id", error);
-    next(error);
-  }
-};
-
-export const getUserWallets = async (userId, next) => {
-  try {
-    const wallets = (await wallet.find({ "members.user_id": userId })) || [];
-    return wallets;
-  } catch (error) {
     next(error);
   }
 };
@@ -120,44 +113,15 @@ export const walletsAmountTransfer = async (req, res, next) => {
   try {
     const { fromWallet, toWallet } = req.query;
     const { amount } = req.body;
-    const debitWallet = await wallet.findById(fromWallet).select("amount");
-    const creditWallet = await wallet.findById(toWallet).select("amount");
-    if (!debitWallet)
-      next(
-        new ErrorHandler("from wallet doesn't exist to transfer amount", 404)
-      );
-    if (amount > debitWallet.amount)
-      next(
-        new ErrorHandler("Transfer amount is greater than wallet amount", 400)
-      );
-    await wallet.findByIdAndUpdate(
-      fromWallet,
-      { amount: debitWallet.amount - amount },
-      { runValidators: true }
-    );
-    await wallet.findByIdAndUpdate(
-      toWallet,
-      { amount: creditWallet.amount + amount },
-      { runValidators: true }
-    );
+
+    const transfer = await transferWalletAmounts({toWallet, fromWallet, amount});
+    if(!transfer) return next(new ErrorHandler("Transfer amount is greater than wallet amount", 400))
+    
     res.status(200).json({
       success: true,
     });
   } catch (error) {
     console.log("Error transferring amount from one account to another", error);
-    next(error);
-  }
-};
-
-//this function takes amount with sign = -ve to reduce, +ve to increase
-export const modifyWalletBalance = async (walletId, amount, next) => {
-  try {
-    const curWallet = await wallet.findById(walletId).select("amount");
-    if (curWallet.amount + amount < 0)
-      next(new ErrorHandler("wallet doesn't have enough balance", 400));
-    curWallet.amount = curWallet.amount + amount;
-    await curWallet.save();
-  } catch (error) {
     next(error);
   }
 };

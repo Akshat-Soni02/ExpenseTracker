@@ -1,13 +1,13 @@
 import express from "express";
 import { isAuthenticated } from "../middlewares/auth.js";
-import { createBill, deleteBill, getBillById, updateBill, handleBillStatusUpdate } from "../controller/billController.js";
+import { createBill, deleteBill, getBillById, updateBill, handleBillUserStatusUpdate } from "../controller/billController.js";
 
 
 const router = express.Router();
 
 //* POST APIs *//
 router.post("/new", isAuthenticated, createBill);
-router.post("/bill-status-update/:billId", isAuthenticated, handleBillStatusUpdate);
+router.post("/bill-status-update/:billId", isAuthenticated, handleBillUserStatusUpdate);
 
 //* GET APIs *//
 router.get("/:id", isAuthenticated, getBillById);

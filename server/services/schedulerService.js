@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { handleBillRecurrence, getRecurringBills } from "./billController.js";
+import { handleBillRecurrence, getRecurringBills } from "./billService.js";
 
 export const billRecurScheduler = () => {
     cron.schedule("* * * * *", async () => {
