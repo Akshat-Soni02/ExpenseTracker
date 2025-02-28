@@ -2,37 +2,24 @@ import user from "../models/user.js";
 
 export const findUserById = async (id) => {
   const curUser = await user.findById(id);
-  // console.log("finding user with id", id);
   if (!curUser) throw new Error("No user with given id exists");
   return curUser;
 };
+
 
 export const updateFriendlyExchangeStatesOnLending = async ({
   lender_id,
   borrowers,
 }) => {
-  // console.log("In updateFriendlyExchangeStatesOnLending");
   const activeUser = await findUserById(lender_id);
   if (!activeUser)
     throw new Error("No user found to update the friendly states");
 
-  // console.log("active user found in update friendly exchange states");
   for (const { user_id, amount } of borrowers) {
     let prevBorrower = activeUser.lended.find(
       (b) => b.borrower_id.toString() === user_id
     );
-    let prevLender = activeUser.borrowed.find(
-      (l) => l.lender_id.toString() === user_id
-    );
-    let prevSettle = activeUser.settled.find(
-      (s) => s.user_id.toString() === user_id
-    );
-
-    // console.log("borrowers loop running in update friendly exchange states");
     if (prevBorrower) {
-      console.log("A previous borrower");
-      // console.log("prevamount =", prevBorrower.amount);
-      // console.log("New amount =", amount);
       prevBorrower.amount += amount;
 
       const prevBorrowerProfile = await findUserById(prevBorrower.borrower_id.toString()); 
@@ -43,8 +30,14 @@ export const updateFriendlyExchangeStatesOnLending = async ({
       });
 
       await prevBorrowerProfile.save();
-    } else if (prevLender) {
-      // console.log("A previous lender");
+      await activeUser.save();
+      continue;
+    }
+
+    let prevLender = activeUser.borrowed.find(
+      (l) => l.lender_id.toString() === user_id
+    );
+    if (prevLender) {
       const prevLenderId = prevLender.lender_id.toString();
 
       if (prevLender.amount > amount) {
@@ -90,9 +83,17 @@ export const updateFriendlyExchangeStatesOnLending = async ({
         });
 
         await prevLenderProfile.save();
+        
       }
-    } else if (prevSettle) {
-      console.log("A previous settle");
+      await activeUser.save();
+      continue;
+    } 
+
+    
+    let prevSettle = activeUser.settled.find(
+      (s) => s.user_id.toString() === user_id
+    );
+    if (prevSettle) {
       const prevSettleId = prevSettle.user_id.toString();
       activeUser.settled = activeUser.settled.filter(
         (settle) => settle.user_id.toString() !== prevSettleId
@@ -106,16 +107,20 @@ export const updateFriendlyExchangeStatesOnLending = async ({
       prevSettleProfile.borrowed.push({ lender_id, amount });
 
       await prevSettleProfile.save();
-    } else {
-      console.log("New friend");
-      activeUser.lended.push({ borrower_id: user_id, amount });
-
-      const newBorrowerProfile = await findUserById(user_id);
-      newBorrowerProfile.borrowed.push({ lender_id, amount });
-
-      await newBorrowerProfile.save();
+      await activeUser.save();
+      continue;
     }
+
+    activeUser.lended.push({ borrower_id: user_id, amount });
+
+    const newBorrowerProfile = await findUserById(user_id);
+    newBorrowerProfile.borrowed.push({ lender_id, amount });
+
+    await newBorrowerProfile.save();
+    await activeUser.save();
+    continue;
+
+
+      
   }
-  // console.log("Updated friendly exchange states");
-  await activeUser.save();
 };

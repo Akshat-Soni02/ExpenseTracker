@@ -10,6 +10,6 @@ const router = express.Router();
 router.post("/", isAuthenticated, updateTransactions);
 router.post("/distribute", isAuthenticated, distributeAmounts);
 router.post("/revert", isAuthenticated, revertExpenseEffect);
-router.post("/freindly", isAuthenticated, updateFriendlyExchangeStatesOnLendings);
+router.post("/friendly", isAuthenticated, updateFriendlyExchangeStatesOnLendings);
 
 export default router;

@@ -67,8 +67,6 @@ export const createExpense = async (req, res, next) => {
     if (!newExpense)
       return next(new ErrorHandler("Cannot create new expense", 400));
 
-    console.log("valid expense");
-
     await handleExpenseRelations({
       lender_id: lenders[0].user_id,
       total_amount,
@@ -77,7 +75,6 @@ export const createExpense = async (req, res, next) => {
       borrowers,
     });
 
-    console.log("user friendly states modified");
 
     res.status(201).json({
       success: true,
@@ -129,15 +126,14 @@ export const updateExpense = async (req, res, next) => {
             400
           )
         );
-        // console.log("Reverted expense effects, now registering new expense relations");
-      await handleExpenseRelations({
-        lender_id: updatedExpense.lenders[0].user_id,
+
+       await handleExpenseRelations({
+        lender_id: updatedExpense.lenders[0].user_id.toString(),
         total_amount: updatedExpense.total_amount,
-        wallet_id: updatedExpense?.wallet_id,
-        group_id: updatedExpense?.group_id,
+        wallet_id: updatedExpense?.wallet_id.toString(),
+        group_id: updatedExpense?.group_id.toString(),
         borrowers: updatedExpense.borrowers,
       });
-      // console.log("new expense relations registered");
       res.status(200).json({
         success: true,
         expense: updatedExpense,
