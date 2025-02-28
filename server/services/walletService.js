@@ -37,10 +37,7 @@ export const modifyWalletBalance = async ({id, amount}) => {
 };
 
 export const findUserWallets = async (id) => {
-  try {
-    const wallets = (await wallet.find({ "members.user_id": id, deleted: false })) || [];
-    return wallets;
-  } catch (error) {
-    console.log("Error getting user wallets");
-  }
+  const wallets = await wallet.find({ creator_id: id, deleted: false });
+  if(!wallets) throw new Error("Error fetching user wallets");
+  return wallets;
 };

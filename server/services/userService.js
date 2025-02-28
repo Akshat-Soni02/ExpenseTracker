@@ -1,4 +1,5 @@
 import user from "../models/user.js";
+import { sendEmail } from "./notificationService.js";
 
 export const findUserById = async (id) => {
   const curUser = await user.findById(id);
@@ -6,6 +7,28 @@ export const findUserById = async (id) => {
   if (!curUser) throw new Error("No user with given id exists");
   return curUser;
 };
+
+export const extractTempName = (email) => {
+  const name = email.split("@")[0]; 
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+export const sendBorrowerMail = ({borrowerProfile, lender, amount, group}) => {
+  if(group) {
+    sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount} in group ${group.group_title}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Tracker Team`});
+  } else {
+    sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Tracker Team`});
+  }
+}
+
+export const findBorrowersAndRemind = async(id) => {
+  const curUser = await findUserById(id);
+  if(!curUser) throw new Error("Error fetching user");
+  curUser.lended.forEach(async (borrower) => {
+    const borrowerProfile = await user.findById(borrower.borrower_id);
+    sendBorrowerMail({borrowerProfile, lender:curUser, amount: borrower.amount});
+  });
+}
 
 export const updateFriendlyExchangeStatesOnLending = async ({
   lender_id,
@@ -119,3 +142,5 @@ export const updateFriendlyExchangeStatesOnLending = async ({
   // console.log("Updated friendly exchange states");
   await activeUser.save();
 };
+
+//handleDailyLimitReach

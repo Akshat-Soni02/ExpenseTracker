@@ -48,8 +48,8 @@ export const getRecurringBills = async () => {
     }
 }
 
-export const getUserBills = async (userId) => {
-    const curBills = await bill.find({userId});
+export const getUserBills = async ({userId, status}) => {
+    const curBills = await bill.find({userId, status});
     if(!curBills) throw new Error("No Bills of the user exists");
     return curBills;
 }

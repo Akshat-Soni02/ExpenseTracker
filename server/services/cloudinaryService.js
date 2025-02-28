@@ -1,17 +1,16 @@
 import { v2 as cloudinary } from "cloudinary";
 
-export const uploadMedia = async (mediaPath, folderName) => {
-  // Use the uploaded file's name as the asset's public ID and
-  // allow overwriting the asset with new versions
+export const uploadMedia = async (mediaPath, folderName, public_id) => {
+  
   const options = {
-    use_filename: true,
-    unique_filename: false,
-    overwrite: true,
     folder: folderName,
-  };
+    public_id, // we are differentiating the files through their public id
+    use_filename: false, 
+    unique_filename: false, 
+    overwrite: true, 
+};
 
   try {
-    // Upload the image
     const result = await cloudinary.uploader.upload(mediaPath, options);
     console.log("Media uploaded sucessfully");
     return result;

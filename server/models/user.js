@@ -46,10 +46,11 @@ const userSchema = new mongoose.Schema(
         amount: { type: Number, default: 0 },
       },
     ],
+    otp: { type: String },
+    otpExpiry: { type: Date },
     daily_limit: { type: Number },
     password: {
       type: String,
-      required: true,
       select: false,
     },
   },

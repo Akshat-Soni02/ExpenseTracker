@@ -112,7 +112,7 @@ export const findUserExpenses = async ({userId, group_id}) => {
   const expenses = await expense.find(filter).sort({
     created_at_date_time: -1,
   });
-
+  if(!expenses) throw new Error("Error fetching user expenses");
   return expenses;
 }
 
