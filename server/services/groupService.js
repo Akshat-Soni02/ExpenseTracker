@@ -19,6 +19,12 @@ export const findGroupById = async (id) => {
     return curGroup;
 }
 
+export const findUserGroups = async (id) => {
+    const groups = await group.find({"members.member_id": id});
+    if(!groups) throw new Error("Error finding user groups");
+    return groups;
+}
+
 export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
     let currGroup = null;
     

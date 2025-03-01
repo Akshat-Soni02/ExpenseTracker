@@ -7,3 +7,9 @@ export const findBudgetById = async (id) => {
     }
     return currBudget;
 };
+
+export const findUserBudgets = async (id) => {
+    const budgets = await budget.find({user_id: id});
+    if(!budgets) throw new Error("Error fetching user budgets");
+    return budgets;
+}

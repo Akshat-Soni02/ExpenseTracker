@@ -14,9 +14,9 @@ export const sendEmail = ({toMail, subject, text}) => {
     
     const mailOptions = {
         from: 'expensetraker414@gmail.com',
-        to: 'the.akshhh@gmail.com',
-        subject: 'Sending Email using Node.js',
-        text: 'That was easy!'
+        to: toMail,
+        subject,
+        text
     };
     
     // Send the email

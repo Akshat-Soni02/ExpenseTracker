@@ -8,9 +8,17 @@ export const findPersonalTransactionById = async (id) => {
     return currPersonalTransaction;
 };
 
+export const findUserPersonalTransactions = async (id) => {
+    const transactions = await personalTransaction.find({user_id: id});
+    if (!transactions) {
+        throw new Error("Error fetching personal transactions for user");
+    }
+    return transactions;
+}
+
 export const findPersonalTransactionByQuery = async (query) => {
     const currPersonalTransaction = await personalTransaction.find(query);
-
+    if(!currPersonalTransaction) throw new Error("Error running query on personal transaction");
     return currPersonalTransaction;
 };
 

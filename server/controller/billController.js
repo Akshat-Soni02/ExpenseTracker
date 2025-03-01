@@ -21,10 +21,11 @@ export const createBill = async (req, res, next) => {
             status: "pending",
             creator_id:id
         });
+        if(!newBill) return next(new ErrorHandler("Error creating new bill",404));
 
         res.status(201).json({
-            success: true,
-            bill: newBill
+            message: "Successfully created new bill",
+            data: newBill
         });
     } catch (error) {   
         if (error.code === 11000) {
@@ -76,8 +77,8 @@ export const handleBillUserStatusUpdate = async (req, res, next) => {
         await curBill.save();
 
         res.status(200).json({
-            success: true,
-            bill: curBill
+            message: "User state updated in bill",
+            data: curBill
         });
     } catch (error) {
         console.error("Error updating bill status:", error);
@@ -102,10 +103,11 @@ export const updateBill = async (req, res, next) => {
             new: true,
             runValidators: true
         });
+        if(!updatedBill) return next(new ErrorHandler("Error updating bill", 400));
 
         res.status(200).json({
-            success: true,
-            bill: updatedBill
+            message: "Successfully updated bill",
+            data: updatedBill
         });
     } catch (error) {
         if (error.code === 11000) {
@@ -125,7 +127,7 @@ export const deleteBill = async (req, res, next) => {
         const {id} = req.params;
         await bill.findByIdAndDelete(id);
         res.status(200).json({
-            success: true
+            message: "Successfully deleted bill"
         });
     } catch (error) {
         console.log("Error deleting bill", error);
@@ -138,8 +140,8 @@ export const getBillById = async (req, res, next) => {
         const {id} = req.params;
         const curBill = await bill.findById(id);
         res.status(200).json({
-            success: true,
-            bill: curBill
+            message: "bill fetched successfully",
+            data: curBill
         });
     } catch (error) {
         console.log("Error fetching bill by id", error);

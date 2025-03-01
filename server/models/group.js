@@ -27,6 +27,7 @@ const groupSchema = new mongoose.Schema({
   group_title: { type: String, required: true },
   initial_budget: { type: Number, default: 0 },
   settle_up_date: { type: Date },
+  simplify_debts: {type: Boolean, default: false},
   members: [memberSchema],
   creator_id: {
     type: mongoose.Schema.Types.ObjectId,
