@@ -57,9 +57,8 @@ export const createPersonalTransaction = async (req, res, next)=>{
         });
 
         res.status(201).json({
-            success: true,
-            message: "Personal Transaction created successfully",
-            personalTransaction: newPersonalTransaction,
+            message : "Personal Transaction created successfully",
+            data : newPersonalTransaction,
         });
     }
     catch(error){
@@ -122,9 +121,8 @@ export const updatePersonalTransaction = async (req, res, next) => {
     
     
         res.status(200).json({
-            success: true,
-            message: "Personal Transaction updated successfully",
-            updatedPersonalTransaction,
+            message : "Personal Transaction updated successfully",
+            data : updatedPersonalTransaction,
         });
         } 
         catch (error) {
@@ -167,11 +165,11 @@ export const updatePersonalTransaction = async (req, res, next) => {
                 }
             }
             
-            await existingPersonalTransaction.deleteOne();
+            const deletedPersonalTransaction = await existingPersonalTransaction.deleteOne();
     
             res.status(200).json({
-                success: true,
-                message: "Personal Transaction deleted successfully",
+                message : "Personal Transaction deleted successfully",
+                data : deletedPersonalTransaction,
             });
         }
         catch(error){
@@ -191,8 +189,8 @@ export const updatePersonalTransaction = async (req, res, next) => {
             }
     
             res.status(200).json({
-                success: true,
-                personalTransaction: existingPersonalTransaction,
+                message : "Personal Transaction fetched successfully",
+                data : existingPersonalTransaction,
             });
         }
         catch(error){
@@ -226,8 +224,8 @@ export const updatePersonalTransaction = async (req, res, next) => {
             const transactions = await findPersonalTransactionByQuery(query);
     
             res.status(200).json({
-                success: true,
-                transactions,
+                message : "User Period Type Transactions fetched successfully",
+                data : transactions,
             });
         } catch (error) {
             console.error("Error fetching transactions by timeframe:", error);

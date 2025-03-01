@@ -56,8 +56,8 @@ export const createSettlement = async (req, res, next) => {
     }
 
     res.status(201).json({
-      success: true,
-      settlement: newSettlement,
+      message : "Settlement created successfully",
+      data : newSettlement,
     });
   } catch (error) {
     console.log("Error creating settlement");
@@ -106,8 +106,8 @@ export const updateSettlement = async (req, res, next) => {
         group_id: updatedSettle?.group_id,
       });
       res.status(200).json({
-        success: true,
-        settlement: updatedSettle,
+        message : "Settlement updated successfully",
+        data : updatedSettle,
       });
       return;
     }
@@ -126,8 +126,8 @@ export const updateSettlement = async (req, res, next) => {
       );
 
     res.status(200).json({
-      success: true,
-      settlement: updatedSettle,
+      message : "Settlement updated successfully",
+      data : updatedSettle,
     });
   } catch (error) {
     console.log("Error updating settlement");
@@ -148,10 +148,11 @@ export const deleteSettlement = async (req, res, next) => {
       );
 
     await revertSettlementEffects(curSettlement);
-    await settlement.findByIdAndDelete(settlement_id);
+    const deletedSettlement = await settlement.findByIdAndDelete(settlement_id);
 
     res.status(200).json({
-      success: true,
+      message: "Settlement deleted successfully",
+      data : deletedSettlement,
     });
   } catch (error) {
     console.error("Error deleting settlement:", error);
@@ -165,8 +166,8 @@ export const getSettlementById = async (req, res, next) => {
     const curSettlement = await findSettlementById(id);
 
     res.status(200).json({
-      success: true,
-      settlement: curSettlement,
+      message: "Settlement fetched successfully",
+      data : curSettlement,
     });
   } catch (error) {
     console.error(`Error getting settlement by Id: ${id}`, error);
@@ -183,8 +184,8 @@ export const getUserSettlements = async (req, res, next) => {
     const settlements = await findUserSettlements({userId, group_id});
 
     res.status(200).json({
-      success: true,
-      settlements,
+      message : "User settlements fetched successfully",
+      data : settlements,
     });
   } catch (error) {
     console.error("Error fetching user settlements", error);

@@ -24,9 +24,8 @@ export const createBudget = async (req, res, next) => {
         });
 
         res.status(201).json({
-            success: true,
-            message: "Budget created successfully",
-            budget: newBudget,
+            message : "Budget created successfully",
+            data : newBudget,
         });
     }
     catch(error){
@@ -59,9 +58,8 @@ export const updateBudget = async (req, res, next) => {
         await existingBudget.save();
     
         res.status(200).json({
-            success: true,
-            message: "Budget updated successfully",
-            existingBudget,
+            message : "Budget updated successfully",
+            data : existingBudget,
         });
         } 
         catch (error) {
@@ -90,11 +88,11 @@ export const updateBudget = async (req, res, next) => {
             if (existingBudget.user_id.toString() !== user_id.toString()) {
                 return next(new ErrorHandler("Unauthorized to delete this budget", 403));
             }
-            await existingBudget.deleteOne();
+            const deletedBudget = await existingBudget.deleteOne();
     
             res.status(200).json({
-                success: true,
                 message: "Budget deleted successfully",
+                data : deletedBudget,
             });
         }
         catch(error){
@@ -114,17 +112,17 @@ export const updateBudget = async (req, res, next) => {
             }
         
             // Check if the budget has been "soft deleted"
-            if (existingBudget.budget_title === "Deleted_Budget") {
-                return next(new ErrorHandler("This budget has been deleted", 404));
-            }
+            // if (existingBudget.budget_title === "Deleted_Budget") {
+            //     return next(new ErrorHandler("This budget has been deleted", 404));
+            // }
             
             if (existingBudget.user_id.toString() !== user_id.toString()) {
                 return next(new ErrorHandler("Unauthorized to update this budget", 403));
             }
     
             res.status(200).json({
-                success: true,
-                budget: existingBudget,
+                message : "Budget found successfully",
+                data : existingBudget,
             });
         }
         catch(error){

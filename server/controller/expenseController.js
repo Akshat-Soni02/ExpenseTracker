@@ -77,9 +77,8 @@ export const createExpense = async (req, res, next) => {
 
 
     res.status(201).json({
-      success: true,
       message: "Expense created successfully",
-      expense: newExpense,
+      data: newExpense,
     });
   } catch (error) {
     console.log("Error creating new expense");
@@ -135,8 +134,8 @@ export const updateExpense = async (req, res, next) => {
         borrowers: updatedExpense.borrowers,
       });
       res.status(200).json({
-        success: true,
-        expense: updatedExpense,
+        message : "Expense updated successfully",
+        data : updatedExpense,
       });
       return;
     }
@@ -155,8 +154,8 @@ export const updateExpense = async (req, res, next) => {
       );
 
     res.status(200).json({
-      success: true,
-      expense: updatedExpense,
+      message : "Expense updated successfully",
+      data : updatedExpense,
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -185,10 +184,11 @@ export const deleteExpense = async (req, res, next) => {
       );
 
     await revertExpenseEffects(curExpense);
-    await expense.findByIdAndDelete(expense_id);
+    const deletedExpense = await expense.findByIdAndDelete(expense_id);
 
     res.status(200).json({
-      success: true,
+      message: "Expense deleted successfully",
+      data: deletedExpense,
     });
   } catch (error) {
     console.error("Error deleting expense:", error);
@@ -202,8 +202,8 @@ export const getExpenseById = async (req, res, next) => {
     const curExpense = await findExpenseById(id);
 
     res.status(200).json({
-      success: true,
-      expense: curExpense,
+      message : "Expense fetched successfully",
+      data : curExpense,
     });
   } catch (error) {
     console.error(`Error getting expense by Id: ${id}`, error);
@@ -231,8 +231,8 @@ export const getUserPeriodExpenses = async (req, res, next) => {
     const expenses = await findPeriodicExpenses({start, end, userId});
 
     res.status(200).json({
-      success: true,
-      expenses,
+      message: "User period expenses fetched successfully",
+      data :expenses,
     });
   } catch (error) {
     console.error("Error fetching user period expenses", error);
@@ -248,8 +248,8 @@ export const getUserExpenses = async (req, res, next) => {
     const expenses = await findUserExpenses({userId, group_id});
 
     res.status(200).json({
-      success: true,
-      expenses,
+      message: "User expenses fetched successfully",
+      data : expenses,
     });
   } catch (error) {
     console.error("Error fetching user expenses", error);
@@ -273,8 +273,8 @@ export const getCustomExpenses = async (req, res, next) => {
     const expenses = await findCustomExpenses({description, lender_id, borrower_id, group_id, wallet_id, min_amount, max_amount, category});
 
     res.status(200).json({
-      success: true,
-      expenses,
+      message : "Custom expenses fetched successfully",
+      data : expenses,
     });
   } catch (error) {
     console.error("Error fetching custom expenses", error);
