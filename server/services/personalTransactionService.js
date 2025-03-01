@@ -1,4 +1,5 @@
 import personalTransaction from "../models/personalTransaction.js";
+import { findBudgetByCategory,findBudgetById } from "./budgetService.js";
 
 export const findPersonalTransactionById = async (id) => {
     const currPersonalTransaction = await personalTransaction.findById(id);
@@ -26,10 +27,36 @@ export const updatePersonalTransactionType = async (id,transaction_type,amount) 
     const currPersonalTransaction = await findPersonalTransactionById(id);
     if(transaction_type==="expense"){
         await modifyWalletBalance(currPersonalTransaction.wallet_id,-2*amount);
+        if(currPersonalTransaction.transaction_category){
+                const existingBudget = await findBudgetByCategory(currPersonalTransaction.transaction_category.toString());
+                if(existingBudget){
+                    existingBudget.current_spend+=amount;
+                    await existingBudget.save();
+                    currPersonalTransaction.budget_id = existingBudget._id;
+                }
+            }
+        else{
+            const existingBudget = await findBudgetByCategory("general");
+            if(existingBudget){
+                existingBudget.current_spend+=amount;
+                await existingBudget.save();
+                currPersonalTransaction.budget_id = existingBudget._id;
+            }
+        }
+
     }
     else{
         await modifyWalletBalance(currPersonalTransaction.wallet_id,2*amount);
+        if(currPersonalTransaction.budget_id){
+            const existingBudget = await findBudgetById(currPersonalTransaction.budget_id.toString());
+            if(existingBudget){
+                existingBudget.current_spend-=amount;
+                await existingBudget.save();
+                currPersonalTransaction.budget_id = null;
+            }
+        }
     }
+    currPersonalTransaction.save()
     return true;
 };
 
@@ -48,6 +75,13 @@ export const updatePersonalTransactionAmount = async (id,wallet_id,currAmount,ne
     const currPersonalTransaction = await findPersonalTransactionById(id);
     if(currPersonalTransaction.transaction_type==="expense"){
         await modifyWalletBalance(wallet_id, currAmount - newAmount);
+        if(currPersonalTransaction.budget_id){
+            const existingBudget = await findBudgetById(currPersonalTransaction.budget_id.toString());
+            if(existingBudget){
+                existingBudget.current_spend-=currAmount - newAmount;
+                await existingBudget.save();
+            }
+        }
     }
     else{
         await modifyWalletBalance(wallet_id, newAmount - currAmount);
