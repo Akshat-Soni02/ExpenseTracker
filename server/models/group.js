@@ -12,7 +12,7 @@ const transactionSchema = new mongoose.Schema({
     enum: ["lended", "borrowed", "settled"],
     required: true,
   },
-});
+},{timestamps: true});
 
 const memberSchema = new mongoose.Schema({
   member_id: {
@@ -21,7 +21,7 @@ const memberSchema = new mongoose.Schema({
     required: true,
   },
   other_members: [transactionSchema],
-});
+},{timestamps: true});
 
 const groupSchema = new mongoose.Schema({
   group_title: { type: String, required: true },
@@ -34,7 +34,8 @@ const groupSchema = new mongoose.Schema({
     ref: "user",
     required: true,
   },
-});
+  
+},{timestamps: true});
 
 groupSchema.index({ creator_id: 1, group_title: 1 }, { unique: true });
 

@@ -22,7 +22,7 @@ export const createBill = async (req, res, next) => {
             creator_id:id
         });
         if(!newBill) return next(new ErrorHandler("Error creating new bill",404));
-
+        
         res.status(201).json({
             message: "Successfully created new bill",
             data: newBill

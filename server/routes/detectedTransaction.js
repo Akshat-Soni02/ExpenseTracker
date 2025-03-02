@@ -15,6 +15,6 @@ router.get("/:id", isAuthenticated, getAutoTransactionById);
 // router.put("/:id", isAuthenticated, );
 
 //* DELETE APIs *//
-// router.delete("/:id", isAuthenticated, );
+router.delete("/:id", isAuthenticated, );
 
 export default router;
