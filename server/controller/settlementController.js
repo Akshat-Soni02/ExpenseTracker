@@ -26,6 +26,25 @@ export const createSettlement = async (req, res, next) => {
     //wallet changes
     //if its group then group changes
     //then personal changes
+    console.log(amount);
+
+    if (status === "sent") {
+      payer_id = id;
+      if (typeof payer_wallet_id !== "undefined") {
+        await modifyWalletBalance({id: payer_wallet_id, amount: -amount});
+        console.log("Wallet modified");
+      }
+      await handleSettlementRelations({payer_id, receiver_id, amount, group_id});
+    } else if (status === "receiver") {
+      receiver_id = id;
+      if (typeof receiver_wallet_id !== "undefined") {
+        console.log(amount);
+        await modifyWalletBalance({id: receiver_wallet_id, amount});
+        console.log("Wallet modified");
+      }
+      console.log(amount);
+      await handleSettlementRelations({payer_id, receiver_id, amount, group_id});
+    }
 
     const newSettlement = await settlement.create({
       settlement_description,
@@ -38,22 +57,6 @@ export const createSettlement = async (req, res, next) => {
     });
 
     if(!newSettlement) return next(new ErrorHandler("Error creating new settlement", 400));
-
-    if (status === "sent") {
-      payer_id = id;
-      if (typeof payer_wallet_id !== "undefined") {
-        await modifyWalletBalance({payer_wallet_id, amount: -amount});
-        console.log("Wallet modified");
-      }
-      await handleSettlementRelations({payer_id, receiver_id, amount, group_id});
-    } else if (status === "receiver") {
-      receiver_id = id;
-      if (typeof receiver_wallet_id !== "undefined") {
-        await modifyWalletBalance({receiver_wallet_id, amount});
-        console.log("Wallet modified");
-      }
-      await handleSettlementRelations({payer_id: receiver_id, receiver_id: payer_id, amount, group_id});
-    }
 
     res.status(201).json({
       message : "Settlement created successfully",

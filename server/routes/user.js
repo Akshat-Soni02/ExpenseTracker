@@ -18,6 +18,7 @@ import {
   getMyPersonalTransactions,
   getMyDetectedTransactions,
   remindBorrowers,
+  googleLogin,
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 
@@ -25,6 +26,7 @@ const router = express.Router();
 
 //* POST APIs *//
 router.post("/new", register);
+router.post("/auth/google", googleLogin);
 router.post("/login", login);
 router.post("/send-otp", sendOtp);
 router.post("/verify-otp", verifyOtp);

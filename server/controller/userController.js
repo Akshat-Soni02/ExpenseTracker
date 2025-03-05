@@ -4,6 +4,7 @@ import { sendCookie } from "../utils/features.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { uploadMedia } from "../services/cloudinaryService.js";
+import { OAuth2Client } from "google-auth-library";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -20,6 +21,67 @@ import { getUserBills } from "../services/billService.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const filePath = path.resolve(__dirname, "../assets/panda.jpg");
+
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+export const googleLogin = async (req, res, next) => {
+  try {
+
+    // {
+    //   "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjI1Z...",
+    //   "user": {
+    //     "email": "the.akshhh@gmail.com",
+    //     "name": "Akshat Soni",
+    //     "photo": "https://lh3.googleusercontent.com/a/...",
+    //     "id": "104475546723009620506"
+    //   }
+    // }
+    
+    const { idToken, user: curUser } = req.body;
+    
+    if (!idToken) {
+      return res.status(400).json({ message: "ID Token is required" });
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(401).json({ message: "Invalid ID Token" });
+    }
+
+    const { email, name, picture, sub: googleId } = payload;
+
+    let existingUser = await user.findOne({ email });
+
+    if (!existingUser) {
+      const result = await uploadMedia(picture, "userProfiles", email);
+      const auth = {
+        auth_id: googleId,
+        auth_provider: "google"
+      }
+
+      existingUser = await user.create({
+        name,
+        email,
+        oauth: [auth],
+        profile_photo: {
+          url: result.secure_url,
+          public_id: result.public_id,
+        },
+      });
+    }
+
+    sendCookie(existingUser, res, "Welcome to ExpenseTracker", 201);
+  } catch (error) {
+    console.error("Google Login Error:", error);
+    next(error);
+  }
+};
 
 
 export const register = async (req, res, next) => {

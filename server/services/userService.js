@@ -38,16 +38,19 @@ export const updateFriendlyExchangeStatesOnLending = async ({
   if (!activeUser)
     throw new Error("No user found to update the friendly states");
 
+  console.log(activeUser);
+  console.log(borrowers);
   for (const { user_id, amount } of borrowers) {
     let prevBorrower = activeUser.lended.find(
-      (b) => b.borrower_id.toString() === user_id
+      (b) => b.borrower_id.toString() === user_id.toString()
     );
     if (prevBorrower) {
+      console.log("Its previous borrower");
       prevBorrower.amount += amount;
 
       const prevBorrowerProfile = await findUserById(prevBorrower.borrower_id.toString()); 
       prevBorrowerProfile.borrowed.forEach((lender) => {
-        if (lender.lender_id.toString() === lender_id) {
+        if (lender.lender_id.toString() === lender_id.toString()) {
           lender.amount += amount;
         }
       });
@@ -58,18 +61,23 @@ export const updateFriendlyExchangeStatesOnLending = async ({
     }
 
     let prevLender = activeUser.borrowed.find(
-      (l) => l.lender_id.toString() === user_id
+      (l) => l.lender_id.toString() === user_id.toString()
     );
     if (prevLender) {
+      console.log("Its previous lender");
+      console.log(prevLender);
       const prevLenderId = prevLender.lender_id.toString();
+      console.log(prevLenderId);
 
       if (prevLender.amount > amount) {
         prevLender.amount -= amount;
-
+        console.log("prev lender amount is greater than amount");
         const prevLenderProfile = await findUserById(prevLenderId);
+        console.log("Prev lender profile: " + prevLenderProfile);
         prevLenderProfile.lended.forEach((borrower) => {
-          if (borrower.borrower_id.toString() === lender_id) {
+          if (borrower.borrower_id.toString() === lender_id.toString()) {
             borrower.amount -= amount;
+            console.log("amount updated in prevlenderprofile");
           }
         });
 
@@ -82,7 +90,7 @@ export const updateFriendlyExchangeStatesOnLending = async ({
 
         const prevLenderProfile = await findUserById(prevLenderId);
         prevLenderProfile.lended = prevLenderProfile.lended.filter(
-          (borrower) => borrower.borrower_id.toString() !== lender_id
+          (borrower) => borrower.borrower_id.toString() !== lender_id.toString()
         );
         prevLenderProfile.settled.push({ user_id: lender_id, amount: 0 });
 
@@ -98,7 +106,7 @@ export const updateFriendlyExchangeStatesOnLending = async ({
 
         const prevLenderProfile = await findUserById(prevLenderId);
         prevLenderProfile.lended = prevLenderProfile.lended.filter(
-          (borrower) => borrower.borrower_id.toString() !== lender_id
+          (borrower) => borrower.borrower_id.toString() !== lender_id.toString()
         );
         prevLenderProfile.borrowed.push({
           lender_id,
@@ -114,9 +122,10 @@ export const updateFriendlyExchangeStatesOnLending = async ({
 
     
     let prevSettle = activeUser.settled.find(
-      (s) => s.user_id.toString() === user_id
+      (s) => s.user_id.toString() === user_id.toString()
     );
     if (prevSettle) {
+      console.log("Its previous settle");
       const prevSettleId = prevSettle.user_id.toString();
       activeUser.settled = activeUser.settled.filter(
         (settle) => settle.user_id.toString() !== prevSettleId
@@ -125,7 +134,7 @@ export const updateFriendlyExchangeStatesOnLending = async ({
 
       const prevSettleProfile = await findUserById(prevSettleId);
       prevSettleProfile.settled = prevSettleProfile.settled.filter(
-        (settle) => settle.user_id.toString() !== lender_id
+        (settle) => settle.user_id.toString() !== lender_id.toString()
       );
       prevSettleProfile.borrowed.push({ lender_id, amount });
 
@@ -133,7 +142,7 @@ export const updateFriendlyExchangeStatesOnLending = async ({
       await activeUser.save();
       continue;
     }
-
+    console.log("Its new relation");
     activeUser.lended.push({ borrower_id: user_id, amount });
 
     const newBorrowerProfile = await findUserById(user_id);
