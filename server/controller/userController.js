@@ -1,6 +1,6 @@
 import ErrorHandler from "../middlewares/error.js";
 import user from "../models/user.js";
-import { sendCookie } from "../utils/features.js";
+import { sendToken } from "../utils/features.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { uploadMedia } from "../services/cloudinaryService.js";
@@ -76,7 +76,7 @@ export const googleLogin = async (req, res, next) => {
       });
     }
 
-    sendCookie(existingUser, res, "Welcome to ExpenseTracker", 201);
+    sendToken(existingUser, res, "Welcome to ExpenseTracker", 201);
   } catch (error) {
     console.error("Google Login Error:", error);
     next(error);
@@ -87,6 +87,7 @@ export const googleLogin = async (req, res, next) => {
 export const register = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    console.log({email, password});
     let userAlreadyExist = await user.findOne({ email });
     if (userAlreadyExist)
       return next(new ErrorHandler("User Already Exist", 404));
@@ -105,8 +106,9 @@ export const register = async (req, res, next) => {
       },
     });
     if(!newUser) return next(new ErrorHandler("Error creating new user", 400));
+    console.log("Registered User");
 
-    sendCookie(newUser, res, "Welcome to ExpenseTracker", 201);
+    sendToken(newUser, res, "Welcome to ExpenseTracker", 201);
   } catch (error) {
     console.log("Error creating new user", error);
     next(error);
@@ -120,7 +122,7 @@ export const login = async (req, res, next) => {
     if (!loggedUser) return next(new ErrorHandler("Hey try registering first", 404));
     const isMatch = await bcrypt.compare(password, loggedUser.password);
     if (!isMatch) return next(new ErrorHandler("Invalid Password, Try again", 404));
-    sendCookie(
+    sendToken(
       loggedUser,
       res,
       `Hey ${loggedUser.name} glad to have you back`,
@@ -257,17 +259,11 @@ export const resetPassword = async (req, res, next) => {
 };
 
 export const logout = async (req, res) => {
-  res
-    .status(200)
-    .cookie("token", "", {
-      expires: new Date(Date.now()),
-      sameSite: "none",
-      secure: true,
-    })
-    .json({
-      message: "Successfully logged out"
-    });
+  res.status(200).json({
+    message: "Successfully logged out"
+  });
 };
+
 
 export const getMyProfile = (req, res) => {
   res.status(200).json({

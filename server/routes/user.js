@@ -19,6 +19,8 @@ import {
   getMyDetectedTransactions,
   remindBorrowers,
   googleLogin,
+  getMyBills,
+  remindBorrower,
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 
@@ -39,11 +41,13 @@ router.get("/groups", isAuthenticated, getMyGroups);
 router.get("/expenses", isAuthenticated, getMyExpenses);
 router.get("/wallets", isAuthenticated, getMyWallets);
 router.get("/budgets", isAuthenticated, getMyBudgets);
+router.get("/bills", isAuthenticated, getMyBills);
 router.get("/personal-transactions", isAuthenticated, getMyPersonalTransactions);
 router.get("/detected-transactions", isAuthenticated, getMyDetectedTransactions);
 router.get("/friends", isAuthenticated, getFriendlyUsers);
 router.get("/current-exchange-status", isAuthenticated, getCurrentExhanges);
 router.get("/remind-borrowers", isAuthenticated, remindBorrowers);
+router.get("/remind-borrower/:borrower_id", isAuthenticated, remindBorrower);
 
 //* PUT APIs *//
 router.put("/profile-details", isAuthenticated, updateUser);

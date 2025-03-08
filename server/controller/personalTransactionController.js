@@ -12,7 +12,7 @@ import { findBudgetByCategory,findBudgetById } from "../services/budgetService.j
 //Creating a personaltransaction will change wallet and user
 export const createPersonalTransaction = async (req, res, next)=>{
     try {
-        const {transaction_type, description, wallet_id, media, transaction_category, notes,amount} = req.body;
+        const {transaction_type, description, wallet_id, media, transaction_category, notes,amount, created_at_date_time} = req.body;
         const user_id = req.user._id;
         if (!transaction_type || !description || !wallet_id || !amount) {
             return next(new ErrorHandler("Transaction type, description, amount and wallet id are required", 404));
@@ -54,6 +54,7 @@ export const createPersonalTransaction = async (req, res, next)=>{
             amount,
             budget_id,
             user_id,
+            created_at_date_time
         });
 
         res.status(201).json({

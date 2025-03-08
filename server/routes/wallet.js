@@ -12,7 +12,6 @@ const router = express.Router();
 
 //* POST APIs *//
 router.post("/new", isAuthenticated, createWallet);
-router.post("/handle-amount-transfer", isAuthenticated);
 
 //* GET APIs *//
 router.get("/:id", isAuthenticated, getWalletById);
