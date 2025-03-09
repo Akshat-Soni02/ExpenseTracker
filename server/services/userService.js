@@ -34,6 +34,7 @@ export const updateFriendlyExchangeStatesOnLending = async ({
   lender_id,
   borrowers,
 }) => {
+  console.log(lender_id);
   const activeUser = await findUserById(lender_id);
   if (!activeUser)
     throw new Error("No user found to update the friendly states");

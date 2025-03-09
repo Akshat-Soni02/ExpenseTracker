@@ -14,6 +14,7 @@ import {
   resetPassword,
   getMyGroups,
   getMyExpenses,
+  getMySettlements,
   getMyBudgets,
   getMyPersonalTransactions,
   getMyDetectedTransactions,
@@ -39,6 +40,7 @@ router.get("/me", isAuthenticated, getMyProfile);
 router.get("/logout", isAuthenticated, logout);
 router.get("/groups", isAuthenticated, getMyGroups);
 router.get("/expenses", isAuthenticated, getMyExpenses);
+router.get("/settlements", isAuthenticated, getMySettlements);
 router.get("/wallets", isAuthenticated, getMyWallets);
 router.get("/budgets", isAuthenticated, getMyBudgets);
 router.get("/bills", isAuthenticated, getMyBills);

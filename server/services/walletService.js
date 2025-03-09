@@ -27,11 +27,14 @@ export const transferWalletAmounts = async({toWallet, fromWallet, amount}) => {
 }
 
 //takes amount with sign
-export const modifyWalletBalance = async ({id, amount}) => {
+export const modifyWalletBalance = async ({id, amount, zeroTrue}) => {
   console.log("In modifyWalletBalance");
     const curWallet = await wallet.findById(id).select("amount");
     if(!curWallet) throw new Error("Walled doesn't exist with given id");
-    if (curWallet.amount + amount < 0) throw new Error("wallet doesn't have enough balance");
+    if (curWallet.amount + amount < 0) {
+      if(zeroTrue) amount = -curWallet.amount;
+      else throw new Error("wallet doesn't have enough balance");
+    } 
     await wallet.findByIdAndUpdate(id, {amount: curWallet.amount + amount}, {new: true, runValidators: true});
     console.log("walletBalance modified");
     return true;

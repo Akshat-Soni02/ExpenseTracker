@@ -283,3 +283,18 @@ export const getGroupHistory = async (req, res) => {
     next(error);
   }
 };
+
+export const addToGroup = async (req, res, next) => {
+  try {
+    const {group_id} = req.params;
+    const {memberIds = []} = req.body;
+
+    const curGroup = await findGroupById(group_id);
+    let prevMemberIds = [];
+    curGroup.members.forEach((member) => prevMemberIds.push(member.member_id));
+    memberIds.forEach((memberId) => prevMemberIds.push(memberId));
+    
+  } catch (error) {
+    
+  }
+}

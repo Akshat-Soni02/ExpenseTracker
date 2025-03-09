@@ -299,6 +299,23 @@ export const getMyExpenses = async(req, res, next) => {
   }
 }
 
+export const getMySettlements = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { group_id } = req.query; // Optional Group ID
+
+    const settlements = await findUserSettlements({userId, group_id});
+
+    res.status(200).json({
+      message : "settlements fetched successfully",
+      data : settlements,
+    });
+  } catch (error) {
+    console.error("Error fetching user settlements", error);
+    next(error);
+  }
+}
+
 export const getMyWallets = async (req, res, next) => {
   try {
     const id = req.user._id;
