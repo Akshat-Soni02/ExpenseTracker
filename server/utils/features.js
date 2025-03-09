@@ -16,14 +16,15 @@ import jwt from "jsonwebtoken";
 //     });
 // };
 
-export const sendToken = (user, res, message, statusCode) => {
+export const sendToken = (userData, res, message, statusCode) => {
   const token = jwt.sign(
-    { _id: user._id, iss: "http://localhost:3001" },
+    { _id: userData.id, iss: "http://localhost:3001" },
     process.env.JWT_SECRET
   );
 
   res.status(statusCode).json({
     message,
     token,
+    userData,
   });
 };

@@ -119,9 +119,16 @@ export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const loggedUser = await user.findOne({ email }).select("+password");
+    // console.log("ASDFADSFASDFASDFSA           ",loggedUser);
+    
     if (!loggedUser) return next(new ErrorHandler("Hey try registering first", 404));
     const isMatch = await bcrypt.compare(password, loggedUser.password);
     if (!isMatch) return next(new ErrorHandler("Invalid Password, Try again", 404));
+    // let userData = {
+    //   id: loggedUser.id,
+    //   name: loggedUser.name,
+    // }
+    // console.log('--------- user: ', userData);
     sendToken(
       loggedUser,
       res,
@@ -373,23 +380,33 @@ export const getFriendlyUsers = async (req, res) => {
     const curUser = await user.findById(id).select("lended borrowed settled");
     if(!curUser) return next(new ErrorHandler("Error fetching user", 400));
     const friendsMap = new Map();
+    const typeMap = new Map();
 
     curUser.lended.forEach(({ borrower_id, amount }) => {
       const strId = borrower_id.toString();
-      if (!friendsMap.has(strId)) friendsMap.set(strId, 0);
+      if (!friendsMap.has(strId)) {
+        friendsMap.set(strId, 0)
+        typeMap.set(strId, "credit");
+      };
       friendsMap.set(strId, friendsMap.get(strId) + amount);
       console.log(amount);
     });
 
     curUser.borrowed.forEach(({ lender_id, amount }) => {
       const strId = lender_id.toString();
-      if (!friendsMap.has(strId)) friendsMap.set(strId, 0);
+      if (!friendsMap.has(strId)){
+         friendsMap.set(strId, 0)
+         typeMap.set(strId, "debit");
+        };
       friendsMap.set(strId, friendsMap.get(strId) - amount);
     });
 
     curUser.settled.forEach(({ user_id, amount }) => {
       const strId = user_id.toString();
-      if (!friendsMap.has(strId)) friendsMap.set(strId, amount);
+      if (!friendsMap.has(strId)){
+         friendsMap.set(strId, amount)
+         typeMap.set(strId, undefined);
+      };
     });
 
     const friendIds = [...friendsMap.keys()];
@@ -404,6 +421,8 @@ export const getFriendlyUsers = async (req, res) => {
       name: friend.name,
       profile_photo: friend.profile_photo,
       amount: friendsMap.get(friend._id.toString()) || 0,
+      type: typeMap.get(friend._id.toString()) || undefined,
+
     }));
 
     res.status(200).json({
