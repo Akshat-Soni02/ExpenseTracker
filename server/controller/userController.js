@@ -434,9 +434,9 @@ export const getFriendlyUsers = async (req, res) => {
 
     // Attach amounts to friend data
     const friendsWithAmounts = friends.map((friend) => ({
-      id: friend._id,
+      _id: friend._id,
       name: friend.name,
-      profile_photo: friend.profile_photo,
+      profile_photo: friend.profile_photo?.url,
       amount: friendsMap.get(friend._id.toString()) || 0,
       type: typeMap.get(friend._id.toString()) || undefined,
 

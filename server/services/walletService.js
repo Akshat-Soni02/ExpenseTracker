@@ -45,3 +45,10 @@ export const findUserWallets = async (id) => {
   if(!wallets) throw new Error("Error fetching user wallets");
   return wallets;
 };
+
+export const sufficientBalance = async ({id, amount}) => {
+  const curWallet = await wallet.findById(id).select("amount");
+  if(!curWallet) throw new Error("Walled doesn't exist with given id");
+  if (curWallet.amount - amount >= 0) return true;
+  return false;
+}

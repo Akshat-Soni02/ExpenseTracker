@@ -9,6 +9,7 @@ import {
   findUserExpenses,
   findCustomExpenses
 } from "../services/expenseService.js";
+import { sufficientBalance } from "../services/walletService.js";
 
 //creating an expense means changing group states, wallet states also changing personal states with other people
 export const createExpense = async (req, res, next) => {
@@ -23,6 +24,7 @@ export const createExpense = async (req, res, next) => {
       notes,
       group_id,
       created_at_date_time,
+      filePath
     } = req.body;
     const user_id = req.user._id;
     // if (!description || !total_amount) {
@@ -51,6 +53,16 @@ export const createExpense = async (req, res, next) => {
       amount: total_amount,
     };
 
+    let media = null;
+    if(filePath) {
+      const result = await uploadMedia(filePath, "expenseMedia", user_id+description);
+      if(!result) return next(new ErrorHandler("Error uplaoding photo"));
+      media = {
+        url: result.secure_url,
+        public_id: result.public_id,
+      };
+    }
+
     const newExpense = await expense.create({
       description,
       lenders,
@@ -62,6 +74,7 @@ export const createExpense = async (req, res, next) => {
       creator,
       notes,
       created_at_date_time,
+      media
     });
 
     if (!newExpense)
@@ -93,12 +106,14 @@ export const updateExpense = async (req, res, next) => {
     const updatedDetails = req.body;
     // the updated details might contain
     // description,
-    //   lenders,
-    //   borrowers,
-    //   total_amount,
-    //   expense_category,
-    //   notes,
-    //   wallet_id,
+    // lenders,
+    // borrowers,
+    // total_amount,
+    // expense_category,
+    // notes,
+    // wallet_id,
+    // media
+    // create_at_date_time
 
     //inorder to update expense, first we will find the expense
     // then if members is not present in update then its alright
@@ -106,6 +121,17 @@ export const updateExpense = async (req, res, next) => {
     const existingExpense = await expense.findById(expense_id);
     if (!existingExpense) {
       return next(new ErrorHandler("Expense not found with the given id", 404));
+    }
+
+    //cases with wallet - 
+    //earlier there was a wallet and now wallet is removed
+    //earlier there was no wallet and now wallet is added
+    //earlier there was a wallet and now wallet is updated
+    //no wallet update
+
+    let newAmount = updatedDetails.total_amount !== undefined ? updatedDetails.total_amount : existingExpense.total_amount;
+    if(updatedDetails.wallet_id !== undefined) {
+      if(!sufficientBalance({id: updatedDetails.wallet_id, amount: newAmount})) return next(new ErrorHandler("Not Sufficient balances to update expense"));
     }
 
     if (
@@ -125,6 +151,7 @@ export const updateExpense = async (req, res, next) => {
             400
           )
         );
+
 
        await handleExpenseRelations({
         lender_id: updatedExpense.lenders[0].user_id.toString(),

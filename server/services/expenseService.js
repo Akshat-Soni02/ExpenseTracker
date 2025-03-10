@@ -24,6 +24,8 @@ export const handleExpenseRelations = async ({
   } catch (err) {
       console.log("Error distributing amount:", err);
   }
+
+  console.log("lender_id", lender_id);
   
     
   //Update Users friendly state
