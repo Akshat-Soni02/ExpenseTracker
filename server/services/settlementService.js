@@ -35,12 +35,14 @@ export const revertSettlementEffects = async (curSettlement) => {
       await modifyWalletBalance({
         id: curSettlement.receiver_wallet_id,
         amount: -curSettlement.amount,
+        zeroTrue: true
       });
     }
 
     await handleSettlementRelations({
-      lender_id: curSettlement.receiver_id,
-      borrowers: [{ user_id: curSettlement.payer_id, amount}],
+      payer_id: curSettlement.receiver_id,
+      receiver_id: curSettlement.payer_id,
+      amount: curSettlement.amount,
       group_id: curSettlement?.group_id,
     });
 

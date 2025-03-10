@@ -1,6 +1,6 @@
 import settlement from "../models/settlement.js";
 import ErrorHandler from "../middlewares/error.js";
-import { modifyWalletBalance } from "../services/walletService.js";
+import { modifyWalletBalance, transferWalletAmounts } from "../services/walletService.js";
 import { findSettlementById, findUserSettlements, handleSettlementRelations, revertSettlementEffects } from "../services/settlementService.js";
 
 //settlement can be created in a group, or personally 
@@ -75,7 +75,8 @@ export const updateSettlement = async (req, res, next) => {
   try {
 
     // we can update these many things
-    // settlement_description, media, payer_wallet_id, receiver_wallet_id, payer_id, receiver_id, amount 
+    // settlement_description, media,
+    const userId = req.user.id;
     const { id } = req.params;
     const updatedDetails = req.body;
 
@@ -85,35 +86,62 @@ export const updateSettlement = async (req, res, next) => {
       return next(new ErrorHandler("Settlement not found with the given id", 404));
     }
 
-    if (
-      updatedDetails.payer_id !== undefined ||
-      updatedDetails.receiver_id !== undefined
-    ) {
-      await revertSettlementEffects(existingSettle);
-      const updatedSettle = await settlement.findByIdAndUpdate(
-        id,
-        updatedDetails,
-        { new: true, runValidators: true }
-      );
-      if (!updatedSettle)
-        return next(
-          new ErrorHandler(
-            `Cannot update settlement with id: ${existingSettle._id}`,
-            400
-          )
-        );
-      await handleSettlementRelations({
-        payer_id: updatedSettle.payer_id,
-        receiver_id: updatedSettle.receiver_id,
-        amount: updatedSettle.amount,
-        group_id: updatedSettle?.group_id,
-      });
-      res.status(200).json({
-        message : "Settlement updated successfully",
-        data : updatedSettle,
-      });
-      return;
-    }
+    // if (
+    //   updatedDetails.payer_id !== undefined ||
+    //   updatedDetails.receiver_id !== undefined
+    // ) {
+    //   await revertSettlementEffects(existingSettle);
+    //   const updatedSettle = await settlement.findByIdAndUpdate(
+    //     id,
+    //     updatedDetails,
+    //     { new: true, runValidators: true }
+    //   );
+    //   if (!updatedSettle)
+    //     return next(
+    //       new ErrorHandler(
+    //         `Cannot update settlement with id: ${existingSettle._id}`,
+    //         400
+    //       )
+    //     );
+
+    //   if(updatedDetails.payer_id !== undefined)
+    //   await handleSettlementRelations({
+    //     payer_id: updatedSettle.payer_id,
+    //     receiver_id: updatedSettle.receiver_id,
+    //     amount: updatedSettle.amount,
+    //     group_id: updatedSettle?.group_id,
+    //   });
+    //   res.status(200).json({
+    //     message : "Settlement updated successfully",
+    //     data : updatedSettle,
+    //   });
+    //   return;
+    // }
+
+    //we will not let user change amount for now
+
+    // const newAmount = updatedDetails.amount === undefined ? existingSettle.amount : updatedDetails.amount;
+    // console.log(newAmount);
+    // if(userId === existingSettle.payer_id.toString()){
+    //   console.log("updating payer wallet id");
+    //   if(existingSettle.payer_wallet_id) {
+    //     if(updatedDetails.payer_wallet_id) await transferWalletAmounts({toWallet: updatedDetails.payer_wallet_id, fromWallet: existingSettle.payer_wallet_id, amount: newAmount});
+    //     else await modifyWalletBalance({id: existingSettle.payer_wallet_id, amount: existingSettle.amount});
+    //   }
+    //   else await modifyWalletBalance({id: updatedDetails.payer_wallet_id, amount: -newAmount});
+    // }
+    // if(userId === existingSettle.receiver_id.toString()) {
+    //   console.log("updating receiver wallet id");
+    //   if(existingSettle.receiver_wallet_id){
+    //     if(updatedDetails.receiver_wallet_id) await transferWalletAmounts({toWallet: updatedDetails.receiver_wallet_id, fromWallet: existingSettle.receiver_wallet_id, amount: newAmount});
+    //     else await modifyWalletBalance({id: existingSettle.receiver_wallet_id, amount: -existingSettle.amount});
+    //   } 
+    //   else await modifyWalletBalance({id: updatedDetails.receiver_wallet_id, amount: newAmount});
+    // }
+
+    // if(updatedDetails.amount !== undefined && (updatedDetails.payer_wallet_id === undefined && updatedDetails.receiver_wallet_id === undefined)) {
+
+    // }
 
     const updatedSettle = await settlement.findByIdAndUpdate(
       id,
@@ -143,7 +171,7 @@ export const deleteSettlement = async (req, res, next) => {
     // revert all changes
     // delete settle
 
-    const { settlement_id } = req.params;
+    const { id: settlement_id } = req.params;
     const curSettlement = await settlement.findById(settlement_id);
     if (!curSettlement)
       return next(
@@ -155,7 +183,6 @@ export const deleteSettlement = async (req, res, next) => {
 
     res.status(200).json({
       message: "Settlement deleted successfully",
-      data : deletedSettlement,
     });
   } catch (error) {
     console.error("Error deleting settlement:", error);
@@ -174,24 +201,6 @@ export const getSettlementById = async (req, res, next) => {
     });
   } catch (error) {
     console.error(`Error getting settlement by Id: ${id}`, error);
-    next(error);
-  }
-};
-
-
-export const getUserSettlements = async (req, res, next) => {
-  try {
-    const userId = req.user.id;
-    const { group_id } = req.query; // Optional Group ID
-
-    const settlements = await findUserSettlements({userId, group_id});
-
-    res.status(200).json({
-      message : "User settlements fetched successfully",
-      data : settlements,
-    });
-  } catch (error) {
-    console.error("Error fetching user settlements", error);
     next(error);
   }
 };
