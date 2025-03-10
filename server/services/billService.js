@@ -56,7 +56,7 @@ export const getUserBills = async ({ userId, status }) => {
     };
     if (status) query["status"] = status;
     const curBills = await bill.find(query);
-    if (!curBills || curBills.length === 0) throw new Error("No Bills of the user exist");
+    if (!curBills) throw new Error("No Bills of the user exist");
     return curBills;
 };
 

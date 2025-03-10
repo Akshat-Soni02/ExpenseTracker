@@ -91,7 +91,19 @@ export const findUserExpenses = async ({userId, group_id}) => {
     created_at_date_time: -1,
   });
   if(!expenses) throw new Error("Error fetching user expenses");
-  return expenses;
+
+  // console.log(expenses);
+  const modifiedExpenses = expenses.map(expense => {
+    const isLender = expense.lenders.some(lender => lender.user_id.toString() === userId.toString());
+    const isBorrower = expense.borrowers.some(borrower => borrower.user_id.toString() === userId.toString());
+
+    return {
+      ...expense.toObject(), // Convert Mongoose document to plain object
+      transactionType: isLender ? 'debit' : isBorrower ? 'credit' : undefined, // Add credit/debit field
+    };
+  });
+  // console.log(modifiedExpenses);
+  return modifiedExpenses;
 }
 
 export const findCustomExpenses = async ({description,

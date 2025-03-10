@@ -119,16 +119,11 @@ export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const loggedUser = await user.findOne({ email }).select("+password");
-    // console.log("ASDFADSFASDFASDFSA           ",loggedUser);
     
     if (!loggedUser) return next(new ErrorHandler("Hey try registering first", 404));
     const isMatch = await bcrypt.compare(password, loggedUser.password);
     if (!isMatch) return next(new ErrorHandler("Invalid Password, Try again", 404));
-    // let userData = {
-    //   id: loggedUser.id,
-    //   name: loggedUser.name,
-    // }
-    // console.log('--------- user: ', userData);
+
     sendToken(
       loggedUser,
       res,
@@ -349,7 +344,7 @@ export const getMyBills = async(req, res, next) => {
   try {
     const id = req.user._id;
     const {status} = req.query;
-    const bills = getUserBills({userId: id, status});
+    const bills = await getUserBills({userId: id, status});
     res.status(200).json({
       message: "Successfully feteched user bills",
       data: bills
