@@ -17,6 +17,7 @@ const personalTransactionSchema = new mongoose.Schema(
     created_at_date_time: { type: Date, default: Date.now },
     notes: { type: String },
     amount: {type: Number,required: true },
+    budget_id: { type: mongoose.Schema.Types.ObjectId, ref: "budget"},
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
   },
   { Timestamp: true }

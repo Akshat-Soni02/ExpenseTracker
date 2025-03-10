@@ -1,6 +1,6 @@
 import express from "express";
 import { isAuthenticated } from "../middlewares/auth.js";
-import { createSettlement } from "../controller/settlementController.js";
+import { createSettlement, updateSettlement, getSettlementById, deleteSettlement } from "../controller/settlementController.js";
 
 const router = express.Router();
 
@@ -8,13 +8,12 @@ const router = express.Router();
 router.post("/new", isAuthenticated, createSettlement);
 
 //* GET APIs *//
-router.get("/leave/:groupId", isAuthenticated);
-router.get("/:id", isAuthenticated);
+router.get("/:id", isAuthenticated, getSettlementById);
 
 //* PUT APIs *//
-router.put("/:id", isAuthenticated);
+router.put("/update/:id", isAuthenticated, updateSettlement);
 
 //* DELETE APIs *//
-router.delete("/:id", isAuthenticated);
+router.delete("/:id", isAuthenticated, deleteSettlement);
 
 export default router;

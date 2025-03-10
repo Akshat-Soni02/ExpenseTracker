@@ -48,11 +48,18 @@ export const getRecurringBills = async () => {
     }
 }
 
-export const getUserBills = async (userId) => {
-    const curBills = await bill.find({userId});
-    if(!curBills) throw new Error("No Bills of the user exists");
+export const getUserBills = async ({ userId, status }) => {
+    const query = {
+        $or: [
+            { "members.user_id": userId },
+        ],
+    };
+    if (status) query["status"] = status;
+    const curBills = await bill.find(query);
+    if (!curBills) throw new Error("No Bills of the user exist");
     return curBills;
-}
+};
+
 
 export const handleBillRemind = async () => {
     try {

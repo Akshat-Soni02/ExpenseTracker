@@ -9,11 +9,11 @@ const walletSchema = new mongoose.Schema({
   },
   lower_limit: { type: Number },
   creator_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-  members: [
-    {
-      user_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-    },
-  ],
+  // members: [
+  //   {
+  //     user_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+  //   },
+  // ],
   deleted: {type: Boolean, default: false}
 });
 

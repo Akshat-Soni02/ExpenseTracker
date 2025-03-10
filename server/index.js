@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
+import { errorMiddleware } from "./middlewares/error.js";
 import { v2 as cloudinary } from "cloudinary";
 
 import userRouter from "./routes/user.js";
@@ -15,6 +16,9 @@ import expenseRouter from "./routes/expense.js";
 import billRouter from "./routes/bill.js";
 import personalTransactionRouter from "./routes/personalTransaction.js";
 import testRouter from "./routes/test.js";
+import detectedTransactionRouter from "./routes/detectedTransaction.js";
+
+
 import { scheduleCronJobs } from "./services/schedulerService.js";
 import { sendEmail } from "./services/notificationService.js";
 
@@ -41,6 +45,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.json({ limit: "30mb", extended: true }));
 
+
 app.listen(PORT, () => {
   console.log(`Server is running on ${PORT}`);
 });
@@ -59,6 +64,10 @@ app.use("/api/v1/groups", groupRouter);
 app.use("/api/v1/settlements", settlementRouter);
 app.use("/api/v1/bills", billRouter);
 app.use("/api/v1/budgets",budgetRouter);
-app.use("/api/v1/personalTransactions",personalTransactionRouter);
+app.use("/api/v1/personal-transactions",personalTransactionRouter);
 app.use("/api/v1/expenses", expenseRouter);
 app.use("/api/v1/test", testRouter);
+app.use("/api/v1/detected-transactions", detectedTransactionRouter);
+
+app.use(errorMiddleware);
+export default app;

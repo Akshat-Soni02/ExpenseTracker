@@ -4,27 +4,45 @@ import user from "../models/user.js";
 import ErrorHandler from "../middlewares/error.js";
 // import { uploadMedia } from "./cloudinaryController.js";
 import mongoose from "mongoose";
-import {findPersonalTransactionById,findPersonalTransactionByQuery,updatePersonalTransactionType,updatePersonalTransactionWallet,updatePersonalTransactionAmount} from "../services/personalTransactionService.js"
+import { findPersonalTransactionById,findPersonalTransactionByQuery,updatePersonalTransactionType,updatePersonalTransactionWallet,updatePersonalTransactionAmount} from "../services/personalTransactionService.js"
 import { findWalletById,modifyWalletBalance,transferWalletAmounts } from "../services/walletService.js";
+import { findBudgetByCategory,findBudgetById } from "../services/budgetService.js";
 
 
 //Creating a personaltransaction will change wallet and user
 export const createPersonalTransaction = async (req, res, next)=>{
     try {
-        const {transaction_type, description, wallet_id, media, transaction_category, notes,amount} = req.body;
+        const {transaction_type, description, wallet_id, media, transaction_category, notes,amount, created_at_date_time} = req.body;
         const user_id = req.user._id;
         if (!transaction_type || !description || !wallet_id || !amount) {
             return next(new ErrorHandler("Transaction type, description, amount and wallet id are required", 404));
         }   
 
         //update wallet
+        const budget_id = null;
         if(transaction_type==="expense"){
             await modifyWalletBalance(wallet_id,-1*amount);
+            if(transaction_category){
+                const existingBudget = await findBudgetByCategory(transaction_category.toString());
+                if(existingBudget){
+                    existingBudget.current_spend+=amount;
+                    await existingBudget.save();
+                    budget_id = existingBudget._id;
+                }
+            }
+            else{
+                const existingBudget = await findBudgetByCategory("general");
+                if(existingBudget){
+                    existingBudget.current_spend+=amount;
+                    await existingBudget.save();
+                    budget_id = existingBudget._id;
+                }
+            }
         }
         else{
             await modifyWalletBalance(wallet_id,amount);
         }
-                
+            
 
         const newPersonalTransaction = await personalTransaction.create({
             transaction_type,
@@ -34,13 +52,14 @@ export const createPersonalTransaction = async (req, res, next)=>{
             transaction_category,
             notes,
             amount,
+            budget_id,
             user_id,
+            created_at_date_time
         });
 
         res.status(201).json({
-            success: true,
-            message: "Personal Transaction created successfully",
-            personalTransaction: newPersonalTransaction,
+            message : "Personal Transaction created successfully",
+            data : newPersonalTransaction,
         });
     }
     catch(error){
@@ -52,7 +71,7 @@ export const createPersonalTransaction = async (req, res, next)=>{
 export const updatePersonalTransaction = async (req, res, next) => {
     try {
         const { personalTransaction_id } = req.params;
-        const { transaction_type, wallet_id,amount } = req.body;
+        const { transaction_type, wallet_id,amount,transaction_category } = req.body;
         const updatedDetails = req.body;
         const user_id = req.user._id; 
     
@@ -66,6 +85,24 @@ export const updatePersonalTransaction = async (req, res, next) => {
         }
     
         // Update only provided fields
+        if(existingPersonalTransaction.transaction_type.toString()==="expense"){
+            if(transaction_category){
+                if(existingPersonalTransaction.budget_id){
+                    const existingBudget = await findBudgetById(existingPersonalTransaction.budget_id.toString());
+                    if(existingBudget){
+                        existingBudget.current_spend-=existingPersonalTransaction.amount;
+                        await existingBudget.save();
+                    }
+                    const newBudget = await findBudgetByCategory(transaction_category.toString());
+                    if(newBudget){
+                        newBudget.current_spend+=amount;
+                        await newBudget.save();
+                        updatedDetails.budget_id = newBudget._id;
+                    }
+                }
+            }
+            
+        }
         if (transaction_type){
             await updatePersonalTransactionType(personalTransaction_id,transaction_type,existingPersonalTransaction.amount);
         }
@@ -85,9 +122,8 @@ export const updatePersonalTransaction = async (req, res, next) => {
     
     
         res.status(200).json({
-            success: true,
-            message: "Personal Transaction updated successfully",
-            updatedPersonalTransaction,
+            message : "Personal Transaction updated successfully",
+            data : updatedPersonalTransaction,
         });
         } 
         catch (error) {
@@ -122,12 +158,19 @@ export const updatePersonalTransaction = async (req, res, next) => {
 
             }
             
+            if(existingPersonalTransaction.budget_id){
+                const existingBudget = await findBudgetById(existingPersonalTransaction.budget_id.toString());
+                if(existingBudget){
+                    existingBudget.current_spend-=existingPersonalTransaction.amount;
+                    await existingBudget.save();
+                }
+            }
             
-            await existingPersonalTransaction.deleteOne();
+            const deletedPersonalTransaction = await existingPersonalTransaction.deleteOne();
     
             res.status(200).json({
-                success: true,
-                message: "Personal Transaction deleted successfully",
+                message : "Personal Transaction deleted successfully",
+                data : deletedPersonalTransaction,
             });
         }
         catch(error){
@@ -147,8 +190,8 @@ export const updatePersonalTransaction = async (req, res, next) => {
             }
     
             res.status(200).json({
-                success: true,
-                personalTransaction: existingPersonalTransaction,
+                message : "Personal Transaction fetched successfully",
+                data : existingPersonalTransaction,
             });
         }
         catch(error){
@@ -182,8 +225,8 @@ export const updatePersonalTransaction = async (req, res, next) => {
             const transactions = await findPersonalTransactionByQuery(query);
     
             res.status(200).json({
-                success: true,
-                transactions,
+                message : "User Period Type Transactions fetched successfully",
+                data : transactions,
             });
         } catch (error) {
             console.error("Error fetching transactions by timeframe:", error);

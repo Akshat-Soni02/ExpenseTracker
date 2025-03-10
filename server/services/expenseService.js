@@ -10,67 +10,47 @@ export const handleExpenseRelations = async ({
   group_id,
   total_amount,
 }) => {
-  // console.log("In handleExpenseRelations");
   //Update Wallet
   if (wallet_id)
     await modifyWalletBalance({ id: wallet_id, amount: -total_amount });
-
-  // console.log("wallet modified");
-  // console.log("\n\n", lender_id);
-  // console.log(borrowers);
-  // console.log(group_id);
-  //Update Group
-  // console.log(borrowers);
-
-
-
-
   
-  // if (group_id)
-  //   try {
-  //     await distributeAmount({
-  //       groupId: group_id,
-  //       giverId: lender_id,
-  //       borrowers,
-  //     });
-  // } catch (err) {
-  //     console.log("Error distributing amount:", err);
-  // }
+  if (group_id)
+    try {
+      await distributeAmount({
+        groupId: group_id,
+        giverId: lender_id,
+        borrowers,
+      });
+  } catch (err) {
+      console.log("Error distributing amount:", err);
+  }
+
+  console.log("lender_id", lender_id);
   
     
-
-  // console.log("group has modified");
-
   //Update Users friendly state
   await updateFriendlyExchangeStatesOnLending({
     lender_id: lender_id,
-    borrowers,
+    borrowers
   });
-  // console.log("user friendly states modified");
 };
 
 export const revertExpenseEffects = async (curExpense) => {
   try {
-    console.log("In Revert Effects");
-    // console.log(curExpense.wallet_id)
     if (curExpense.wallet_id) {
       await modifyWalletBalance({
         id: curExpense.wallet_id,
         amount: curExpense.total_amount,
       });
     }
-    curExpense.borrowers.forEach(async (borrower) => {
-      // console.log("In borrower loop");
-      // console.log(borrower.user_id.toString());
-      // console.log(borrower.amount);
-      console.log(curExpense.lenders[0].user_id.toString());
+
+    for (const borrower of curExpense.borrowers) {
       await handleExpenseRelations({
         lender_id: borrower.user_id.toString(),
         borrowers: [{ user_id: curExpense.lenders[0].user_id.toString(), amount: borrower.amount }],
         group_id: curExpense?.group_id.toString(),
       });
-    });
-    // console.log("Successfully reverted the expense with id", curExpense._id);
+    }
   } catch (error) {
     console.log("Error reverting expense", error);
   }
@@ -100,8 +80,8 @@ export const findPeriodicExpenses = async ({start, end, userId}) => {
 export const findUserExpenses = async ({userId, group_id}) => {
   let filter = {
     $or: [
-      { "lenders.user_id": userId },
-      { "borrowers.user_id": userId },
+      { "lenders.user_id": userId.toString() },
+      { "borrowers.user_id": userId.toString() },
     ],
   };
 
@@ -112,8 +92,20 @@ export const findUserExpenses = async ({userId, group_id}) => {
   const expenses = await expense.find(filter).sort({
     created_at_date_time: -1,
   });
+  if(!expenses) throw new Error("Error fetching user expenses");
 
-  return expenses;
+  // console.log(expenses);
+  const modifiedExpenses = expenses.map(expense => {
+    const isLender = expense.lenders.some(lender => lender.user_id.toString() === userId.toString());
+    const isBorrower = expense.borrowers.some(borrower => borrower.user_id.toString() === userId.toString());
+
+    return {
+      ...expense.toObject(), // Convert Mongoose document to plain object
+      transactionType: isLender ? 'debit' : isBorrower ? 'credit' : undefined, // Add credit/debit field
+    };
+  });
+  // console.log(modifiedExpenses);
+  return modifiedExpenses;
 }
 
 export const findCustomExpenses = async ({description,

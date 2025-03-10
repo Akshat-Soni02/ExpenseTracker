@@ -1,44 +1,99 @@
 import ErrorHandler from "../middlewares/error.js";
 import user from "../models/user.js";
-import { sendCookie } from "../utils/features.js";
+import { sendToken } from "../utils/features.js";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { uploadMedia } from "../services/cloudinaryService.js";
+import { OAuth2Client } from "google-auth-library";
 
 import path from "path";
 import { fileURLToPath } from "url";
-import { findUserById } from "../services/userService.js";
+import { extractTempName, findBorrowersAndRemind, findUserById, sendBorrowerMail } from "../services/userService.js";
 import { findUserWallets } from "../services/walletService.js";
+import { sendEmail } from "../services/notificationService.js";
+import { findUserGroups } from "../services/groupService.js";
+import { findUserExpenses } from "../services/expenseService.js";
+import { findUserBudgets } from "../services/budgetService.js";
+import { findUserPersonalTransactions } from "../services/personalTransactionService.js";
+import { findUserDetectedTransactions } from "../services/detectedTransactionService.js";
+import { getUserBills } from "../services/billService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const filePath = path.resolve(__dirname, "../assets/panda.jpg");
 
-export const login = async (req, res, next) => {
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+export const googleLogin = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    const loggedUser = await user.findOne({ email }).select("+password");
-    if (!loggedUser) return next(new ErrorHandler("Invalid Email", 404));
-    const isMatch = await bcrypt.compare(password, loggedUser.password);
-    if (!isMatch) return next(new ErrorHandler("Invalid Password", 404));
-    sendCookie(
-      loggedUser,
-      res,
-      `Hey ${loggedUser.name} glad to have you back`,
-      200
-    );
+
+    // {
+    //   "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjI1Z...",
+    //   "user": {
+    //     "email": "the.akshhh@gmail.com",
+    //     "name": "Akshat Soni",
+    //     "photo": "https://lh3.googleusercontent.com/a/...",
+    //     "id": "104475546723009620506"
+    //   }
+    // }
+    
+    const { idToken, user: curUser } = req.body;
+    
+    if (!idToken) {
+      return res.status(400).json({ message: "ID Token is required" });
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(401).json({ message: "Invalid ID Token" });
+    }
+
+    const { email, name, picture, sub: googleId } = payload;
+
+    let existingUser = await user.findOne({ email });
+
+    if (!existingUser) {
+      const result = await uploadMedia(picture, "userProfiles", email);
+      const auth = {
+        auth_id: googleId,
+        auth_provider: "google"
+      }
+
+      existingUser = await user.create({
+        name,
+        email,
+        oauth: [auth],
+        profile_photo: {
+          url: result.secure_url,
+          public_id: result.public_id,
+        },
+      });
+    }
+
+    sendToken(existingUser, res, "Welcome to ExpenseTracker", 201);
   } catch (error) {
+    console.error("Google Login Error:", error);
     next(error);
   }
 };
 
+
 export const register = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { email, password } = req.body;
+    console.log({email, password});
     let userAlreadyExist = await user.findOne({ email });
     if (userAlreadyExist)
       return next(new ErrorHandler("User Already Exist", 404));
 
-    const filePath = path.resolve(__dirname, "../assets/panda.jpg");
-    const result = await uploadMedia(filePath, "userProfiles", next);
+    const result = await uploadMedia(filePath, "userProfiles", email);
+    const name = extractTempName(email);
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await user.create({
@@ -50,96 +105,320 @@ export const register = async (req, res, next) => {
         public_id: result.public_id,
       },
     });
+    if(!newUser) return next(new ErrorHandler("Error creating new user", 400));
+    console.log("Registered User");
 
-    sendCookie(newUser, res, "Welcome to ExpenseTracker", 201);
+    sendToken(newUser, res, "Welcome to ExpenseTracker", 201);
   } catch (error) {
+    console.log("Error creating new user", error);
     next(error);
   }
 };
 
-export const getMyProfile = (req, res) => {
-  res.status(200).json({
-    success: true,
-    user: req.user,
-  });
+export const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    const loggedUser = await user.findOne({ email }).select("+password");
+    
+    if (!loggedUser) return next(new ErrorHandler("Hey try registering first", 404));
+    const isMatch = await bcrypt.compare(password, loggedUser.password);
+    if (!isMatch) return next(new ErrorHandler("Invalid Password, Try again", 404));
+
+    sendToken(
+      loggedUser,
+      res,
+      `Hey ${loggedUser.name} glad to have you back`,
+      200
+    );
+  } catch (error) {
+    console.log("Error logging user", error);
+    next(error);
+  }
 };
 
-export const logout = async (req, res) => {
-  res
-    .status(200)
-    .cookie("token", "", {
-      expires: new Date(Date.now()),
-      sameSite: "none",
-      secure: true,
-    })
-    .json({
-      success: true,
-      user: req.user,
+
+export const updateProfilePhoto = async (req, res, next) => {
+  try {
+    const id = req.user._id;
+    const curUser = await findUserById(id);
+    if (!curUser) {
+      return next(new ErrorHandler("User does not Exist", 404));
+    }
+    // update this after frontend 
+    // const {filePath} = req.body;
+    const result = await uploadMedia(filePath, "userProfiles", curUser.email);
+    if(!result) return next("Error updating profile photo");
+    if (result && result.secure_url) {
+      curUser.profile_photo = {
+        url: result.secure_url,
+        public_id: result.public_id,
+      };
+    }
+    await curUser.save();
+    res.status(200).json({
+      message: "Profile udpated successfully"
     });
-};
+  } catch (error) {
+    console.log("Error updating profile photo", error);
+    next(error);
+  }
+}
+
 
 export const updateUser = async (req, res, next) => {
   try {
     const id = req.user.id;
     const updatedDetails = req.body;
-    const curUser = await findUserById(id);
-
-    if (!curUser) {
-      return next(new ErrorHandler("User does not Exist", 404));
-    }
-
-    if (updatedDetails.name) {
-      curUser.name = updatedDetails.name;
-    }
-    if (updatedDetails.phone_number) {
-      curUser.phone_number = updatedDetails.phone_number;
-    }
-    if (updatedDetails.profile_photo) {
-      const result = await updateProfilePhoto(
-        updatedDetails.profile_photo,
-        next
-      );
-      if (result && result.secure_url) {
-        curUser.profile_photo = {
-          url: result.secure_url,
-          public_id: result.public_id,
-        };
-      }
-    }
-
-    if (updatedDetails.daily_limit) {
-      curUser.daily_limit = updatedDetails.daily_limit;
-    }
-    await curUser.save();
-    return res.status(200).json({ message: "Details updated successfully" });
+    // These details can be updated here
+    // name, phone number, daily limit
+    const updatedUser = await user.findByIdAndUpdate(id, updatedDetails, {new: true, runValidators: true});
+    if(!updateUser) return next(new ErrorHandler("Error updating user", 400));
+    res.status(200).json({ message: "Details updated successfully", data: updatedUser });
   } catch (error) {
+    console.log("Error updating user", error);
     next(error);
   }
 };
+
+export const sendOtp = async (req, res, next) => {
+  try {
+      const { email } = req.body;
+      if (!email) return next( new ErrorHandler("Email is required", 400));
+
+      const curUser = await user.findOne({ email });
+      if (!curUser) return next( new ErrorHandler("User not found" , 404));
+
+      // 4-digit OTP
+      const otp = crypto.randomInt(1000, 9999).toString();
+      const otpExpiry = Date.now() + 5 * 60 * 1000; // OTP valid for 2 minutes
+      const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+
+      curUser.otp = hashedOtp;
+      curUser.otpExpiry = otpExpiry;
+      await curUser.save();
+
+      sendEmail({toMail: curUser.email, subject: "ExpenseTracker password reset", text: `Your OTP for resetting your password is ${otp}. It is valid for 5 minutes.`})
+      res.status(200).json({message: "OTP sent successfully" });
+  } catch (error) {
+      console.error("Send OTP Error:", error);
+      next(error);
+  }
+};
+
+export const verifyOtp = async (req, res, next) => {
+  try {
+      const { email, otp } = req.body;
+
+      if (!email || !otp) {
+          return next(new ErrorHandler("Email and OTP are required", 400));
+      }
+
+      const curUser = await user.findOne({ email });
+      if (!curUser) return next(new ErrorHandler("User not found", 404));
+
+      // Check OTP expiration
+      if (Date.now() > curUser.otpExpiry) {
+          return next(new ErrorHandler("OTP expired", 400));
+      }
+
+      // Verify OTP
+      const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+      if (hashedOtp !== curUser.otp) {
+          return next(new ErrorHandler("Invalid OTP", 400));
+      }
+      res.status(200).json({ message: "OTP verified" });
+  } catch (error) {
+      console.error("Verify OTP Error:", error);
+      next(error);
+  }
+};
+
+
+export const resetPassword = async (req, res, next) => {
+    try {
+        const { email, newPassword } = req.body;
+
+        if (!email || !newPassword) {
+            return next(new ErrorHandler("Email and new password are required", 400));
+        }
+
+        const curUser = await user.findOne({ email });
+        if (!curUser) return next(new ErrorHandler("User not found", 404));
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        curUser.password = hashedPassword;
+
+        // Clear OTP fields after password reset
+        curUser.otp = undefined;
+        curUser.otpExpiry = undefined;
+        await curUser.save();
+        res.status(200).json({ message: "Password reset successful" });
+    } catch (error) {
+        console.error("Reset Password Error:", error);
+        next(error);
+    }
+};
+
+export const logout = async (req, res) => {
+  res.status(200).json({
+    message: "Successfully logged out"
+  });
+};
+
+
+export const getMyProfile = (req, res) => {
+  res.status(200).json({
+    data: req.user
+  });
+};
+
+export const getMyGroups = async (req, res, next) => {
+  try {
+    const id = req.user._id;
+    const groups = await findUserGroups(id);
+    res.status(200).json({
+      message: "successfully retreived user groups",
+      data: groups
+    });
+  } catch (error) {
+    console.log("Error fetching user groups");
+    next(error);
+  }
+}
+
+export const getMyExpenses = async(req, res, next) => {
+  try {
+    const id = req.user._id;
+    const expenses = await findUserExpenses({userId: id});
+    res.status(200).json({
+      message: "successfully retreived user expenses",
+      data: expenses
+    });
+  } catch (error) {
+    console.log("Error fetching user expenses", error);
+    next(error);
+  }
+}
+
+export const getMySettlements = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { group_id } = req.query; // Optional Group ID
+
+    const settlements = await findUserSettlements({userId, group_id});
+
+    res.status(200).json({
+      message : "settlements fetched successfully",
+      data : settlements,
+    });
+  } catch (error) {
+    console.error("Error fetching user settlements", error);
+    next(error);
+  }
+}
+
+export const getMyWallets = async (req, res, next) => {
+  try {
+    const id = req.user._id;
+    const wallets = await findUserWallets(id);
+    res.status(200).json({
+      data: wallets
+    });
+  } catch (error) {
+    console.log("Error fetching my wallets", error);
+    next(error);
+  }
+};
+
+export const getMyBudgets = async (req, res, next) => {
+  try {
+    const id = req.user._id;
+    const budgets = await findUserBudgets(id);
+    res.status(200).json({
+      data: budgets
+    });
+  } catch (error) {
+    console.log("Error fetching my budgets", error);
+    next(error);
+  }
+};
+
+export const getMyPersonalTransactions = async (req, res, next) => {
+  try {
+    const id = req.user._id;
+    const transactions = await findUserPersonalTransactions(id);
+    res.status(200).json({
+      data: transactions
+    });
+  } catch (error) {
+    console.log("Error fetching my personalTransactions", error);
+    next(error);
+  }
+};
+
+export const getMyBills = async(req, res, next) => {
+  try {
+    const id = req.user._id;
+    const {status} = req.query;
+    const bills = await getUserBills({userId: id, status});
+    res.status(200).json({
+      message: "Successfully feteched user bills",
+      data: bills
+    });
+  } catch (error) {
+    console.log("Error fetching bills");
+    next(error);
+  }
+}
+
+export const getMyDetectedTransactions = async (req, res, next) => {
+  try {
+    const id = req.user._id;
+    const transactions = await findUserDetectedTransactions(id);
+    res.status(200).json({
+      data: transactions
+    });
+  } catch (error) {
+    console.log("Error fetching my detectedTransactions", error);
+    next(error);
+  }
+};
+
 
 export const getFriendlyUsers = async (req, res) => {
   try {
     const id = req.user.id;
     const curUser = await user.findById(id).select("lended borrowed settled");
-
+    if(!curUser) return next(new ErrorHandler("Error fetching user", 400));
     const friendsMap = new Map();
+    const typeMap = new Map();
 
     curUser.lended.forEach(({ borrower_id, amount }) => {
       const strId = borrower_id.toString();
-      if (!friendsMap.has(strId)) friendsMap.set(strId, 0);
+      if (!friendsMap.has(strId)) {
+        friendsMap.set(strId, 0)
+        typeMap.set(strId, "credit");
+      };
       friendsMap.set(strId, friendsMap.get(strId) + amount);
       console.log(amount);
     });
 
     curUser.borrowed.forEach(({ lender_id, amount }) => {
       const strId = lender_id.toString();
-      if (!friendsMap.has(strId)) friendsMap.set(strId, 0);
+      if (!friendsMap.has(strId)){
+         friendsMap.set(strId, 0)
+         typeMap.set(strId, "debit");
+        };
       friendsMap.set(strId, friendsMap.get(strId) - amount);
     });
 
     curUser.settled.forEach(({ user_id, amount }) => {
       const strId = user_id.toString();
-      if (!friendsMap.has(strId)) friendsMap.set(strId, amount);
+      if (!friendsMap.has(strId)){
+         friendsMap.set(strId, amount)
+         typeMap.set(strId, undefined);
+      };
     });
 
     const friendIds = [...friendsMap.keys()];
@@ -150,15 +429,17 @@ export const getFriendlyUsers = async (req, res) => {
 
     // Attach amounts to friend data
     const friendsWithAmounts = friends.map((friend) => ({
-      id: friend._id,
+      _id: friend._id,
       name: friend.name,
-      profile_photo: friend.profile_photo,
+      profile_photo: friend.profile_photo?.url,
       amount: friendsMap.get(friend._id.toString()) || 0,
+      type: typeMap.get(friend._id.toString()) || undefined,
+
     }));
 
     res.status(200).json({
-      success: true,
-      people: friendsWithAmounts,
+      message: "friends retrevied successfully",
+      data: friendsWithAmounts,
     });
   } catch (error) {
     console.error(error);
@@ -170,6 +451,7 @@ export const getCurrentExhanges = async (req, res, next) => {
   try {
     const id = req.user.id;
     const curUser = await user.findById(id).select("lended borrowed");
+    if(!curUser) return next(new ErrorHandler("Error fetching user", 400));
     let lendedAmount = 0,
       borrowedAmount = 0;
     curUser.lended.forEach(({ borrower_id, amount }) => {
@@ -179,9 +461,10 @@ export const getCurrentExhanges = async (req, res, next) => {
       borrowedAmount = borrowedAmount + amount;
     });
     res.status(200).json({
-      success: true,
-      lendedAmount,
-      borrowedAmount,
+      data: {
+        lendedAmount,
+        borrowedAmount,
+      }
     });
   } catch (error) {
     console.error(error);
@@ -189,16 +472,34 @@ export const getCurrentExhanges = async (req, res, next) => {
   }
 };
 
-export const getMyWallets = async (req, res, next) => {
+export const remindBorrowers = async (req, res, next) => {
   try {
     const id = req.user._id;
-    const wallets = await findUserWallets(id);
+    await findBorrowersAndRemind(id);
     res.status(200).json({
-      success: true,
-      wallets,
+      message: "Remainders sent successfully"
     });
   } catch (error) {
-    console.log("Error fetching my wallets", error);
+    console.log("Error reminding borrowers");
     next(error);
   }
-};
+}
+
+export const remindBorrower = async (req, res, next) => {
+  try {
+    const id = req.user._id;
+    const {borrower_id} = req.params;
+    const curUser = await user.find(id);
+    if(!curUser) return next(new ErrorHandler("Error fetching user details to remaind borrower", 400));
+    const borrowerProfile = await user.find(borrower_id);
+    const borrowerDetails = curUser.lended.find((borrower) => borrower.borrower_id === borrower_id);
+    if(!borrowerProfile) return next(new ErrorHandler("Error remainding borrower", 400));
+    sendBorrowerMail({lender: curUser, borrowerProfile,amount: borrowerDetails.amount});
+    res.status(200).json({
+      message: "successfully reminded"
+    });
+  } catch (error) {
+    console.log("Error remainding borrower");
+    next(error);
+  }
+}

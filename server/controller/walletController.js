@@ -7,19 +7,21 @@ export const createWallet = async (req, res, next) => {
     // wherever we are sending the array of members to the backend, the members array contains only other ids not the creater one, we will push creator id explicitly in the backend
     const id = req.user._id;
     const { amount, wallet_title, lower_limit, members = [] } = req.body;
-    members.push({ user_id: id });
+    // members.push({ user_id: id });
 
     const newWallet = await wallet.create({
       amount,
       wallet_title,
       lower_limit: lower_limit || 0,
       creator_id: id,
-      members: members,
+      // members: members,
     });
 
+    if(!newWallet) return next(new ErrorHandler("Error creating new wallet", 400));
+
     res.status(201).json({
-      success: true,
-      wallet: newWallet,
+      message: "Successfully created new wallet",
+      data: newWallet,
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -38,7 +40,6 @@ export const updateWallet = async (req, res, next) => {
   try {
     const { id } = req.params;
     const updatedDetails = req.body;
-    //send fully updated array of members from client as this code will replace the array completly if new members is present in body
     const updatedWallet = await wallet.findByIdAndUpdate(id, updatedDetails, {
       new: true,
       runValidators: true,
@@ -48,8 +49,8 @@ export const updateWallet = async (req, res, next) => {
       return next(new ErrorHandler("Wallet not found", 404));
     }
     res.status(200).json({
-      success: true,
-      wallet: updateWallet,
+      message: "Wallet updated Successfully",
+      data: updateWallet,
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -80,8 +81,8 @@ export const deleteWallet = async (req, res, next) => {
     if (!deletedWallet)
       return next(new ErrorHandler("Invalid id to delete wallet", 404));
     res.status(200).json({
-      success: true,
-      wallet: deleteWallet,
+      message: "wallet deleted successfully",
+      data: deleteWallet,
     });
   } catch (error) {
     console.log("Error deleting wallet", error);
@@ -97,8 +98,8 @@ export const getWalletById = async (req, res, next) => {
     if (!curWallet) return next(new ErrorHandler("Invalid id to get wallet details", 404));
     
     res.status(200).json({
-      success: true,
-      wallet: curWallet,
+      message: "Wallet fetched successfully",
+      data: curWallet,
     });
   } catch (error) {
     console.log("Error getting wallet by id", error);

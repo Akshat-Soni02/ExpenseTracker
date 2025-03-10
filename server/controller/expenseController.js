@@ -9,6 +9,7 @@ import {
   findUserExpenses,
   findCustomExpenses
 } from "../services/expenseService.js";
+import { sufficientBalance } from "../services/walletService.js";
 
 //creating an expense means changing group states, wallet states also changing personal states with other people
 export const createExpense = async (req, res, next) => {
@@ -23,6 +24,7 @@ export const createExpense = async (req, res, next) => {
       notes,
       group_id,
       created_at_date_time,
+      filePath
     } = req.body;
     const user_id = req.user._id;
     // if (!description || !total_amount) {
@@ -51,6 +53,16 @@ export const createExpense = async (req, res, next) => {
       amount: total_amount,
     };
 
+    let media = null;
+    if(filePath) {
+      const result = await uploadMedia(filePath, "expenseMedia", user_id+description);
+      if(!result) return next(new ErrorHandler("Error uplaoding photo"));
+      media = {
+        url: result.secure_url,
+        public_id: result.public_id,
+      };
+    }
+
     const newExpense = await expense.create({
       description,
       lenders,
@@ -62,12 +74,11 @@ export const createExpense = async (req, res, next) => {
       creator,
       notes,
       created_at_date_time,
+      media
     });
 
     if (!newExpense)
       return next(new ErrorHandler("Cannot create new expense", 400));
-
-    console.log("valid expense");
 
     await handleExpenseRelations({
       lender_id: lenders[0].user_id,
@@ -77,12 +88,10 @@ export const createExpense = async (req, res, next) => {
       borrowers,
     });
 
-    console.log("user friendly states modified");
 
     res.status(201).json({
-      success: true,
       message: "Expense created successfully",
-      expense: newExpense,
+      data: newExpense,
     });
   } catch (error) {
     console.log("Error creating new expense");
@@ -97,12 +106,14 @@ export const updateExpense = async (req, res, next) => {
     const updatedDetails = req.body;
     // the updated details might contain
     // description,
-    //   lenders,
-    //   borrowers,
-    //   total_amount,
-    //   expense_category,
-    //   notes,
-    //   wallet_id,
+    // lenders,
+    // borrowers,
+    // total_amount,
+    // expense_category,
+    // notes,
+    // wallet_id,
+    // media
+    // create_at_date_time
 
     //inorder to update expense, first we will find the expense
     // then if members is not present in update then its alright
@@ -110,6 +121,17 @@ export const updateExpense = async (req, res, next) => {
     const existingExpense = await expense.findById(expense_id);
     if (!existingExpense) {
       return next(new ErrorHandler("Expense not found with the given id", 404));
+    }
+
+    //cases with wallet - 
+    //earlier there was a wallet and now wallet is removed
+    //earlier there was no wallet and now wallet is added
+    //earlier there was a wallet and now wallet is updated
+    //no wallet update
+
+    let newAmount = updatedDetails.total_amount !== undefined ? updatedDetails.total_amount : existingExpense.total_amount;
+    if(updatedDetails.wallet_id !== undefined) {
+      if(!sufficientBalance({id: updatedDetails.wallet_id, amount: newAmount})) return next(new ErrorHandler("Not Sufficient balances to update expense"));
     }
 
     if (
@@ -129,18 +151,18 @@ export const updateExpense = async (req, res, next) => {
             400
           )
         );
-        // console.log("Reverted expense effects, now registering new expense relations");
-      await handleExpenseRelations({
-        lender_id: updatedExpense.lenders[0].user_id,
+
+
+       await handleExpenseRelations({
+        lender_id: updatedExpense.lenders[0].user_id.toString(),
         total_amount: updatedExpense.total_amount,
-        wallet_id: updatedExpense?.wallet_id,
-        group_id: updatedExpense?.group_id,
+        wallet_id: updatedExpense?.wallet_id.toString(),
+        group_id: updatedExpense?.group_id.toString(),
         borrowers: updatedExpense.borrowers,
       });
-      // console.log("new expense relations registered");
       res.status(200).json({
-        success: true,
-        expense: updatedExpense,
+        message : "Expense updated successfully",
+        data : updatedExpense,
       });
       return;
     }
@@ -159,8 +181,8 @@ export const updateExpense = async (req, res, next) => {
       );
 
     res.status(200).json({
-      success: true,
-      expense: updatedExpense,
+      message : "Expense updated successfully",
+      data : updatedExpense,
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -189,10 +211,11 @@ export const deleteExpense = async (req, res, next) => {
       );
 
     await revertExpenseEffects(curExpense);
-    await expense.findByIdAndDelete(expense_id);
+    const deletedExpense = await expense.findByIdAndDelete(expense_id);
 
     res.status(200).json({
-      success: true,
+      message: "Expense deleted successfully",
+      data: deletedExpense,
     });
   } catch (error) {
     console.error("Error deleting expense:", error);
@@ -206,8 +229,8 @@ export const getExpenseById = async (req, res, next) => {
     const curExpense = await findExpenseById(id);
 
     res.status(200).json({
-      success: true,
-      expense: curExpense,
+      message : "Expense fetched successfully",
+      data : curExpense,
     });
   } catch (error) {
     console.error(`Error getting expense by Id: ${id}`, error);
@@ -235,8 +258,8 @@ export const getUserPeriodExpenses = async (req, res, next) => {
     const expenses = await findPeriodicExpenses({start, end, userId});
 
     res.status(200).json({
-      success: true,
-      expenses,
+      message: "User period expenses fetched successfully",
+      data :expenses,
     });
   } catch (error) {
     console.error("Error fetching user period expenses", error);
@@ -252,8 +275,8 @@ export const getUserExpenses = async (req, res, next) => {
     const expenses = await findUserExpenses({userId, group_id});
 
     res.status(200).json({
-      success: true,
-      expenses,
+      message: "User expenses fetched successfully",
+      data : expenses,
     });
   } catch (error) {
     console.error("Error fetching user expenses", error);
@@ -277,8 +300,8 @@ export const getCustomExpenses = async (req, res, next) => {
     const expenses = await findCustomExpenses({description, lender_id, borrower_id, group_id, wallet_id, min_amount, max_amount, category});
 
     res.status(200).json({
-      success: true,
-      expenses,
+      message : "Custom expenses fetched successfully",
+      data : expenses,
     });
   } catch (error) {
     console.error("Error fetching custom expenses", error);
