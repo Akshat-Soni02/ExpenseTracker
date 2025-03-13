@@ -41,7 +41,8 @@ export const createGroup = async (req, res, next) => {
       initial_budget,
       settle_up_date,
     } = req.body;
-    memberIds.push(id);
+    // memberIds.push(id);
+    console.log(memberIds);
     const members = formatMembers(memberIds);
 
     const newGroup = await group.create({
@@ -59,10 +60,7 @@ export const createGroup = async (req, res, next) => {
   } catch (error) {
     if (error.code === 11000) {
       // Duplicate key error (E11000)
-      return res.status(400).json({
-        error:
-          "A group with this title already exists. Please choose a different name.",
-      });
+      return next(new ErrorHandler("A group with this title already exists. Please choose a different name.", 400));
     }
     console.log("Error creating group", error);
     next(error);

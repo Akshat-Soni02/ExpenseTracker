@@ -21,7 +21,7 @@ export const createPersonalTransaction = async (req, res, next)=>{
         //update wallet
         const budget_id = null;
         if(transaction_type==="expense"){
-            await modifyWalletBalance(wallet_id,-1*amount);
+            await modifyWalletBalance({id: wallet_id,amount: -1*amount});
             if(transaction_category){
                 const existingBudget = await findBudgetByCategory(transaction_category.toString());
                 if(existingBudget){
@@ -40,7 +40,7 @@ export const createPersonalTransaction = async (req, res, next)=>{
             }
         }
         else{
-            await modifyWalletBalance(wallet_id,amount);
+            await modifyWalletBalance({id:wallet_id,amount});
         }
             
 
