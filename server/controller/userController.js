@@ -428,12 +428,13 @@ export const getFriendlyUsers = async (req, res) => {
 
     const friends = await user
       .find({ _id: { $in: friendIds } })
-      .select("name profile_photo");
+      .select("name profile_photo email");
 
     // Attach amounts to friend data
     const friendsWithAmounts = friends.map((friend) => ({
       _id: friend._id,
       name: friend.name,
+      email: friend.email,
       profile_photo: friend.profile_photo?.url,
       amount: friendsMap.get(friend._id.toString()) || 0,
       type: typeMap.get(friend._id.toString()) || undefined,
@@ -505,4 +506,13 @@ export const remindBorrower = async (req, res, next) => {
     console.log("Error remainding borrower");
     next(error);
   }
+}
+
+export const getUserById = async (req, res, next) => {
+  const { id } = req.params;
+  const user = await findUserById(id);
+  if(user) res.status(200).json({
+    message: "successfully fetched user",
+    data: user
+  });
 }
