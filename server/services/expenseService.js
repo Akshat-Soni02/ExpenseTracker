@@ -78,6 +78,7 @@ export const findPeriodicExpenses = async ({start, end, userId}) => {
 }
 
 export const findUserExpenses = async ({userId, group_id}) => {
+  console.log("userID     :",userId)
   let filter = {
     $or: [
       { "lenders.user_id": userId.toString() },
@@ -96,9 +97,17 @@ export const findUserExpenses = async ({userId, group_id}) => {
 
   // console.log(expenses);
   const modifiedExpenses = expenses.map(expense => {
-    const isLender = expense.lenders.some(lender => lender.user_id.toString() === userId.toString());
-    const isBorrower = expense.borrowers.some(borrower => borrower.user_id.toString() === userId.toString());
+    const isLender =
+      Array.isArray(expense.lenders) &&
+      expense.lenders.some(
+        lender => lender?.user_id?.toString() === userId.toString()
+      );
 
+    const isBorrower =
+      Array.isArray(expense.borrowers) &&
+      expense.borrowers.some(
+        borrower => borrower?.user_id?.toString() === userId.toString()
+      );
     return {
       ...expense.toObject(), // Convert Mongoose document to plain object
       transactionType: isLender ? 'debit' : isBorrower ? 'credit' : undefined, // Add credit/debit field

@@ -139,6 +139,7 @@ export const login = async (req, res, next) => {
 
 export const updateProfilePhoto = async (req, res, next) => {
   try {
+    console.log("here");
     const id = req.user._id;
     const curUser = await findUserById(id);
     if (!curUser) {
@@ -169,9 +170,11 @@ export const updateUser = async (req, res, next) => {
   try {
     const id = req.user.id;
     const updatedDetails = req.body;
+    console.log("Updated Details: ", updatedDetails);
     // These details can be updated here
     // name, phone number, daily limit
     const updatedUser = await user.findByIdAndUpdate(id, updatedDetails, {new: true, runValidators: true});
+    console.log("User updated:  ",updatedUser);
     if(!updateUser) return next(new ErrorHandler("Error updating user", 400));
     res.status(200).json({ message: "Details updated successfully", data: updatedUser });
   } catch (error) {
@@ -289,7 +292,7 @@ export const getMyGroups = async (req, res, next) => {
 
 export const getMyExpenses = async(req, res, next) => {
   try {
-    const id = req.user._id;
+    const id = req.user.id;
     const expenses = await findUserExpenses({userId: id});
     res.status(200).json({
       message: "successfully retreived user expenses",
