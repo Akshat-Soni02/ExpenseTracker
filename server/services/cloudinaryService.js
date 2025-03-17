@@ -18,3 +18,5 @@ export const uploadMedia = async (mediaPath, folderName, public_id) => {
     console.log("Error uploading media", error);
   }
 };
+
+//function to delete media upon deletion of corresponding data

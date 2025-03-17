@@ -18,16 +18,16 @@ export const createExpense = async (req, res, next) => {
   try {
     let {
       description,
-      lenders,
-      borrowers,
       wallet_id,
       total_amount,
       expense_category,
       notes,
       group_id,
       created_at_date_time,
-      filePath
     } = req.body;
+    let lenders = JSON.parse(req.body.lenders);
+    let borrowers = JSON.parse(req.body.borrowers);
+    const file = req.file;
     const user_id = req.user._id;
     // if (!description || !total_amount) {
     //   return next(new ErrorHandler("Missing required fields", 404));
@@ -55,11 +55,13 @@ export const createExpense = async (req, res, next) => {
       amount: total_amount,
     };
 
+    
     let media = null;
-    if(filePath) {
-      const timeStamp = Date.now();
-      const publicId = `expense/${uuidv4()}/${timeStamp}`;
-      const result = await uploadMedia(filePath, "expenseMedia", publicId);
+    if(file) {
+      const today = new Date().toISOString().split('T')[0];
+      const mediaPath = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+      const publicId = `expense/${uuidv4()}/${today}`;
+      const result = await uploadMedia(mediaPath, "expenseMedia", publicId);
       if(!result) return next(new ErrorHandler("Error uplaoding photo"));
       media = {
         url: result.secure_url,
@@ -81,6 +83,9 @@ export const createExpense = async (req, res, next) => {
       media
     });
 
+    console.log(lenders);
+    console.log(borrowers);
+
     if (!newExpense)
       return next(new ErrorHandler("Cannot create new expense", 400));
 
@@ -98,7 +103,7 @@ export const createExpense = async (req, res, next) => {
       data: newExpense,
     });
   } catch (error) {
-    console.log("Error creating new expense");
+    console.log("Error creating new expense", error);
     next(error);
   }
 };

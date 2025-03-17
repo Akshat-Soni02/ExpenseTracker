@@ -11,7 +11,6 @@ export const createSettlement = async (req, res, next) => {
   //if successfull we will first change wallet state then group then personal
   try {
     const id = req.user._id;
-    const { status } = req.query;
     let {
       settlement_description,
       payer_wallet_id,
@@ -20,6 +19,7 @@ export const createSettlement = async (req, res, next) => {
       receiver_id,
       amount,
       group_id,
+      status
     } = req.body;
 
     //create settlement

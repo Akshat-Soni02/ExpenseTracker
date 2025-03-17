@@ -10,6 +10,8 @@ export const handleExpenseRelations = async ({
   group_id,
   total_amount,
 }) => {
+  console.log("bbb: ", borrowers);
+  console.log("ttt: ", total_amount);
   //Update Wallet
   if (wallet_id)
     await modifyWalletBalance({ id: wallet_id, amount: -total_amount });
@@ -96,9 +98,17 @@ export const findUserExpenses = async ({userId, group_id}) => {
 
   // console.log(expenses);
   const modifiedExpenses = expenses.map(expense => {
-    const isLender = expense.lenders.some(lender => lender.user_id.toString() === userId.toString());
-    const isBorrower = expense.borrowers.some(borrower => borrower.user_id.toString() === userId.toString());
+    const isLender =
+      Array.isArray(expense.lenders) &&
+      expense.lenders.some(
+        lender => lender?.user_id?.toString() === userId.toString()
+      );
 
+    const isBorrower =
+      Array.isArray(expense.borrowers) &&
+      expense.borrowers.some(
+        borrower => borrower?.user_id?.toString() === userId.toString()
+      );
     return {
       ...expense.toObject(), // Convert Mongoose document to plain object
       transactionType: isLender ? 'debit' : isBorrower ? 'credit' : undefined, // Add credit/debit field
