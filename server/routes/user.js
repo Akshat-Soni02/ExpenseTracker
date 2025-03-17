@@ -22,6 +22,7 @@ import {
   googleLogin,
   getMyBills,
   remindBorrower,
+  getUserById,
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 
@@ -50,6 +51,7 @@ router.get("/friends", isAuthenticated, getFriendlyUsers);
 router.get("/current-exchange-status", isAuthenticated, getCurrentExhanges);
 router.get("/remind-borrowers", isAuthenticated, remindBorrowers);
 router.get("/remind-borrower/:borrower_id", isAuthenticated, remindBorrower);
+router.get("/:id", isAuthenticated, getUserById);
 
 //* PUT APIs *//
 router.put("/profile-details", isAuthenticated, updateUser);

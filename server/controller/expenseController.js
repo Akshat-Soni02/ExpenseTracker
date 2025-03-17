@@ -10,6 +10,8 @@ import {
   findCustomExpenses
 } from "../services/expenseService.js";
 import { sufficientBalance } from "../services/walletService.js";
+import { v4 as uuidv4 } from 'uuid';
+
 
 //creating an expense means changing group states, wallet states also changing personal states with other people
 export const createExpense = async (req, res, next) => {
@@ -55,7 +57,9 @@ export const createExpense = async (req, res, next) => {
 
     let media = null;
     if(filePath) {
-      const result = await uploadMedia(filePath, "expenseMedia", user_id+description);
+      const timeStamp = Date.now();
+      const publicId = `expense/${uuidv4()}/${timeStamp}`;
+      const result = await uploadMedia(filePath, "expenseMedia", publicId);
       if(!result) return next(new ErrorHandler("Error uplaoding photo"));
       media = {
         url: result.secure_url,
@@ -167,6 +171,17 @@ export const updateExpense = async (req, res, next) => {
       return;
     }
 
+    // if(updatedDetails.filePath) {
+    //   const timeStamp = Date.now();
+    //   const publicId = `expense/${uuidv4()}/${timeStamp}`;
+    //   const result = await uploadMedia(updatedDetails.filePath, "expenseMedia", publicId);
+    //   if(!result) return next(new ErrorHandler("Error uplaoding photo"));
+    //   media = {
+    //     url: result.secure_url,
+    //     public_id: result.public_id,
+    //   };
+    // }
+
     const updatedExpense = await expense.findByIdAndUpdate(
       expense_id,
       updatedDetails,
@@ -224,6 +239,7 @@ export const deleteExpense = async (req, res, next) => {
 };
 
 export const getExpenseById = async (req, res, next) => {
+  console.log("getting expense...........");
   try {
     const { id } = req.params;
     const curExpense = await findExpenseById(id);
@@ -233,7 +249,7 @@ export const getExpenseById = async (req, res, next) => {
       data : curExpense,
     });
   } catch (error) {
-    console.error(`Error getting expense by Id: ${id}`, error);
+    console.error(`Error getting expense by Id: `, error);
     next(error);
   }
 };
@@ -308,6 +324,6 @@ export const getCustomExpenses = async (req, res, next) => {
     next(error);
   }
 };
-
+ 
 // getExpenseByAutoWalletId
 
