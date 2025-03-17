@@ -239,6 +239,7 @@ export const deleteExpense = async (req, res, next) => {
 };
 
 export const getExpenseById = async (req, res, next) => {
+  console.log("getting expense...........");
   try {
     const { id } = req.params;
     const curExpense = await findExpenseById(id);
@@ -248,7 +249,7 @@ export const getExpenseById = async (req, res, next) => {
       data : curExpense,
     });
   } catch (error) {
-    console.error(`Error getting expense by Id: ${id}`, error);
+    console.error(`Error getting expense by Id: `, error);
     next(error);
   }
 };
