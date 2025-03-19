@@ -33,7 +33,7 @@ const expenseSchema = new mongoose.Schema(
     },
     notes: { type: String },
   },
-  { Timestamp: true }
+  { timestamps: true }
 );
 
 const expense = mongoose.model("expense", expenseSchema);

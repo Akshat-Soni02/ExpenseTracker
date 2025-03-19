@@ -35,7 +35,7 @@ const groupSchema = new mongoose.Schema({
     required: true,
   },
   
-},{timestamps: true});
+},{ timestamps: true });
 
 groupSchema.index({ creator_id: 1, group_title: 1 }, { unique: true });
 

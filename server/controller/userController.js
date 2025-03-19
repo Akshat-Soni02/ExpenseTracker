@@ -8,7 +8,7 @@ import { OAuth2Client } from "google-auth-library";
 
 import path from "path";
 import { fileURLToPath } from "url";
-import { extractTempName, findBorrowersAndRemind, findUserById, sendBorrowerMail } from "../services/userService.js";
+import { extractTempName, findBorrowersAndRemind, findUserById, sendBorrowerMail, sendInviteMail } from "../services/userService.js";
 import { findUserWallets } from "../services/walletService.js";
 import { sendEmail } from "../services/notificationService.js";
 import { findUserGroups } from "../services/groupService.js";
@@ -16,6 +16,7 @@ import { findUserExpenses } from "../services/expenseService.js";
 import { findUserBudgets } from "../services/budgetService.js";
 import { findUserPersonalTransactions } from "../services/personalTransactionService.js";
 import { findUserDetectedTransactions } from "../services/detectedTransactionService.js";
+import { findUserSettlements } from "../services/settlementService.js";
 import { getUserBills } from "../services/billService.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -508,8 +509,25 @@ export const remindBorrower = async (req, res, next) => {
 export const getUserById = async (req, res, next) => {
   const { id } = req.params;
   const user = await findUserById(id);
-  if(user) res.status(200).json({
+  if(user) return res.status(200).json({
     message: "successfully fetched user",
     data: user
   });
+  else return res.status(500).json({
+    message: "Error fetching user"
+  })
+}
+
+export const sendInvites = async (req, res, next) => {
+  try {
+    const {invitees, inviter} = req.body;
+    const code = 123456;
+    invitees.forEach((invitee) => sendInviteMail({inviter, invitee, code}));
+    res.status(200).json({
+      message: "Invited successfully"
+    });
+  } catch (error) {
+    console.log("Error sending invites", error);
+    next(error);
+  }
 }
