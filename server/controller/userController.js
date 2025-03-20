@@ -15,6 +15,7 @@ import { findUserGroups } from "../services/groupService.js";
 import { findUserExpenses } from "../services/expenseService.js";
 import { findUserBudgets } from "../services/budgetService.js";
 import { findUserPersonalTransactions } from "../services/personalTransactionService.js";
+import { findUserSettlements } from "../services/settlementService.js";
 import { findUserDetectedTransactions } from "../services/detectedTransactionService.js";
 import { getUserBills } from "../services/billService.js";
 
@@ -510,6 +511,7 @@ export const remindBorrower = async (req, res, next) => {
 
 export const getUserById = async (req, res, next) => {
   const { id } = req.params;
+  console.log("Hello asdfasdf",id);
   const user = await findUserById(id);
   if(user) res.status(200).json({
     message: "successfully fetched user",

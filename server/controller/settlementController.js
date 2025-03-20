@@ -11,7 +11,6 @@ export const createSettlement = async (req, res, next) => {
   //if successfull we will first change wallet state then group then personal
   try {
     const id = req.user._id;
-    const { status } = req.query;
     let {
       settlement_description,
       payer_wallet_id,
@@ -20,6 +19,7 @@ export const createSettlement = async (req, res, next) => {
       receiver_id,
       amount,
       group_id,
+      status,
     } = req.body;
 
     //create settlement
@@ -27,8 +27,9 @@ export const createSettlement = async (req, res, next) => {
     //if its group then group changes
     //then personal changes
     console.log(amount);
-
+    console.log(status);
     if (status === "sent") {
+      console.log(status);
       payer_id = id;
       if (typeof payer_wallet_id !== "undefined") {
         await modifyWalletBalance({id: payer_wallet_id, amount: -amount});
@@ -37,6 +38,7 @@ export const createSettlement = async (req, res, next) => {
       await handleSettlementRelations({payer_id, receiver_id, amount, group_id});
     } else if (status === "receiver") {
       receiver_id = id;
+      console.log(status);
       if (typeof receiver_wallet_id !== "undefined") {
         console.log(amount);
         await modifyWalletBalance({id: receiver_wallet_id, amount});
