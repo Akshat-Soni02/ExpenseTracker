@@ -10,6 +10,8 @@ export const handleExpenseRelations = async ({
   group_id,
   total_amount,
 }) => {
+  console.log("bbb: ", borrowers);
+  console.log("ttt: ", total_amount);
   //Update Wallet
   if (wallet_id)
     await modifyWalletBalance({ id: wallet_id, amount: -total_amount });

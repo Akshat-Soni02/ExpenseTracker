@@ -14,10 +14,14 @@ export const extractTempName = (email) => {
 
 export const sendBorrowerMail = ({borrowerProfile, lender, amount, group}) => {
   if(group) {
-    sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount} in group ${group.group_title}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Tracker Team`});
+    sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount} in group ${group.group_title}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Ease Team`});
   } else {
-    sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Tracker Team`});
+    sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Ease Team`});
   }
+}
+
+export const sendInviteMail = ({inviter, invitee, code}) => {
+  sendEmail({toMail: invitee.email, subject: "Invitation to join ExpenseEase", text: `Hey ${invitee.name},\n\n${inviter.name} has invited you to join ExpenseEase!.\n\nClick the link below to accept the invite:\n\nhttps://yourapp.com/invite?referral=XYZ123.\n\nDon't have the app yet?\n\nDownload it here:https://yourapp.com/invite?referral=XYZ123.\n\nOr sign up manually using this email and enter this referral code while registration: ${code}\n\nBest,\nExpenseEase Team`});
 }
 
 export const findBorrowersAndRemind = async(id) => {

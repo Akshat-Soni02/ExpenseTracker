@@ -23,6 +23,7 @@ import {
   getMyBills,
   remindBorrower,
   getUserById,
+  sendInvites,
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 
@@ -35,6 +36,7 @@ router.post("/login", login);
 router.post("/send-otp", sendOtp);
 router.post("/verify-otp", verifyOtp);
 router.post("/reset-password", resetPassword);
+router.post("/send-invites", isAuthenticated, sendInvites);
 
 //* GET APIs *//
 router.get("/me", isAuthenticated, getMyProfile);

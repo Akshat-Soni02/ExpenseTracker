@@ -9,11 +9,15 @@ import {
   getUserExpenses,
   getCustomExpenses,
 } from "../controller/expenseController.js";
+import multer from "multer";
 
 const router = express.Router();
 
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
 //* POST APIs *//
-router.post("/new", isAuthenticated, createExpense);
+router.post("/new", isAuthenticated, upload.single("media"), createExpense);
 
 //* GET APIs *//
 
@@ -23,7 +27,7 @@ router.get("/custom", isAuthenticated, getCustomExpenses); // Uses query paramet
 router.get("/:id", isAuthenticated, getExpenseById);
 
 //* PUT APIs *//
-router.put("/:expense_id", isAuthenticated, updateExpense);
+router.put("/:expense_id", isAuthenticated, upload.single("media"), updateExpense);
 
 //* DELETE APIs *//
 router.delete("/:id", isAuthenticated, deleteExpense);

@@ -193,9 +193,11 @@ export const deleteSettlement = async (req, res, next) => {
 };
 
 export const getSettlementById = async (req, res, next) => {
+  console.log("getting settlement by id....");
   try {
     const { id } = req.params;
     const curSettlement = await findSettlementById(id);
+    console.log(`the settlement with ${id} is : `, curSettlement);
 
     res.status(200).json({
       message: "Settlement fetched successfully",

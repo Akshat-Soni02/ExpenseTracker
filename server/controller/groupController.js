@@ -155,6 +155,7 @@ export const leaveGroup = async (req, res, next) => {
 };
 
 export const getGroupById = async (req, res, next) => {
+  console.log("Getting group.......");
   try {
     const { id } = req.params;
     const curGroup = await findGroupById(id);
@@ -252,35 +253,48 @@ export const remindAllGroupBorrowers = async (req, res, next) => {
   }
 }
 
-export const getGroupHistory = async (req, res) => {
+export const getGroupHistory = async (req, res, next) => {
   try {
-    const {group_id} = req.params;
+    const { group_id } = req.params;
     const since = req.query.since;
 
     const filter1 = { group_id };
     if (since) {
       filter1.created_at_date_time = { $gte: new Date(since) };
     }
+
     const filter2 = { group_id };
     if (since) {
       filter2.createdAt = { $gte: new Date(since) };
     }
+
     const expenses = await expense.find(filter1).lean();
     const settlements = await settlement.find(filter2).lean();
-    const formattedExpenses = expenses.map(exp => ({ ...exp, type: "expense" }));
-    const formattedSettlements = settlements.map(set => ({ ...set, type: "settlement" }));
+
+    const formattedExpenses = expenses.map(exp => ({
+      ...exp,
+      type: "expense",
+    }));
+
+    const formattedSettlements = settlements.map(set => ({
+      ...set,
+      type: "settlement",
+    }));
+
     const history = [...formattedExpenses, ...formattedSettlements].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => new Date(b.created_at_date_time || b.createdAt) - new Date(a.created_at_date_time || a.createdAt)
     );
+
     res.status(200).json({
-      message: "successfully fetched group history",
-      data: history
+      message: "Successfully fetched group history",
+      data: history,
     });
   } catch (error) {
-    console.log("Error fetching group history");
+    console.log("Error fetching group history:", error);
     next(error);
   }
 };
+
 
 export const addToGroup = async (req, res, next) => {
   try {
