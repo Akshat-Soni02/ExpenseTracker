@@ -124,6 +124,12 @@ export const updateExpense = async (req, res, next) => {
     // media
     // create_at_date_time
 
+    if (req.body.lenders && typeof req.body.lenders === "string") {
+      req.body.lenders = JSON.parse(req.body.lenders);
+  }
+  if ( req.body.borrowers && typeof req.body.borrowers === "string") {
+    req.body.borrowers = JSON.parse(req.body.borrowers);
+}
     //inorder to update expense, first we will find the expense
     // then if members is not present in update then its alright
     // else we need to revert the earlier expense and add the new changes in it
@@ -137,7 +143,6 @@ export const updateExpense = async (req, res, next) => {
     //earlier there was no wallet and now wallet is added
     //earlier there was a wallet and now wallet is updated
     //no wallet update
-
     let newAmount = updatedDetails.total_amount !== undefined ? updatedDetails.total_amount : existingExpense.total_amount;
     if(updatedDetails.wallet_id !== undefined) {
       if(!sufficientBalance({id: updatedDetails.wallet_id, amount: newAmount})) return next(new ErrorHandler("Not Sufficient balances to update expense"));
@@ -148,11 +153,13 @@ export const updateExpense = async (req, res, next) => {
       updatedDetails.borrowers !== undefined
     ) {
       await revertExpenseEffects(existingExpense);
+
       const updatedExpense = await expense.findByIdAndUpdate(
         expense_id,
         updatedDetails,
         { new: true, runValidators: true }
       );
+
       if (!updatedExpense)
         return next(
           new ErrorHandler(
@@ -161,12 +168,12 @@ export const updateExpense = async (req, res, next) => {
           )
         );
 
-
+      console.log("Debughere");
        await handleExpenseRelations({
         lender_id: updatedExpense.lenders[0].user_id.toString(),
         total_amount: updatedExpense.total_amount,
-        wallet_id: updatedExpense?.wallet_id.toString(),
-        group_id: updatedExpense?.group_id.toString(),
+        wallet_id: updatedExpense.wallet_id?.toString(),
+        group_id: updatedExpense.group_id?.toString(),
         borrowers: updatedExpense.borrowers,
       });
       res.status(200).json({
@@ -212,7 +219,7 @@ export const updateExpense = async (req, res, next) => {
           "An expense with this title already exists. Please choose a different name.",
       });
     }
-    console.log("Error updaing expense", error.message);
+    console.log("Error updating expense", error.message);
     next(error);
   }
 };

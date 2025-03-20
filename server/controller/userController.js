@@ -17,7 +17,6 @@ import { findUserBudgets } from "../services/budgetService.js";
 import { findUserPersonalTransactions } from "../services/personalTransactionService.js";
 import { findUserSettlements } from "../services/settlementService.js";
 import { findUserDetectedTransactions } from "../services/detectedTransactionService.js";
-import { findUserSettlements } from "../services/settlementService.js";
 import { getUserBills } from "../services/billService.js";
 
 const __filename = fileURLToPath(import.meta.url);
