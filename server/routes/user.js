@@ -37,6 +37,8 @@ router.post("/send-otp", sendOtp);
 router.post("/verify-otp", verifyOtp);
 router.post("/reset-password", resetPassword);
 router.post("/send-invites", isAuthenticated, sendInvites);
+router.post("/remind-borrowers", isAuthenticated, remindBorrowers);
+router.post("/remind-borrower/:borrower_id", isAuthenticated, remindBorrower);
 
 //* GET APIs *//
 router.get("/me", isAuthenticated, getMyProfile);
@@ -51,8 +53,6 @@ router.get("/personal-transactions", isAuthenticated, getMyPersonalTransactions)
 router.get("/detected-transactions", isAuthenticated, getMyDetectedTransactions);
 router.get("/friends", isAuthenticated, getFriendlyUsers);
 router.get("/current-exchange-status", isAuthenticated, getCurrentExhanges);
-router.get("/remind-borrowers", isAuthenticated, remindBorrowers);
-router.get("/remind-borrower/:borrower_id", isAuthenticated, remindBorrower);
 router.get("/:id", isAuthenticated, getUserById);
 
 //* PUT APIs *//

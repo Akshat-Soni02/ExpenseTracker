@@ -491,10 +491,11 @@ export const remindBorrower = async (req, res, next) => {
   try {
     const id = req.user._id;
     const {borrower_id} = req.params;
-    const curUser = await user.find(id);
+    const curUser = await user.findById(id);
     if(!curUser) return next(new ErrorHandler("Error fetching user details to remaind borrower", 400));
-    const borrowerProfile = await user.find(borrower_id);
-    const borrowerDetails = curUser.lended.find((borrower) => borrower.borrower_id === borrower_id);
+    const borrowerProfile = await user.findById(borrower_id);
+    console.log("borrowerProfile",borrowerProfile);
+    const borrowerDetails = curUser.lended.find((borrower) => borrower.borrower_id.toString() === borrower_id.toString());
     if(!borrowerProfile) return next(new ErrorHandler("Error remainding borrower", 400));
     sendBorrowerMail({lender: curUser, borrowerProfile,amount: borrowerDetails.amount});
     res.status(200).json({

@@ -235,14 +235,19 @@ export const remindAllGroupBorrowers = async (req, res, next) => {
     if(!curGroup) return next(new ErrorHandler("Error fetching group details to remaind borrower", 400));
     const curUser = await user.findById(id);
     if(!curUser) return next(new ErrorHandler("Error fetching user details to remaind borrower", 400));
+    console.log("sending mails to all borrowers");
     curGroup.members.forEach(async(member) => {
-      member.other_members.forEach(async(other_member) => {
-        if(other_member.exchange_status === "lended") {
-          const borrowerProfile = await user.findById(other_member.other_member_id);
-          if(!borrowerProfile) return next(new ErrorHandler("Error remainding borrower", 400));
-          sendBorrowerMail({lender: curUser, borrowerProfile,amount: other_member.amount, group: curGroup});
-        }
-      })
+      if(member.member_id.toString() === id.toString()) {
+        console.log("found borrowers to send mail");
+        member.other_members.forEach(async(other_member) => {
+          if(other_member.exchange_status === "borrowed") {
+            const borrowerProfile = await user.findById(other_member.other_member_id);
+            if(!borrowerProfile) return next(new ErrorHandler("Error remainding borrower", 400));
+            sendBorrowerMail({lender: curUser, borrowerProfile,amount: other_member.amount, group: curGroup});
+            console.log("mail sent to a borrower");
+          }
+        })
+      }
     })
     res.status(200).json({
       message: "all borrowers successfully reminded"
