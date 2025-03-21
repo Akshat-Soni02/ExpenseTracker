@@ -20,8 +20,8 @@ export const sendBorrowerMail = ({borrowerProfile, lender, amount, group}) => {
   }
 }
 
-export const sendInviteMail = ({inviter, invitee, code}) => {
-  sendEmail({toMail: invitee.email, subject: "Invitation to join ExpenseEase", text: `Hey ${invitee.name},\n\n${inviter.name} has invited you to join ExpenseEase!.\n\nClick the link below to accept the invite:\n\nhttps://yourapp.com/invite?referral=XYZ123.\n\nDon't have the app yet?\n\nDownload it here:https://yourapp.com/invite?referral=XYZ123.\n\nOr sign up manually using this email and enter this referral code while registration: ${code}\n\nBest,\nExpenseEase Team`});
+export const sendInviteMail = ({inviter, invitee}) => {
+  sendEmail({toMail: invitee.email, subject: "Invitation to join ExpenseEase", text: `Hey,\n\n${inviter.name} has invited you to join ExpenseEase!\n\nClick the link below to download the app:\n\nhttps://myapp.com\n\nBest,\nExpenseEase Team`});
 }
 
 export const findBorrowersAndRemind = async(id) => {
@@ -38,13 +38,10 @@ export const updateFriendlyExchangeStatesOnLending = async ({
   lender_id,
   borrowers,
 }) => {
-  console.log(lender_id);
   const activeUser = await findUserById(lender_id);
   if (!activeUser)
     throw new Error("No user found to update the friendly states");
 
-  console.log(activeUser);
-  console.log(borrowers);
   for (const { user_id, amount } of borrowers) {
     let prevBorrower = activeUser.lended.find(
       (b) => b.borrower_id.toString() === user_id.toString()
@@ -161,5 +158,23 @@ export const updateFriendlyExchangeStatesOnLending = async ({
       
   }
 };
+
+export const addUserFriend = async ({ inviter, invitee }) => {
+  try {
+    console.log("Invitee: ", invitee);
+    console.log("Inviter: ", inviter);
+    inviter.settled = inviter.settled || [];
+    invitee.settled = invitee.settled || [];
+    inviter.settled.push({ user_id: invitee._id, amount: 0 });
+    invitee.settled.push({ user_id: inviter._id, amount: 0 });
+    await inviter.save();
+    await invitee.save();
+    console.log("Successfully added friends!");
+  } catch (error) {
+    console.log("Error adding user friend:", error);
+    throw new Error("Error adding user friend");
+  }
+};
+
 
 //handleDailyLimitReach

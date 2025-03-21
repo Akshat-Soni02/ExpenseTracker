@@ -1,7 +1,7 @@
 import group from "../models/group.js";
 import user from "../models/user.js";
 import ErrorHandler from "../middlewares/error.js";
-import { findGroupById, formatMembers } from "../services/groupService.js";
+import { findGroupById, formatMembers, simplifyDebtsService } from "../services/groupService.js";
 import {sendBorrowerMail} from "../services/userService.js";
 import expense from "../models/expense.js";
 import settlement from "../models/settlement.js"
@@ -240,7 +240,7 @@ export const remindAllGroupBorrowers = async (req, res, next) => {
       if(member.member_id.toString() === id.toString()) {
         console.log("found borrowers to send mail");
         member.other_members.forEach(async(other_member) => {
-          if(other_member.exchange_status === "borrowed") {
+          if(other_member.exchange_status === "lended") {
             const borrowerProfile = await user.findById(other_member.other_member_id);
             if(!borrowerProfile) return next(new ErrorHandler("Error remainding borrower", 400));
             sendBorrowerMail({lender: curUser, borrowerProfile,amount: other_member.amount, group: curGroup});
@@ -300,18 +300,32 @@ export const getGroupHistory = async (req, res, next) => {
   }
 };
 
-
-export const addToGroup = async (req, res, next) => {
+export const processSimplifyDebts = async (req, res, next) => {
   try {
     const {group_id} = req.params;
-    const {memberIds = []} = req.body;
-
-    const curGroup = await findGroupById(group_id);
-    let prevMemberIds = [];
-    curGroup.members.forEach((member) => prevMemberIds.push(member.member_id));
-    memberIds.forEach((memberId) => prevMemberIds.push(memberId));
-    
+    const curGroup = await group.findById(group_id);
+    if(!curGroup) return next(new ErrorHandler("Error fetching group for simplify debts", 400));
+    let members = curGroup.members.length;
+    await simplifyDebtsService({group: curGroup, memberSize: members});
+    return res.status(200).json({message: "successfully applied simplify debt"});
   } catch (error) {
-    
+    console.log("error processing simplify debt",error);
+    next(error);
   }
 }
+
+
+// export const addToGroup = async (req, res, next) => {
+//   try {
+//     const {group_id} = req.params;
+//     const {memberIds = []} = req.body;
+
+//     const curGroup = await findGroupById(group_id);
+//     let prevMemberIds = [];
+//     curGroup.members.forEach((member) => prevMemberIds.push(member.member_id));
+//     memberIds.forEach((memberId) => prevMemberIds.push(memberId));
+    
+//   } catch (error) {
+    
+//   }
+// }

@@ -7,19 +7,35 @@ import mongoose from "mongoose";
 import { findPersonalTransactionById,findPersonalTransactionByQuery,updatePersonalTransactionType,updatePersonalTransactionWallet,updatePersonalTransactionAmount} from "../services/personalTransactionService.js"
 import { findWalletById,modifyWalletBalance,transferWalletAmounts } from "../services/walletService.js";
 import { findBudgetByCategory,findBudgetById } from "../services/budgetService.js";
+import { v4 as uuidv4 } from 'uuid';
+import { uploadMedia } from "../services/cloudinaryService.js";
 
 
 //Creating a personaltransaction will change wallet and user
 export const createPersonalTransaction = async (req, res, next)=>{
     try {
-        const {transaction_type, description, wallet_id, media, transaction_category, notes,amount, created_at_date_time} = req.body;
+        const {transaction_type, description, wallet_id, transaction_category, notes,amount, created_at_date_time} = req.body;
+        const file = req.file;
         const user_id = req.user._id;
         if (!transaction_type || !description || !wallet_id || !amount) {
             return next(new ErrorHandler("Transaction type, description, amount and wallet id are required", 404));
-        }   
+        }
+
+        let media = null;
+        if(file) {
+            const today = new Date().toISOString().split('T')[0];
+            const mediaPath = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+            const publicId = `personalTransaction/${uuidv4()}/${today}`;
+            const result = await uploadMedia(mediaPath, "personalTransactionMedia", publicId);
+            if(!result) return next(new ErrorHandler("Error uplaoding photo"));
+            media = {
+                url: result.secure_url,
+                public_id: result.public_id,
+            };
+        }
 
         //update wallet
-        const budget_id = null;
+        let budget_id = null;
         if(transaction_type==="expense"){
             await modifyWalletBalance({id: wallet_id,amount: -1*amount});
             if(transaction_category){
@@ -41,8 +57,7 @@ export const createPersonalTransaction = async (req, res, next)=>{
         }
         else{
             await modifyWalletBalance({id:wallet_id,amount});
-        }
-            
+        }            
 
         const newPersonalTransaction = await personalTransaction.create({
             transaction_type,
