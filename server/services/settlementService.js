@@ -6,12 +6,13 @@ import settlement from "../models/settlement.js";
 export const handleSettlementRelations = async ({payer_id, receiver_id, amount, group_id}) => {
     
       //Update Group
-      if (group_id)
+      if (group_id){
+        console.log("HEREGROUP::",group_id);
         await distributeAmount({
           groupId: group_id,
           giverId: payer_id,
           borrowers: [{user_id: receiver_id, amount}],
-        });
+        });}
     
       console.log("group modified");
     

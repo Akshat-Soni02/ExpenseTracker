@@ -18,13 +18,10 @@ export const isAuthenticated = async (req, res, next) => {
         return res.status(404).json({ success: false, message: "User not found" });
       }
   
-    //   next();
+      return next();
     } catch (error) {
       console.error("Authentication Error:", error);
-      res.status(401).json({ message: "Invalid Token" });
-    }
-    finally{
-        next();
+      return res.status(401).json({ message: "Invalid Token" });
     }
   };
   

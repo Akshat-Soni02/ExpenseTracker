@@ -40,20 +40,23 @@ export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
     for (const { user_id: borrowerId, amount } of borrowers) {
         const lender = currGroup.members.find(m => m.member_id.toString() === giverId);
         if (lender) {
-            const res = updateTransaction(lender, borrowerId.toString(), amount, "borrowed"); //settled
+            console.log("IN group lender");
+            const res = updateTransaction(lender, borrowerId.toString(), amount, "lended"); //settled
             if(!res)
             {
                 // return error 
             }
 
         }
-
-        const borrower = currGroup.members.find(m => m.member_id.toString() === borrowerId);
+        console.log("borrowerId",borrowerId.toString());
+        const borrower = currGroup.members.find(m => m.member_id.toString() === borrowerId.toString());
         if (borrower) {
-            updateTransaction(borrower, giverId, amount, "lended"); //settled
+            console.log("IN group borrower");
+            updateTransaction(borrower, giverId, amount, "borrowed"); //settled
         }
     }
     await currGroup.save();
+    console.log("Grouppppp done");
 };
 
 const updateTransaction = (member, otherMemberId, amount, type) => {
@@ -61,7 +64,7 @@ const updateTransaction = (member, otherMemberId, amount, type) => {
         t => t.other_member_id.toString() === otherMemberId
     );
     if (!transaction) return null;
-
+    console.log("Here Transaction",transaction);
     if (transaction.exchange_status === type) {
         transaction.amount += amount;
     } else if (transaction.exchange_status === "settled") {

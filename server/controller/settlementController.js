@@ -21,18 +21,19 @@ export const createSettlement = async (req, res, next) => {
       group_id,
       status,
     } = req.body;
-
+    console.log("payer_wallet_id",typeof receiver_wallet_id);
     //create settlement
     //wallet changes
     //if its group then group changes
     //then personal changes
-    console.log(amount);
+    console.log("Type of amount",typeof amount);
     console.log(status);
     if (status === "sent") {
       console.log(status);
       payer_id = id;
       if (typeof payer_wallet_id !== "undefined") {
-        await modifyWalletBalance({id: payer_wallet_id, amount: -amount});
+        console.log("HEREpayer");
+        await modifyWalletBalance({id: payer_wallet_id, amount: amount*-1});
         console.log("Wallet modified");
       }
       await handleSettlementRelations({payer_id, receiver_id, amount, group_id});
@@ -40,6 +41,7 @@ export const createSettlement = async (req, res, next) => {
       receiver_id = id;
       console.log(status);
       if (typeof receiver_wallet_id !== "undefined") {
+        console.log("HEREreceiver");
         console.log(amount);
         await modifyWalletBalance({id: receiver_wallet_id, amount});
         console.log("Wallet modified");
@@ -65,7 +67,7 @@ export const createSettlement = async (req, res, next) => {
       data : newSettlement,
     });
   } catch (error) {
-    console.log("Error creating settlement");
+    console.log("Error creating settlement:",error);
     next(error);
   }
 };
