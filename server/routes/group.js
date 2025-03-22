@@ -9,6 +9,7 @@ import {
   remindGroupBorrower,
   remindAllGroupBorrowers,
   getGroupHistory,
+  processSimplifyDebts,
 } from "../controller/groupController.js";
 
 const router = express.Router();
@@ -17,6 +18,7 @@ const router = express.Router();
 router.post("/new", isAuthenticated, createGroup);
 router.post("/remind-group-borrower/:group_id", isAuthenticated, remindGroupBorrower);
 router.post("/remind-all-group-borrowers/:group_id", isAuthenticated, remindAllGroupBorrowers);
+router.post("/simplify-debt/:group_id", isAuthenticated, processSimplifyDebts);
 
 //* GET APIs *//
 router.get("/leave/:groupId", isAuthenticated, leaveGroup);

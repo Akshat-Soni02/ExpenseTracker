@@ -8,7 +8,7 @@ import { OAuth2Client } from "google-auth-library";
 
 import path from "path";
 import { fileURLToPath } from "url";
-import { extractTempName, findBorrowersAndRemind, findUserById, sendBorrowerMail, sendInviteMail } from "../services/userService.js";
+import { addUserFriend, extractTempName, findBorrowersAndRemind, findUserById, sendBorrowerMail, sendInviteMail } from "../services/userService.js";
 import { findUserWallets } from "../services/walletService.js";
 import { sendEmail } from "../services/notificationService.js";
 import { findUserGroups } from "../services/groupService.js";
@@ -18,6 +18,7 @@ import { findUserPersonalTransactions } from "../services/personalTransactionSer
 import { findUserSettlements } from "../services/settlementService.js";
 import { findUserDetectedTransactions } from "../services/detectedTransactionService.js";
 import { getUserBills } from "../services/billService.js";
+import { v4 as uuidv4 } from 'uuid';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -172,8 +173,22 @@ export const updateUser = async (req, res, next) => {
     const id = req.user.id;
     const updatedDetails = req.body;
     console.log("Updated Details: ", updatedDetails);
+    const file = req.file;
     // These details can be updated here
     // name, phone number, daily limit
+    let media = null;
+    if(file) {
+        const today = new Date().toISOString().split('T')[0];
+        const mediaPath = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+        const publicId = `user/${uuidv4()}/${today}`;
+        const result = await uploadMedia(mediaPath, "userProfiles", publicId);
+        if(!result) return next(new ErrorHandler("Error uplaoding photo"));
+        media = {
+            url: result.secure_url,
+            public_id: result.public_id,
+        };
+        updatedDetails.profile_photo = media;
+    }
     const updatedUser = await user.findByIdAndUpdate(id, updatedDetails, {new: true, runValidators: true});
     console.log("User updated:  ",updatedUser);
     if(!updateUser) return next(new ErrorHandler("Error updating user", 400));
@@ -390,7 +405,7 @@ export const getMyDetectedTransactions = async (req, res, next) => {
 };
 
 
-export const getFriendlyUsers = async (req, res) => {
+export const getFriendlyUsers = async (req, res, next) => {
   try {
     const id = req.user.id;
     const curUser = await user.findById(id).select("lended borrowed settled");
@@ -436,7 +451,7 @@ export const getFriendlyUsers = async (req, res) => {
       _id: friend._id,
       name: friend.name,
       email: friend.email,
-      profile_photo: friend.profile_photo?.url,
+      profile_photo: friend.profile_photo?.url || "https://res.cloudinary.com/dgn8yfqs4/image/upload/v1740736643/userProfiles/akshatsonibhl99%40gmail.com.jpg",
       amount: friendsMap.get(friend._id.toString()) || 0,
       type: typeMap.get(friend._id.toString()) || undefined,
 
@@ -510,6 +525,38 @@ export const remindBorrower = async (req, res, next) => {
   }
 }
 
+export const autoAddFutureFriends = async (req, res, next) => {
+  try {
+    const {email} = req.body;
+    console.log("email of user of auto friends", email);
+    const curUser = await user.findOne({email});
+    console.log("adding auto friends...");
+    if (!curUser) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+    console.log("found user to add auto friends....");
+    const userEmail = curUser.email;
+    const reqFriends = await user.find({ "futureFriends.email": userEmail });
+    console.log("iterating array to add auto friends....");
+    for (const friend of reqFriends) {
+      await addUserFriend({ invitee: friend, inviter: curUser });
+      console.log("thesee many friends");
+    }
+    await user.updateMany(
+      { "futureFriends.email": userEmail },
+      { $pull: { futureFriends: { email: userEmail } } }
+    );
+
+    return res.status(200).json({
+      message: "Successfully auto-added friends",
+    });
+  } catch (error) {
+    console.log("Error auto-adding friends", error);
+    next(error);
+  }
+};
+
+
 export const getUserById = async (req, res, next) => {
   const { id } = req.params;
   console.log("Hello asdfasdf",id);
@@ -523,16 +570,37 @@ export const getUserById = async (req, res, next) => {
   })
 }
 
-export const sendInvites = async (req, res, next) => {
+export const addUserFriends = async (req, res, next) => {
   try {
-    const {invitees, inviter} = req.body;
-    const code = 123456;
-    invitees.forEach((invitee) => sendInviteMail({inviter, invitee, code}));
-    res.status(200).json({
-      message: "Invited successfully"
+    const id = req.user._id;
+    const { invitees } = req.body;
+    console.log("Invitees:", invitees);
+
+    const curUser = await user.findById(id);
+    if (!curUser) {
+      return next(new ErrorHandler("Error fetching user details to add friends", 400));
+    }
+
+    for (const invitee of invitees) {
+      let curMail = invitee.email;
+      const curInv = await user.findOne({ email: curMail });
+
+      if (!curInv) {
+        curUser.futureFriends = curUser.futureFriends || [];
+        curUser.futureFriends.push({ email: curMail });
+
+        sendInviteMail({ inviter: curUser, invitee });
+        await curUser.save();
+      } else {
+        await addUserFriend({ invitee: curInv, inviter: curUser });
+      }
+    }
+
+    return res.status(200).json({
+      message: "Successfully added friends",
     });
   } catch (error) {
-    console.log("Error sending invites", error);
+    console.log("Error sending invites:", error);
     next(error);
   }
-}
+};
