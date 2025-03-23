@@ -108,9 +108,11 @@ export const deleteGroup = async (req, res, next) => {
 
 export const leaveGroup = async (req, res, next) => {
   try {
+    console.log("In leave group");
     const id = req.user._id.toString();
     const { groupId } = req.params;
-
+console.log("id",id);
+console.log("groupid",groupId);
     const curGroup = await group.findById(groupId).select("members");
 
     if (!curGroup) {
@@ -189,7 +191,8 @@ export const getGroupExchangeStateWithOthers = async (req, res, next) => {
           other_member_name: curUser?.name || "Unknown",
           other_member_profile_photo: curUser?.profile_photo?.url || "",
           amount: other_member.amount,
-          exchange_status: other_member.exchange_status
+          exchange_status: other_member.exchange_status,
+          other_member_id:other_member.other_member_id,
         };
       })
     );
@@ -304,6 +307,7 @@ export const processSimplifyDebts = async (req, res, next) => {
   try {
     const {group_id} = req.params;
     const curGroup = await group.findById(group_id);
+    console.log("IN Simplify Debts");
     if(!curGroup) return next(new ErrorHandler("Error fetching group for simplify debts", 400));
     let members = curGroup.members.length;
     await simplifyDebtsService({group: curGroup, memberSize: members});

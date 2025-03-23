@@ -54,6 +54,7 @@ export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
         }
     }
     await currGroup.save();
+    console.log("Grouppppp done");
 };
 
 const updateTransaction = (member, otherMemberId, amount, type) => {
@@ -61,7 +62,7 @@ const updateTransaction = (member, otherMemberId, amount, type) => {
         t => t.other_member_id.toString() === otherMemberId
     );
     if (!transaction) return null;
-
+    console.log("Here Transaction",transaction);
     if (transaction.exchange_status === type) {
         transaction.amount += amount;
     } else if (transaction.exchange_status === "settled") {

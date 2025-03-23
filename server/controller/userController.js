@@ -15,8 +15,8 @@ import { findUserGroups } from "../services/groupService.js";
 import { findUserExpenses } from "../services/expenseService.js";
 import { findUserBudgets } from "../services/budgetService.js";
 import { findUserPersonalTransactions } from "../services/personalTransactionService.js";
-import { findUserDetectedTransactions } from "../services/detectedTransactionService.js";
 import { findUserSettlements } from "../services/settlementService.js";
+import { findUserDetectedTransactions } from "../services/detectedTransactionService.js";
 import { getUserBills } from "../services/billService.js";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -141,6 +141,7 @@ export const login = async (req, res, next) => {
 
 export const updateProfilePhoto = async (req, res, next) => {
   try {
+    console.log("here");
     const id = req.user._id;
     const curUser = await findUserById(id);
     if (!curUser) {
@@ -171,6 +172,7 @@ export const updateUser = async (req, res, next) => {
   try {
     const id = req.user.id;
     const updatedDetails = req.body;
+    console.log("Updated Details: ", updatedDetails);
     const file = req.file;
     // These details can be updated here
     // name, phone number, daily limit
@@ -192,6 +194,7 @@ export const updateUser = async (req, res, next) => {
         updatedDetails.profile_photo = media;
     }
     const updatedUser = await user.findByIdAndUpdate(id, updatedDetails, {new: true, runValidators: true});
+    console.log("User updated:  ",updatedUser);
     if(!updateUser) return next(new ErrorHandler("Error updating user", 400));
     res.status(200).json({ message: "Details updated successfully", data: updatedUser });
   } catch (error) {
@@ -309,7 +312,7 @@ export const getMyGroups = async (req, res, next) => {
 
 export const getMyExpenses = async(req, res, next) => {
   try {
-    const id = req.user._id;
+    const id = req.user.id;
     const expenses = await findUserExpenses({userId: id});
     res.status(200).json({
       message: "successfully retreived user expenses",
@@ -560,6 +563,7 @@ export const autoAddFutureFriends = async (req, res, next) => {
 
 export const getUserById = async (req, res, next) => {
   const { id } = req.params;
+  console.log("Hello asdfasdf",id);
   const user = await findUserById(id);
   if(user) return res.status(200).json({
     message: "successfully fetched user",
