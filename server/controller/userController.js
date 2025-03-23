@@ -3,7 +3,7 @@ import user from "../models/user.js";
 import { sendToken } from "../utils/features.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-import { uploadMedia } from "../services/cloudinaryService.js";
+import { deleteMedia, uploadMedia } from "../services/cloudinaryService.js";
 import { OAuth2Client } from "google-auth-library";
 
 import path from "path";
@@ -175,6 +175,7 @@ export const updateUser = async (req, res, next) => {
     // These details can be updated here
     // name, phone number, daily limit
     let media = null;
+    let prevPublicId = null;
     if(file) {
         const today = new Date().toISOString().split('T')[0];
         const mediaPath = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
@@ -185,6 +186,9 @@ export const updateUser = async (req, res, next) => {
             url: result.secure_url,
             public_id: result.public_id,
         };
+        const curUser = await user.findById(id).select("profile_photo");
+        if(typeof curUser === undefined) return next(new ErrorHandler("Error getting userDetails to update profile photo"));
+        if(curUser?.profile_photo?.public_id)  await deleteMedia(curUser.profile_photo.public_id);
         updatedDetails.profile_photo = media;
     }
     const updatedUser = await user.findByIdAndUpdate(id, updatedDetails, {new: true, runValidators: true});
@@ -570,7 +574,7 @@ export const addUserFriends = async (req, res, next) => {
   try {
     const id = req.user._id;
     const { invitees } = req.body;
-    console.log("Invitees:", invitees);
+    // console.log("Invitees:", invitees);
 
     const curUser = await user.findById(id);
     if (!curUser) {

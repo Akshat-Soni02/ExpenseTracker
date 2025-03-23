@@ -10,7 +10,7 @@ export const handleExpenseRelations = async ({
   group_id,
   total_amount,
 }) => {
-  console.log("bbb: ", borrowers);
+  // console.log("bbb: ", borrowers);
   console.log("ttt: ", total_amount);
   //Update Wallet
   if (wallet_id)
@@ -27,7 +27,7 @@ export const handleExpenseRelations = async ({
       console.log("Error distributing amount:", err);
   }
 
-  console.log("lender_id", lender_id);
+  // console.log("lender_id", lender_id);
   
     
   //Update Users friendly state
@@ -50,7 +50,7 @@ export const revertExpenseEffects = async (curExpense) => {
       await handleExpenseRelations({
         lender_id: borrower.user_id.toString(),
         borrowers: [{ user_id: curExpense.lenders[0].user_id.toString(), amount: borrower.amount }],
-        group_id: curExpense?.group_id.toString(),
+        group_id: curExpense?.group_id?.toString(),
       });
     }
   } catch (error) {

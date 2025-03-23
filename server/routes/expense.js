@@ -30,6 +30,6 @@ router.get("/:id", isAuthenticated, getExpenseById);
 router.put("/:expense_id", isAuthenticated, upload.single("media"), updateExpense);
 
 //* DELETE APIs *//
-router.delete("/:id", isAuthenticated, deleteExpense);
+router.delete("/:expense_id", isAuthenticated, deleteExpense);
 
 export default router;

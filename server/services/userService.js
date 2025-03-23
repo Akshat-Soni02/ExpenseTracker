@@ -21,7 +21,7 @@ export const sendBorrowerMail = ({borrowerProfile, lender, amount, group}) => {
 }
 
 export const sendInviteMail = ({inviter, invitee}) => {
-  sendEmail({toMail: invitee.email, subject: "Invitation to join ExpenseEase", text: `Hey,\n\n${inviter.name} has invited you to join ExpenseEase!\n\nClick the link below to download the app:\n\nhttps://myapp.com\n\nBest,\nExpenseEase Team`});
+  sendEmail({toMail: invitee.email, subject: "Invitation to join ExpenseEase", text: `Hey,\n\n${inviter.name} has invited you to join ExpenseEase!\n\nClick the link below to download the app:\n\nhttps://myapp.com\n\nYou will be added as friend to ${inviter.name} as you create account.\n\nBest,\nExpenseEase Team`});
 }
 
 export const findBorrowersAndRemind = async(id) => {
@@ -49,7 +49,7 @@ export const updateFriendlyExchangeStatesOnLending = async ({
     if (prevBorrower) {
       console.log("Its previous borrower");
       prevBorrower.amount += amount;
-
+      console.log("prevBorro",prevBorrower);
       const prevBorrowerProfile = await findUserById(prevBorrower.borrower_id.toString()); 
       prevBorrowerProfile.borrowed.forEach((lender) => {
         if (lender.lender_id.toString() === lender_id.toString()) {
@@ -67,7 +67,7 @@ export const updateFriendlyExchangeStatesOnLending = async ({
     );
     if (prevLender) {
       console.log("Its previous lender");
-      console.log(prevLender);
+      // console.log(prevLender);
       const prevLenderId = prevLender.lender_id.toString();
       console.log(prevLenderId);
 

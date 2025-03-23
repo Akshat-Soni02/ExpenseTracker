@@ -16,7 +16,21 @@ export const uploadMedia = async (mediaPath, folderName, public_id) => {
     return result;
   } catch (error) {
     console.log("Error uploading media", error);
+    throw error;
   }
 };
 
-//function to delete media upon deletion of corresponding data
+export const deleteMedia = async (public_id) => {
+  try {
+    const result = await cloudinary.uploader.destroy(public_id);
+    if (result.result === "ok") {
+      console.log(`Media with public_id: ${public_id} deleted successfully.`);
+      return result;
+    } else {
+      console.warn(`Failed to delete media with public_id: ${public_id}`);
+    }
+  } catch (error) {
+    console.error("Error deleting media:", error);
+    throw error;
+  }
+};

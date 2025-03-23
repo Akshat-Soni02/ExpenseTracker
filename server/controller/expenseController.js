@@ -27,6 +27,7 @@ export const createExpense = async (req, res, next) => {
     } = req.body;
     let lenders = JSON.parse(req.body.lenders);
     let borrowers = JSON.parse(req.body.borrowers);
+    total_amount = Number(total_amount);
     const file = req.file;
     const user_id = req.user._id;
     // if (!description || !total_amount) {
@@ -69,6 +70,14 @@ export const createExpense = async (req, res, next) => {
       };
     }
 
+    await handleExpenseRelations({
+      lender_id: lenders[0].user_id,
+      total_amount,
+      wallet_id,
+      group_id,
+      borrowers,
+    });
+
     const newExpense = await expense.create({
       description,
       lenders,
@@ -83,20 +92,8 @@ export const createExpense = async (req, res, next) => {
       media
     });
 
-    console.log(lenders);
-    console.log(borrowers);
-
     if (!newExpense)
       return next(new ErrorHandler("Cannot create new expense", 400));
-
-    await handleExpenseRelations({
-      lender_id: lenders[0].user_id,
-      total_amount,
-      wallet_id,
-      group_id,
-      borrowers,
-    });
-
 
     res.status(201).json({
       message: "Expense created successfully",
@@ -113,6 +110,16 @@ export const updateExpense = async (req, res, next) => {
   try {
     const { expense_id } = req.params;
     const updatedDetails = req.body;
+    if(!updatedDetails) {
+      console.log("no details to update");
+      return res.status(200).json({
+        message: "No details to update expense"
+      });
+    }
+    console.log(updatedDetails);
+    if(updatedDetails.lenders) updatedDetails.lenders = JSON.parse(updatedDetails.lenders);
+    if(updatedDetails.borrowers) updatedDetails.borrowers = JSON.parse(updatedDetails.borrowers);
+    if(updatedDetails.total_amount) updatedDetails.total_amount = Number(updatedDetails.total_amount);
     // the updated details might contain
     // description,
     // lenders,
@@ -161,12 +168,12 @@ export const updateExpense = async (req, res, next) => {
           )
         );
 
-
+      console.log("reverted the previous expense effects");
        await handleExpenseRelations({
         lender_id: updatedExpense.lenders[0].user_id.toString(),
         total_amount: updatedExpense.total_amount,
-        wallet_id: updatedExpense?.wallet_id.toString(),
-        group_id: updatedExpense?.group_id.toString(),
+        wallet_id: updatedExpense?.wallet_id?.toString(),
+        group_id: updatedExpense?.group_id?.toString(),
         borrowers: updatedExpense.borrowers,
       });
       res.status(200).json({
@@ -222,7 +229,7 @@ export const deleteExpense = async (req, res, next) => {
     // find the expense
     // revert all changes
     // delete expense
-
+    console.log("deleting the expense...");
     const { expense_id } = req.params;
     const curExpense = await expense.findById(expense_id);
     if (!curExpense)

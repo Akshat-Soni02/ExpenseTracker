@@ -187,7 +187,7 @@ export const getGroupExchangeStateWithOthers = async (req, res, next) => {
         const curUser = await user.findById(other_member.other_member_id).select("name profile_photo");
         return {
           other_member_name: curUser?.name || "Unknown",
-          other_member_profile_photo: curUser?.profile_photo || "",
+          other_member_profile_photo: curUser?.profile_photo?.url || "",
           amount: other_member.amount,
           exchange_status: other_member.exchange_status
         };

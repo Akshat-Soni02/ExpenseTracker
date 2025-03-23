@@ -38,7 +38,8 @@ export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
     }
 
     if (!currGroup) throw new Error("No group with the given ID");
-    const lender = currGroup.members.find(m => m.member_id.toString() === giverId);
+    console.log("this is the giver id,", giverId);
+    const lender = currGroup.members.find(m => m.member_id.toString() === giverId.toString());
     if(!lender) throw new Error("lender not found");
     for (const { user_id: borrowerId, amount } of borrowers) {
         const res = updateTransaction(lender, borrowerId.toString(), amount, "lended"); //settled
@@ -47,7 +48,7 @@ export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
             throw new Error("cannot update group info for adding expense");
             // return error 
         }
-        const borrower = currGroup.members.find(m => m.member_id.toString() === borrowerId);
+        const borrower = currGroup.members.find(m => m.member_id.toString() === borrowerId.toString());
         if (borrower) {
             updateTransaction(borrower, giverId, amount, "borrowed"); //settled
         }
@@ -82,6 +83,7 @@ const updateTransaction = (member, otherMemberId, amount, type) => {
             transaction.amount -= amount;
         }
     }
+    transaction.amount = transaction.amount;
     const updatedMember = member;
     updatedMember.otherMembers = transaction;
 
