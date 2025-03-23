@@ -41,6 +41,7 @@ export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
     console.log("this is the giver id,", giverId);
     const lender = currGroup.members.find(m => m.member_id.toString() === giverId.toString());
     if(!lender) throw new Error("lender not found");
+    console.log("borrowers in hereeeee,", borrowers);
     for (const { user_id: borrowerId, amount } of borrowers) {
         const res = updateTransaction(lender, borrowerId.toString(), amount, "lended"); //settled
         if(!res)
@@ -50,7 +51,7 @@ export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
         }
         const borrower = currGroup.members.find(m => m.member_id.toString() === borrowerId.toString());
         if (borrower) {
-            updateTransaction(borrower, giverId, amount, "borrowed"); //settled
+            updateTransaction(borrower, giverId.toString(), amount, "borrowed"); //settled
         }
     }
     await currGroup.save();
@@ -420,17 +421,18 @@ const simplifyDebts = (group) => {
     }
     let n = creditors.length + debtors.length;
     console.log(simplifiedTransactions);
-    return {transactions: simplifiedTransactions, n};
+    // return {transactions: simplifiedTransactions, n};
+    return simplifiedTransactions;
 };
 
-function transactionsToMatrix(transactions, n) {
+function transactionsToMatrix(transactions, n, keysArray) {
     let uniqueKeys = new Set();
     transactions.forEach(({ from, to }) => {
         uniqueKeys.add(from);
         uniqueKeys.add(to);
     });
 
-    let keysArray = Array.from(uniqueKeys).slice(0, n);
+    // let keysArray = Array.from(uniqueKeys).slice(0, n);
     let keyToIndex = Object.fromEntries(keysArray.map((key, i) => [key, i]));
 
     let matrix = Array.from({ length: n }, () => Array(n).fill(0));
@@ -444,7 +446,7 @@ function transactionsToMatrix(transactions, n) {
         }
     });
 
-    return { matrix, keysArray };
+    return matrix;
 }
 
 
@@ -538,13 +540,16 @@ const updateUserToSimplify = async (matrix, keysArray) => {
 
 export const simplifyDebtsService = async ({group, memberSize}) => {
     //get simplified debts
-    let {transactions, n} = simplifyDebts(group);
+    let keysArray = [];
+    let n = memberSize;
+    group.members.forEach((member) => keysArray.push(member.member_id));
+    let transactions = simplifyDebts(group, keysArray);
     console.log("transsjfakldj",transactions);
     console.log("nnnn", n);
     if(!transactions) throw new Error("Error getting simplify debts transactions");
     if(transactions.length === 0) return;
     //convert simplified debts into matrix format
-    let { matrix: simplifyMatrix, keysArray } = transactionsToMatrix(transactions, n);
+    let simplifyMatrix = transactionsToMatrix(transactions, n, keysArray);
     if(!simplifyMatrix) throw new Error("Error getting simplify matrix from transactions");
     if(!keysArray) throw new Error("Error getting keysArray transactions");
     console.log("keyarray", keysArray);

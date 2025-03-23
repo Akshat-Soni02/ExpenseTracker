@@ -7,7 +7,6 @@ const personalTransactionSchema = new mongoose.Schema(
     wallet_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "wallet",
-      required: true,
     },
     media: {
       url: { type: String },

@@ -132,7 +132,7 @@ console.log("groupid",groupId);
     });
 
     if (hasPendingDues) {
-      return next(new ErrorHandler("User has pending dues to clear", 400));
+      return next(new ErrorHandler("You have pending dues to clear", 400));
     }
 
     curGroup.members = curGroup.members.filter(

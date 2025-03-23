@@ -79,6 +79,7 @@ export const updateBudget = async (req, res, next) => {
         try{
             const { id } = req.params;
             const user_id = req.user._id; 
+            console.log("delete budget is called.....")
 
             const existingBudget = await findBudgetById(id);
             if (!existingBudget) {

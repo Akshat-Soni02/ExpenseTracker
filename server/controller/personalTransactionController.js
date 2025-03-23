@@ -17,10 +17,11 @@ export const createPersonalTransaction = async (req, res, next)=>{
         const {transaction_type, description, wallet_id, transaction_category, notes,amount, created_at_date_time} = req.body;
         const file = req.file;
         const user_id = req.user._id;
-        if (!transaction_type || !description || !wallet_id || !amount) {
+        if (!transaction_type || !description || !amount) {
             return next(new ErrorHandler("Transaction type, description, amount and wallet id are required", 404));
         }
 
+        console.log("personal transaction new ....");
         let media = null;
         if(file) {
             const today = new Date().toISOString().split('T')[0];
@@ -37,9 +38,10 @@ export const createPersonalTransaction = async (req, res, next)=>{
         //update wallet
         let budget_id = null;
         if(transaction_type==="expense"){
-            await modifyWalletBalance({id: wallet_id,amount: -1*amount});
+            if(wallet_id) await modifyWalletBalance({id: wallet_id,amount: -1*amount});
             if(transaction_category){
-                const existingBudget = await findBudgetByCategory(transaction_category.toString());
+                console.log("here in personal transactionnn");
+                const existingBudget = await findBudgetByCategory(transaction_category.toString(), user_id);
                 if(existingBudget){
                     existingBudget.current_spend+=amount;
                     await existingBudget.save();
@@ -47,16 +49,17 @@ export const createPersonalTransaction = async (req, res, next)=>{
                 }
             }
             else{
-                const existingBudget = await findBudgetByCategory("general");
+                const existingBudget = await findBudgetByCategory("general",user_id);
                 if(existingBudget){
                     existingBudget.current_spend+=amount;
                     await existingBudget.save();
                     budget_id = existingBudget._id;
                 }
+                console.log("here now in pt");
             }
         }
         else{
-            await modifyWalletBalance({id:wallet_id,amount});
+            if(wallet_id) await modifyWalletBalance({id:wallet_id,amount});
         }            
 
         const newPersonalTransaction = await personalTransaction.create({
@@ -166,10 +169,10 @@ export const updatePersonalTransaction = async (req, res, next) => {
             }
             
             if(existingPersonalTransaction.transaction_type==="expense"){
-                await modifyWalletBalance(existingPersonalTransaction.wallet_id,existingPersonalTransaction.amount);
+                if(existingPersonalTransaction.wallet_id) await modifyWalletBalance(existingPersonalTransaction.wallet_id,existingPersonalTransaction.amount);
             }
             else{
-                await modifyWalletBalance(existingPersonalTransaction.wallet_id,-1*existingPersonalTransaction.amount);
+                if(existingPersonalTransaction.wallet_id) await modifyWalletBalance(existingPersonalTransaction.wallet_id,-1*existingPersonalTransaction.amount);
 
             }
             
