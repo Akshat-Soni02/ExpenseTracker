@@ -9,7 +9,7 @@ const budgetSchema = new mongoose.Schema(
     period: { type: String },
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
   },
-  { Timestamp: true }
+  { timestamps: true }
 );
 
 const budget = mongoose.model("budget", budgetSchema);

@@ -5,6 +5,7 @@ import bill from "../models/bill.js"
 // in contrast with previous approach the members array does already contian user himself
 export const createBill = async (req, res, next) => {
     try {
+        console.log("Creating Bill");
         const id = req.user._id;
         const {bill_title, amount, bill_category, due_date_time, recurring, members} = req.body;
         
@@ -21,6 +22,7 @@ export const createBill = async (req, res, next) => {
             status: "pending",
             creator_id:id
         });
+        console.log("Bill Created");
         if(!newBill) return next(new ErrorHandler("Error creating new bill",404));
         
         res.status(201).json({
@@ -42,6 +44,7 @@ export const createBill = async (req, res, next) => {
 
 export const handleBillUserStatusUpdate = async (req, res, next) => {
     try {
+        console.log("Updating Bill Status");
         const id = req.user._id.toString();
         const { status } = req.body;
         const { billId } = req.params;
@@ -75,7 +78,7 @@ export const handleBillUserStatusUpdate = async (req, res, next) => {
         }
 
         await curBill.save();
-
+        console.log("Bill status updates");
         res.status(200).json({
             message: "User state updated in bill",
             data: curBill
@@ -97,6 +100,7 @@ export const updateBill = async (req, res, next) => {
         // "recurring" : true
         // members
         // amount
+        console.log("Updating Bill");
         const {id} = req.params;
         const updatedDetails = req.body;
         const updatedBill = await bill.findByIdAndUpdate(id, updatedDetails, {
@@ -104,7 +108,7 @@ export const updateBill = async (req, res, next) => {
             runValidators: true
         });
         if(!updatedBill) return next(new ErrorHandler("Error updating bill", 400));
-
+        console.log("Bill updating successfully");
         res.status(200).json({
             message: "Successfully updated bill",
             data: updatedBill
@@ -124,8 +128,10 @@ export const updateBill = async (req, res, next) => {
 
 export const deleteBill = async (req, res, next) => {
     try {
+        console.log("Deleting Bill");
         const {id} = req.params;
         await bill.findByIdAndDelete(id);
+        console.log("Bill deleted successfully");
         res.status(200).json({
             message: "Successfully deleted bill"
         });
@@ -137,8 +143,10 @@ export const deleteBill = async (req, res, next) => {
 
 export const getBillById = async (req, res, next) => {
     try {
+        console.log("Getting Bill by ID");
         const {id} = req.params;
         const curBill = await bill.findById(id);
+        console.log("Bill fetched successfully");
         res.status(200).json({
             message: "bill fetched successfully",
             data: curBill

@@ -20,7 +20,7 @@ const billSchema = new mongoose.Schema(
       },
     ],
   },
-  { Timestamp: true }
+  { timestamps: true }
 );
 
 billSchema.index({ creator_id: 1, bill_title: 1, bill_number: 1 }, { unique: true });

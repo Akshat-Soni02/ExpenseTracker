@@ -7,7 +7,6 @@ const personalTransactionSchema = new mongoose.Schema(
     wallet_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "wallet",
-      required: true,
     },
     media: {
       url: { type: String },
@@ -20,7 +19,7 @@ const personalTransactionSchema = new mongoose.Schema(
     budget_id: { type: mongoose.Schema.Types.ObjectId, ref: "budget"},
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
   },
-  { Timestamp: true }
+  { timestamps: true }
 );
 
 const personalTransaction = mongoose.model(

@@ -56,12 +56,7 @@ export const updateFriendlyExchangeStatesOnLendings = async (req, res, next) => 
 export const findBudgetByCategorys = async (req, res, next) => {
   const category = "food";
   const budget = await findBudgetByCategory(category);
-  if(budget){
-    console.log(budget);
-  }
-  else{
-    console.log("No budget found");
-  }
+  
   res.status(201).json({
       success: true,
       message: "Expense created successfully"

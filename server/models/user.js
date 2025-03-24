@@ -46,6 +46,11 @@ const userSchema = new mongoose.Schema(
         amount: { type: Number, default: 0 },
       },
     ],
+    futureFriends: [
+      {
+        email: { type: String, required: true }
+      },
+    ],
     otp: { type: String },
     otpExpiry: { type: Date },
     daily_limit: { type: Number },

@@ -4,15 +4,15 @@ import { decryptMessage,extractSMSDetails, encryptMessage } from "../services/de
 
 export const createAutoTransaction = async(req, res, next) => {
     try {
+        console.log("Creating detected transaction");
         const id = req.user._id;
         const {smsMessage} = req.body;
         const encryptedMessage = encryptMessage(smsMessage, process.env.SMS_SECRET_KEY);
-        console.log(encryptedMessage);
         const decryptedMessage = decryptMessage(encryptedMessage, process.env.SMS_SECRET_KEY);
-        console.log("Decrypted:", decryptedMessage);
         const details = extractSMSDetails(decryptedMessage);
-        console.log(details);
 
+
+        
         const newDetectedTransaction = new detectedTransaction({
             transaction_type: details.transaction_type,
             description: details.party,
@@ -24,8 +24,8 @@ export const createAutoTransaction = async(req, res, next) => {
         });
 
         await newDetectedTransaction.save();
-
         if(!newDetectedTransaction) return next(new ErrorHandler("Error creating detected transaction",400));
+        console.log("Detected transaction created successfully");
         res.status(201).json({
             message: "Detected Transaction created successfully",
             data: newDetectedTransaction
@@ -37,8 +37,10 @@ export const createAutoTransaction = async(req, res, next) => {
 
 export const deleteAutoTransaction = async(req, res, next) => {
     try {
+        console.log("Deleting detected transaction");
         const {id} = req.params;
         await detectedTransaction.findByIdAndDelete(id);
+        console.log("Detected transaction deleted successfully");
         res.status(200).json({
             message: "Auto transaction deleted Successfully"
         });
@@ -49,8 +51,10 @@ export const deleteAutoTransaction = async(req, res, next) => {
 
 export const getAutoTransactionById = async (req, res, next) => {
     try {
+        console.log("Fetching detected transaction by id");
         const{id} = req.params;
         const curTransaction =  await detectedTransaction.findById(id);
+        console.log("Fetched detected transaction by id");
         res.status(200).json({
             message: "Successfully fetched",
             data: curTransaction

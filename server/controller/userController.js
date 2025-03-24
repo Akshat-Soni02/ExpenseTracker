@@ -3,20 +3,22 @@ import user from "../models/user.js";
 import { sendToken } from "../utils/features.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-import { uploadMedia } from "../services/cloudinaryService.js";
+import { deleteMedia, uploadMedia } from "../services/cloudinaryService.js";
 import { OAuth2Client } from "google-auth-library";
 
 import path from "path";
 import { fileURLToPath } from "url";
-import { extractTempName, findBorrowersAndRemind, findUserById, sendBorrowerMail } from "../services/userService.js";
+import { addUserFriend, extractTempName, findBorrowersAndRemind, findUserById, sendBorrowerMail, sendInviteMail } from "../services/userService.js";
 import { findUserWallets } from "../services/walletService.js";
 import { sendEmail } from "../services/notificationService.js";
 import { findUserGroups } from "../services/groupService.js";
 import { findUserExpenses } from "../services/expenseService.js";
 import { findUserBudgets } from "../services/budgetService.js";
 import { findUserPersonalTransactions } from "../services/personalTransactionService.js";
+import { findUserSettlements } from "../services/settlementService.js";
 import { findUserDetectedTransactions } from "../services/detectedTransactionService.js";
 import { getUserBills } from "../services/billService.js";
+import { v4 as uuidv4 } from 'uuid';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,7 +39,7 @@ export const googleLogin = async (req, res, next) => {
     //     "id": "104475546723009620506"
     //   }
     // }
-    
+    console.log("Google login");
     const { idToken, user: curUser } = req.body;
     
     if (!idToken) {
@@ -86,8 +88,8 @@ export const googleLogin = async (req, res, next) => {
 
 export const register = async (req, res, next) => {
   try {
+    console.log("Registering");
     const { email, password } = req.body;
-    console.log({email, password});
     let userAlreadyExist = await user.findOne({ email });
     if (userAlreadyExist)
       return next(new ErrorHandler("User Already Exist", 404));
@@ -106,7 +108,6 @@ export const register = async (req, res, next) => {
       },
     });
     if(!newUser) return next(new ErrorHandler("Error creating new user", 400));
-    console.log("Registered User");
 
     sendToken(newUser, res, "Welcome to ExpenseTracker", 201);
   } catch (error) {
@@ -117,6 +118,7 @@ export const register = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
+    console.log("Login");
     const { email, password } = req.body;
     const loggedUser = await user.findOne({ email }).select("+password");
     
@@ -139,6 +141,7 @@ export const login = async (req, res, next) => {
 
 export const updateProfilePhoto = async (req, res, next) => {
   try {
+    console.log("Updating profile photo");
     const id = req.user._id;
     const curUser = await findUserById(id);
     if (!curUser) {
@@ -155,6 +158,7 @@ export const updateProfilePhoto = async (req, res, next) => {
       };
     }
     await curUser.save();
+    console.log("Profile photo updated");
     res.status(200).json({
       message: "Profile udpated successfully"
     });
@@ -167,12 +171,32 @@ export const updateProfilePhoto = async (req, res, next) => {
 
 export const updateUser = async (req, res, next) => {
   try {
+    console.log("Updating user");
     const id = req.user.id;
     const updatedDetails = req.body;
+    const file = req.file;
     // These details can be updated here
     // name, phone number, daily limit
+    let media = null;
+    let prevPublicId = null;
+    if(file) {
+        const today = new Date().toISOString().split('T')[0];
+        const mediaPath = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+        const publicId = `user/${uuidv4()}/${today}`;
+        const result = await uploadMedia(mediaPath, "userProfiles", publicId);
+        if(!result) return next(new ErrorHandler("Error uplaoding photo"));
+        media = {
+            url: result.secure_url,
+            public_id: result.public_id,
+        };
+        const curUser = await user.findById(id).select("profile_photo");
+        if(typeof curUser === undefined) return next(new ErrorHandler("Error getting userDetails to update profile photo"));
+        if(curUser?.profile_photo?.public_id)  await deleteMedia(curUser.profile_photo.public_id);
+        updatedDetails.profile_photo = media;
+    }
     const updatedUser = await user.findByIdAndUpdate(id, updatedDetails, {new: true, runValidators: true});
     if(!updateUser) return next(new ErrorHandler("Error updating user", 400));
+    console.log("Updated user");
     res.status(200).json({ message: "Details updated successfully", data: updatedUser });
   } catch (error) {
     console.log("Error updating user", error);
@@ -182,6 +206,7 @@ export const updateUser = async (req, res, next) => {
 
 export const sendOtp = async (req, res, next) => {
   try {
+      console.log("Sending OTP");
       const { email } = req.body;
       if (!email) return next( new ErrorHandler("Email is required", 400));
 
@@ -198,6 +223,7 @@ export const sendOtp = async (req, res, next) => {
       await curUser.save();
 
       sendEmail({toMail: curUser.email, subject: "ExpenseTracker password reset", text: `Your OTP for resetting your password is ${otp}. It is valid for 5 minutes.`})
+      console.log("Sent OTP");
       res.status(200).json({message: "OTP sent successfully" });
   } catch (error) {
       console.error("Send OTP Error:", error);
@@ -207,6 +233,7 @@ export const sendOtp = async (req, res, next) => {
 
 export const verifyOtp = async (req, res, next) => {
   try {
+    console.log("Verifying OTP");
       const { email, otp } = req.body;
 
       if (!email || !otp) {
@@ -226,6 +253,7 @@ export const verifyOtp = async (req, res, next) => {
       if (hashedOtp !== curUser.otp) {
           return next(new ErrorHandler("Invalid OTP", 400));
       }
+      console.log("Verfied OTP");
       res.status(200).json({ message: "OTP verified" });
   } catch (error) {
       console.error("Verify OTP Error:", error);
@@ -236,6 +264,7 @@ export const verifyOtp = async (req, res, next) => {
 
 export const resetPassword = async (req, res, next) => {
     try {
+      console.log("Resetting Password");
         const { email, newPassword } = req.body;
 
         if (!email || !newPassword) {
@@ -253,6 +282,7 @@ export const resetPassword = async (req, res, next) => {
         curUser.otp = undefined;
         curUser.otpExpiry = undefined;
         await curUser.save();
+        console.log("Reset Password successful");
         res.status(200).json({ message: "Password reset successful" });
     } catch (error) {
         console.error("Reset Password Error:", error);
@@ -261,6 +291,7 @@ export const resetPassword = async (req, res, next) => {
 };
 
 export const logout = async (req, res) => {
+  console.log("Logged out");
   res.status(200).json({
     message: "Successfully logged out"
   });
@@ -268,6 +299,7 @@ export const logout = async (req, res) => {
 
 
 export const getMyProfile = (req, res) => {
+  console.log("Get my profile");
   res.status(200).json({
     data: req.user
   });
@@ -275,8 +307,10 @@ export const getMyProfile = (req, res) => {
 
 export const getMyGroups = async (req, res, next) => {
   try {
+    console.log("Getting my groups");
     const id = req.user._id;
     const groups = await findUserGroups(id);
+    console.log("User groups fetched");
     res.status(200).json({
       message: "successfully retreived user groups",
       data: groups
@@ -289,8 +323,10 @@ export const getMyGroups = async (req, res, next) => {
 
 export const getMyExpenses = async(req, res, next) => {
   try {
-    const id = req.user._id;
+    console.log("Getting my expenses");
+    const id = req.user.id;
     const expenses = await findUserExpenses({userId: id});
+    console.log("User expenses fetched");
     res.status(200).json({
       message: "successfully retreived user expenses",
       data: expenses
@@ -303,11 +339,12 @@ export const getMyExpenses = async(req, res, next) => {
 
 export const getMySettlements = async (req, res, next) => {
   try {
+    console.log("Get my settlements");
     const userId = req.user.id;
     const { group_id } = req.query; // Optional Group ID
 
     const settlements = await findUserSettlements({userId, group_id});
-
+    console.log("User settlements fetched");
     res.status(200).json({
       message : "settlements fetched successfully",
       data : settlements,
@@ -320,8 +357,10 @@ export const getMySettlements = async (req, res, next) => {
 
 export const getMyWallets = async (req, res, next) => {
   try {
+    console.log("Get my wallet");
     const id = req.user._id;
     const wallets = await findUserWallets(id);
+    console.log("User wallets fetched");
     res.status(200).json({
       data: wallets
     });
@@ -333,8 +372,10 @@ export const getMyWallets = async (req, res, next) => {
 
 export const getMyBudgets = async (req, res, next) => {
   try {
+    console.log("Get my budgets");
     const id = req.user._id;
     const budgets = await findUserBudgets(id);
+    console.log("User budget fetched");
     res.status(200).json({
       data: budgets
     });
@@ -346,8 +387,10 @@ export const getMyBudgets = async (req, res, next) => {
 
 export const getMyPersonalTransactions = async (req, res, next) => {
   try {
+    console.log("Get my personal transactions");
     const id = req.user._id;
     const transactions = await findUserPersonalTransactions(id);
+    console.log("Personal transactions fetched");
     res.status(200).json({
       data: transactions
     });
@@ -359,9 +402,11 @@ export const getMyPersonalTransactions = async (req, res, next) => {
 
 export const getMyBills = async(req, res, next) => {
   try {
+    console.log("Get my bills");
     const id = req.user._id;
     const {status} = req.query;
     const bills = await getUserBills({userId: id, status});
+    console.log("User bills fetched");
     res.status(200).json({
       message: "Successfully feteched user bills",
       data: bills
@@ -374,8 +419,10 @@ export const getMyBills = async(req, res, next) => {
 
 export const getMyDetectedTransactions = async (req, res, next) => {
   try {
+    console.log("Get my detected transactions");
     const id = req.user._id;
     const transactions = await findUserDetectedTransactions(id);
+    console.log("Detected transactions fetched");
     res.status(200).json({
       data: transactions
     });
@@ -386,8 +433,9 @@ export const getMyDetectedTransactions = async (req, res, next) => {
 };
 
 
-export const getFriendlyUsers = async (req, res) => {
+export const getFriendlyUsers = async (req, res, next) => {
   try {
+    console.log("Get friendly users");
     const id = req.user.id;
     const curUser = await user.findById(id).select("lended borrowed settled");
     if(!curUser) return next(new ErrorHandler("Error fetching user", 400));
@@ -401,7 +449,6 @@ export const getFriendlyUsers = async (req, res) => {
         typeMap.set(strId, "credit");
       };
       friendsMap.set(strId, friendsMap.get(strId) + amount);
-      console.log(amount);
     });
 
     curUser.borrowed.forEach(({ lender_id, amount }) => {
@@ -432,12 +479,12 @@ export const getFriendlyUsers = async (req, res) => {
       _id: friend._id,
       name: friend.name,
       email: friend.email,
-      profile_photo: friend.profile_photo?.url,
+      profile_photo: friend.profile_photo?.url || "https://res.cloudinary.com/dgn8yfqs4/image/upload/v1740736643/userProfiles/akshatsonibhl99%40gmail.com.jpg",
       amount: friendsMap.get(friend._id.toString()) || 0,
       type: typeMap.get(friend._id.toString()) || undefined,
 
     }));
-
+    console.log("Friendly users fetched");
     res.status(200).json({
       message: "friends retrevied successfully",
       data: friendsWithAmounts,
@@ -450,6 +497,7 @@ export const getFriendlyUsers = async (req, res) => {
 
 export const getCurrentExhanges = async (req, res, next) => {
   try {
+    console.log("Getting current exchanges");
     const id = req.user.id;
     const curUser = await user.findById(id).select("lended borrowed");
     if(!curUser) return next(new ErrorHandler("Error fetching user", 400));
@@ -461,6 +509,7 @@ export const getCurrentExhanges = async (req, res, next) => {
     curUser.borrowed.forEach(({ lender_id, amount }) => {
       borrowedAmount = borrowedAmount + amount;
     });
+    console.log("Current exchanges fetched");
     res.status(200).json({
       data: {
         lendedAmount,
@@ -475,8 +524,10 @@ export const getCurrentExhanges = async (req, res, next) => {
 
 export const remindBorrowers = async (req, res, next) => {
   try {
+    console.log("Reminding borrowers");
     const id = req.user._id;
     await findBorrowersAndRemind(id);
+    console.log("Reminded borrowers");
     res.status(200).json({
       message: "Remainders sent successfully"
     });
@@ -488,14 +539,16 @@ export const remindBorrowers = async (req, res, next) => {
 
 export const remindBorrower = async (req, res, next) => {
   try {
+    console.log("Reminding Borrrower");
     const id = req.user._id;
     const {borrower_id} = req.params;
-    const curUser = await user.find(id);
+    const curUser = await user.findById(id);
     if(!curUser) return next(new ErrorHandler("Error fetching user details to remaind borrower", 400));
-    const borrowerProfile = await user.find(borrower_id);
-    const borrowerDetails = curUser.lended.find((borrower) => borrower.borrower_id === borrower_id);
+    const borrowerProfile = await user.findById(borrower_id);
+    const borrowerDetails = curUser.lended.find((borrower) => borrower.borrower_id.toString() === borrower_id.toString());
     if(!borrowerProfile) return next(new ErrorHandler("Error remainding borrower", 400));
     sendBorrowerMail({lender: curUser, borrowerProfile,amount: borrowerDetails.amount});
+    console.log("Reminding borrower");
     res.status(200).json({
       message: "successfully reminded"
     });
@@ -505,11 +558,79 @@ export const remindBorrower = async (req, res, next) => {
   }
 }
 
+export const autoAddFutureFriends = async (req, res, next) => {
+  try {
+    console.log("Adding auto future friends");
+    const {email} = req.body;
+    const curUser = await user.findOne({email});
+    if (!curUser) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+    const userEmail = curUser.email;
+    const reqFriends = await user.find({ "futureFriends.email": userEmail });
+    for (const friend of reqFriends) {
+      await addUserFriend({ invitee: friend, inviter: curUser });
+    }
+    await user.updateMany(
+      { "futureFriends.email": userEmail },
+      { $pull: { futureFriends: { email: userEmail } } }
+    );
+    console.log("Added auto future friends");
+    return res.status(200).json({
+      message: "Successfully auto-added friends",
+    });
+  } catch (error) {
+    console.log("Error auto-adding friends", error);
+    next(error);
+  }
+};
+
+
 export const getUserById = async (req, res, next) => {
+  console.log("Get user by id");
   const { id } = req.params;
   const user = await findUserById(id);
-  if(user) res.status(200).json({
+  console.log("Fetched user by id");
+  if(user) return res.status(200).json({
     message: "successfully fetched user",
     data: user
   });
+  else return res.status(500).json({
+    message: "Error fetching user"
+  })
 }
+
+export const addUserFriends = async (req, res, next) => {
+  try {
+    console.log("Adding user friends");
+    const id = req.user._id;
+    const { invitees } = req.body;
+
+    const curUser = await user.findById(id);
+    if (!curUser) {
+      return next(new ErrorHandler("Error fetching user details to add friends", 400));
+    }
+
+    for (const invitee of invitees) {
+      let curMail = invitee.email;
+      const curInv = await user.findOne({ email: curMail });
+
+      if (!curInv) {
+        curUser.futureFriends = curUser.futureFriends || [];
+        curUser.futureFriends.push({ email: curMail });
+
+        sendInviteMail({ inviter: curUser, invitee });
+        await curUser.save();
+      } else {
+        await addUserFriend({ invitee: curInv, inviter: curUser });
+      }
+    }
+    console.log("Added user friends");
+    return res.status(200).json({
+      message: "Successfully added friends",
+    });
+  } catch (error) {
+    console.log("Error sending invites:", error);
+    next(error);
+  }
+};

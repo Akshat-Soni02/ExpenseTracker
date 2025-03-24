@@ -8,13 +8,13 @@ export const findBudgetById = async (id) => {
     return currBudget;
 };
 
-export const findBudgetByCategory = async (category) => {
+export const findBudgetByCategory = async (category, user_id) => {
     // First, try to find the budget by the specified category
-    let currBudget = await budget.findOne({ budget_category: category });
+    let currBudget = await budget.findOne({ budget_category: category, user_id});
 
     // If no budget is found, check for the "general" category
     if (!currBudget) {
-        currBudget = await budget.findOne({ budget_category: "general" });
+        currBudget = await budget.findOne({ budget_category: "general", user_id});
     }
 
     // If still no budget is found, return null

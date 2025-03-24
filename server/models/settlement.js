@@ -3,10 +3,6 @@ import mongoose from "mongoose";
 const settlementSchema = new mongoose.Schema(
   {
     settlement_description: { type: String, required: true },
-    media: {
-      url: { type: String },
-      public_id: { type: String },
-    },
     payer_wallet_id: { type: mongoose.Schema.Types.ObjectId, ref: "wallet" },
     payer_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -22,7 +18,7 @@ const settlementSchema = new mongoose.Schema(
     amount: { type: Number, required: true },
     group_id: { type: mongoose.Schema.Types.ObjectId, ref: "group" },
   },
-  { Timestamp: true }
+  { timestamps: true }
 );
 
 const settlement = mongoose.model("settlement", settlementSchema);

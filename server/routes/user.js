@@ -23,10 +23,15 @@ import {
   getMyBills,
   remindBorrower,
   getUserById,
+  addUserFriends,
+  autoAddFutureFriends,
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
+import multer from "multer";
 
 const router = express.Router();
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 //* POST APIs *//
 router.post("/new", register);
@@ -35,6 +40,10 @@ router.post("/login", login);
 router.post("/send-otp", sendOtp);
 router.post("/verify-otp", verifyOtp);
 router.post("/reset-password", resetPassword);
+router.post("/send-invites", isAuthenticated, addUserFriends);
+router.post("/auto-add-friends", autoAddFutureFriends);
+router.post("/remind-borrowers", isAuthenticated, remindBorrowers);
+router.post("/remind-borrower/:borrower_id", isAuthenticated, remindBorrower);
 
 //* GET APIs *//
 router.get("/me", isAuthenticated, getMyProfile);
@@ -49,12 +58,10 @@ router.get("/personal-transactions", isAuthenticated, getMyPersonalTransactions)
 router.get("/detected-transactions", isAuthenticated, getMyDetectedTransactions);
 router.get("/friends", isAuthenticated, getFriendlyUsers);
 router.get("/current-exchange-status", isAuthenticated, getCurrentExhanges);
-router.get("/remind-borrowers", isAuthenticated, remindBorrowers);
-router.get("/remind-borrower/:borrower_id", isAuthenticated, remindBorrower);
 router.get("/:id", isAuthenticated, getUserById);
 
 //* PUT APIs *//
-router.put("/profile-details", isAuthenticated, updateUser);
+router.put("/profile-details", isAuthenticated,upload.single("media"), updateUser);
 router.put("/profile-photo", isAuthenticated, updateProfilePhoto);
 
 export default router;

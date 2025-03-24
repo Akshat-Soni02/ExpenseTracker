@@ -14,10 +14,14 @@ export const extractTempName = (email) => {
 
 export const sendBorrowerMail = ({borrowerProfile, lender, amount, group}) => {
   if(group) {
-    sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount} in group ${group.group_title}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Tracker Team`});
+    sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount} in group ${group.group_title}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Ease Team`});
   } else {
-    sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Tracker Team`});
+    sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Ease Team`});
   }
+}
+
+export const sendInviteMail = ({inviter, invitee}) => {
+  sendEmail({toMail: invitee.email, subject: "Invitation to join ExpenseEase", text: `Hey,\n\n${inviter.name} has invited you to join ExpenseEase!\n\nClick the link below to download the app:\n\nhttps://myapp.com\n\nYou will be added as friend to ${inviter.name} as you create account.\n\nBest,\nExpenseEase Team`});
 }
 
 export const findBorrowersAndRemind = async(id) => {
@@ -34,21 +38,16 @@ export const updateFriendlyExchangeStatesOnLending = async ({
   lender_id,
   borrowers,
 }) => {
-  console.log(lender_id);
   const activeUser = await findUserById(lender_id);
   if (!activeUser)
     throw new Error("No user found to update the friendly states");
 
-  console.log(activeUser);
-  console.log(borrowers);
   for (const { user_id, amount } of borrowers) {
     let prevBorrower = activeUser.lended.find(
       (b) => b.borrower_id.toString() === user_id.toString()
     );
     if (prevBorrower) {
-      console.log("Its previous borrower");
       prevBorrower.amount += amount;
-
       const prevBorrowerProfile = await findUserById(prevBorrower.borrower_id.toString()); 
       prevBorrowerProfile.borrowed.forEach((lender) => {
         if (lender.lender_id.toString() === lender_id.toString()) {
@@ -65,20 +64,14 @@ export const updateFriendlyExchangeStatesOnLending = async ({
       (l) => l.lender_id.toString() === user_id.toString()
     );
     if (prevLender) {
-      console.log("Its previous lender");
-      console.log(prevLender);
       const prevLenderId = prevLender.lender_id.toString();
-      console.log(prevLenderId);
 
       if (prevLender.amount > amount) {
         prevLender.amount -= amount;
-        console.log("prev lender amount is greater than amount");
         const prevLenderProfile = await findUserById(prevLenderId);
-        console.log("Prev lender profile: " + prevLenderProfile);
         prevLenderProfile.lended.forEach((borrower) => {
           if (borrower.borrower_id.toString() === lender_id.toString()) {
             borrower.amount -= amount;
-            console.log("amount updated in prevlenderprofile");
           }
         });
 
@@ -126,7 +119,6 @@ export const updateFriendlyExchangeStatesOnLending = async ({
       (s) => s.user_id.toString() === user_id.toString()
     );
     if (prevSettle) {
-      console.log("Its previous settle");
       const prevSettleId = prevSettle.user_id.toString();
       activeUser.settled = activeUser.settled.filter(
         (settle) => settle.user_id.toString() !== prevSettleId
@@ -143,7 +135,6 @@ export const updateFriendlyExchangeStatesOnLending = async ({
       await activeUser.save();
       continue;
     }
-    console.log("Its new relation");
     activeUser.lended.push({ borrower_id: user_id, amount });
 
     const newBorrowerProfile = await findUserById(user_id);
@@ -157,5 +148,20 @@ export const updateFriendlyExchangeStatesOnLending = async ({
       
   }
 };
+
+export const addUserFriend = async ({ inviter, invitee }) => {
+  try {
+    inviter.settled = inviter.settled || [];
+    invitee.settled = invitee.settled || [];
+    inviter.settled.push({ user_id: invitee._id, amount: 0 });
+    invitee.settled.push({ user_id: inviter._id, amount: 0 });
+    await inviter.save();
+    await invitee.save();
+  } catch (error) {
+    console.log("Error adding user friend:", error);
+    throw new Error("Error adding user friend");
+  }
+};
+
 
 //handleDailyLimitReach

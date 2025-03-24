@@ -25,7 +25,6 @@ export const handleExpenseRelations = async ({
       console.log("Error distributing amount:", err);
   }
 
-  console.log("lender_id", lender_id);
   
     
   //Update Users friendly state
@@ -48,7 +47,7 @@ export const revertExpenseEffects = async (curExpense) => {
       await handleExpenseRelations({
         lender_id: borrower.user_id.toString(),
         borrowers: [{ user_id: curExpense.lenders[0].user_id.toString(), amount: borrower.amount }],
-        group_id: curExpense?.group_id.toString(),
+        group_id: curExpense?.group_id?.toString(),
       });
     }
   } catch (error) {
@@ -94,17 +93,23 @@ export const findUserExpenses = async ({userId, group_id}) => {
   });
   if(!expenses) throw new Error("Error fetching user expenses");
 
-  // console.log(expenses);
   const modifiedExpenses = expenses.map(expense => {
-    const isLender = expense.lenders.some(lender => lender.user_id.toString() === userId.toString());
-    const isBorrower = expense.borrowers.some(borrower => borrower.user_id.toString() === userId.toString());
+    const isLender =
+      Array.isArray(expense.lenders) &&
+      expense.lenders.some(
+        lender => lender?.user_id?.toString() === userId.toString()
+      );
 
+    const isBorrower =
+      Array.isArray(expense.borrowers) &&
+      expense.borrowers.some(
+        borrower => borrower?.user_id?.toString() === userId.toString()
+      );
     return {
       ...expense.toObject(), // Convert Mongoose document to plain object
       transactionType: isLender ? 'debit' : isBorrower ? 'credit' : undefined, // Add credit/debit field
     };
   });
-  // console.log(modifiedExpenses);
   return modifiedExpenses;
 }
 
