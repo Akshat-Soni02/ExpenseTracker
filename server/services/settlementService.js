@@ -5,17 +5,14 @@ import settlement from "../models/settlement.js";
 
 export const handleSettlementRelations = async ({payer_id, receiver_id, amount, group_id}) => {
     
-      console.log("this is the reciever's id.....", receiver_id);
       //Update Group
       if (group_id){
-        console.log("HEREGROUP::",group_id);
         await distributeAmount({
           groupId: group_id,
           giverId: payer_id,
           borrowers: [{user_id: receiver_id, amount}],
         });}
     
-      console.log("group modified");
     
       //Update Users friendly state
       await updateFriendlyExchangeStatesOnLending({
@@ -48,7 +45,6 @@ export const revertSettlementEffects = async (curSettlement) => {
       group_id: curSettlement?.group_id,
     });
 
-    console.log("Successfully reverted the settlement with id", curSettlement._id);
   } catch (error) {
     console.log("Error reverting settlement", error);
   }

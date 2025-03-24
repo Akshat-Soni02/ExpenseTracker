@@ -4,6 +4,7 @@ import { findWalletById, transferWalletAmounts } from "../services/walletService
 
 export const createWallet = async (req, res, next) => {
   try {
+    console.log("Creating wallet");
     // wherever we are sending the array of members to the backend, the members array contains only other ids not the creater one, we will push creator id explicitly in the backend
     const id = req.user._id;
     const { amount, wallet_title, lower_limit, members = [] } = req.body;
@@ -18,7 +19,7 @@ export const createWallet = async (req, res, next) => {
     });
 
     if(!newWallet) return next(new ErrorHandler("Error creating new wallet", 400));
-
+    console.log("Created wallet");
     res.status(201).json({
       message: "Successfully created new wallet",
       data: newWallet,
@@ -38,6 +39,7 @@ export const createWallet = async (req, res, next) => {
 
 export const updateWallet = async (req, res, next) => {
   try {
+    console.log("Updating wallet");
     const { id } = req.params;
     const updatedDetails = req.body;
     const updatedWallet = await wallet.findByIdAndUpdate(id, updatedDetails, {
@@ -48,6 +50,7 @@ export const updateWallet = async (req, res, next) => {
     if (!updatedWallet) {
       return next(new ErrorHandler("Wallet not found", 404));
     }
+    console.log("Updated wallet");
     res.status(200).json({
       message: "Wallet updated Successfully",
       data: updateWallet,
@@ -68,6 +71,7 @@ export const updateWallet = async (req, res, next) => {
 export const deleteWallet = async (req, res, next) => {
   // we are simply making deleted true to avoid deleting transactions related to this wallet, don't fetch these wallets in get request
   try {
+    console.log("Deleting wallet");
     const { id } = req.params;
     const deletedWallet = await wallet.findByIdAndUpdate(
       id,
@@ -80,6 +84,7 @@ export const deleteWallet = async (req, res, next) => {
 
     if (!deletedWallet)
       return next(new ErrorHandler("Invalid id to delete wallet", 404));
+    console.log("Deleted wallet");
     res.status(200).json({
       message: "wallet deleted successfully",
       data: deleteWallet,
@@ -92,11 +97,12 @@ export const deleteWallet = async (req, res, next) => {
 
 export const getWalletById = async (req, res, next) => {
   try {
+    console.log("Get wallet by id");
     const { id } = req.params;
     const curWallet = await findWalletById(id);
     
     if (!curWallet) return next(new ErrorHandler("Invalid id to get wallet details", 404));
-    
+    console.log("Fetched wallet by id");
     res.status(200).json({
       message: "Wallet fetched successfully",
       data: curWallet,
@@ -112,6 +118,7 @@ export const walletsAmountTransfer = async (req, res, next) => {
   // amount should be less than amount present in from_account
   // both to and from account should belong to signed user - ignoring this for now
   try {
+    console.log("Wallet transfer");
     const { fromWallet, toWallet } = req.query;
     const { amount } = req.body;
 

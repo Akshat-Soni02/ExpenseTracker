@@ -14,16 +14,17 @@ import { uploadMedia } from "../services/cloudinaryService.js";
 //Creating a personaltransaction will change wallet and user
 export const createPersonalTransaction = async (req, res, next)=>{
     try {
+        console.log("Creating Personal Transaction");
         const {transaction_type, description, wallet_id, transaction_category, notes,amount, created_at_date_time} = req.body;
         const file = req.file;
         const user_id = req.user._id;
         if (!transaction_type || !description || !amount) {
-            return next(new ErrorHandler("Transaction type, description, amount and wallet id are required", 404));
+            return next(new ErrorHandler("Transaction type, description and amount are required", 404));
         }
 
-        console.log("personal transaction new ....");
         let media = null;
         if(file) {
+            console.log("Uploading media");
             const today = new Date().toISOString().split('T')[0];
             const mediaPath = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
             const publicId = `personalTransaction/${uuidv4()}/${today}`;
@@ -38,12 +39,13 @@ export const createPersonalTransaction = async (req, res, next)=>{
         //update wallet
         let budget_id = null;
         if(transaction_type==="expense"){
+            console.log("Creating Expense Transaction");
             if(wallet_id) await modifyWalletBalance({id: wallet_id,amount: -1*amount});
             if(transaction_category){
-                console.log("here in personal transactionnn");
                 const existingBudget = await findBudgetByCategory(transaction_category.toString(), user_id);
+                console.log(existingBudget);
                 if(existingBudget){
-                    existingBudget.current_spend+=amount;
+                    existingBudget.current_spend+=Number(amount);
                     await existingBudget.save();
                     budget_id = existingBudget._id;
                 }
@@ -51,11 +53,10 @@ export const createPersonalTransaction = async (req, res, next)=>{
             else{
                 const existingBudget = await findBudgetByCategory("general",user_id);
                 if(existingBudget){
-                    existingBudget.current_spend+=amount;
+                    existingBudget.current_spend+=Number(amount);
                     await existingBudget.save();
                     budget_id = existingBudget._id;
                 }
-                console.log("here now in pt");
             }
         }
         else{
@@ -74,8 +75,8 @@ export const createPersonalTransaction = async (req, res, next)=>{
             user_id,
             created_at_date_time
         });
-
-        res.status(201).json({
+        console.log("Created personal transaction");
+        return res.status(201).json({
             message : "Personal Transaction created successfully",
             data : newPersonalTransaction,
         });
@@ -88,6 +89,7 @@ export const createPersonalTransaction = async (req, res, next)=>{
 
 export const updatePersonalTransaction = async (req, res, next) => {
     try {
+        console.log("Updating personal transaction");
         const { personalTransaction_id } = req.params;
         const { transaction_type, wallet_id,amount,transaction_category } = req.body;
         const updatedDetails = req.body;
@@ -138,7 +140,7 @@ export const updatePersonalTransaction = async (req, res, next) => {
             runValidators: true,
           });
     
-    
+        console.log("Updated personal transaction");
         res.status(200).json({
             message : "Personal Transaction updated successfully",
             data : updatedPersonalTransaction,
@@ -159,6 +161,7 @@ export const updatePersonalTransaction = async (req, res, next) => {
 
     export const deletePersonalTransaction = async (req, res, next) => {
         try{
+            console.log("Deleting personal transaction");
             const { personalTransaction_id } = req.params;
             const user_id = req.user._id; 
 
@@ -185,7 +188,7 @@ export const updatePersonalTransaction = async (req, res, next) => {
             }
             
             const deletedPersonalTransaction = await existingPersonalTransaction.deleteOne();
-    
+            console.log("Deleted personal transaction");
             res.status(200).json({
                 message : "Personal Transaction deleted successfully",
                 data : deletedPersonalTransaction,
@@ -199,6 +202,7 @@ export const updatePersonalTransaction = async (req, res, next) => {
 
     export const getPersonalTransactionById = async (req, res, next) =>{
         try{
+            console.log("Fetching personal transaction");
             const {personalTransaction_id} = req.params;
             const user_id = req.user._id; 
             const existingPersonalTransaction = await findPersonalTransactionById(personalTransaction_id);
@@ -206,7 +210,7 @@ export const updatePersonalTransaction = async (req, res, next) => {
             if (existingPersonalTransaction.user_id.toString() !== user_id.toString()) {
                 return next(new ErrorHandler("Unauthorized to update this Personal Transaction", 403));
             }
-    
+            console.log("Fetched personal transaction");
             res.status(200).json({
                 message : "Personal Transaction fetched successfully",
                 data : existingPersonalTransaction,
@@ -221,6 +225,7 @@ export const updatePersonalTransaction = async (req, res, next) => {
     //get transaction for a particular period and transactiontype
     export const getUserPeriodTypeTransactions = async (req, res, next) => {
         try {
+            console.log("Fetched user period transaction");
             const { start_date, end_date, transaction_type } = req.body;
             const user_id = req.user._id;
     
@@ -241,7 +246,7 @@ export const updatePersonalTransaction = async (req, res, next) => {
             }
     
             const transactions = await findPersonalTransactionByQuery(query);
-    
+            console.log("Fetched user period transaction");
             res.status(200).json({
                 message : "User Period Type Transactions fetched successfully",
                 data : transactions,

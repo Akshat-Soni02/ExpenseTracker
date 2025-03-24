@@ -16,6 +16,7 @@ import { v4 as uuidv4 } from 'uuid';
 //creating an expense means changing group states, wallet states also changing personal states with other people
 export const createExpense = async (req, res, next) => {
   try {
+    console.log("Creating Expense");
     let {
       description,
       wallet_id,
@@ -59,6 +60,7 @@ export const createExpense = async (req, res, next) => {
     
     let media = null;
     if(file) {
+      console.log("Uploading Media");
       const today = new Date().toISOString().split('T')[0];
       const mediaPath = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
       const publicId = `expense/${uuidv4()}/${today}`;
@@ -68,6 +70,7 @@ export const createExpense = async (req, res, next) => {
         url: result.secure_url,
         public_id: result.public_id,
       };
+      console.log("Media uploaded");
     }
 
     await handleExpenseRelations({
@@ -94,7 +97,7 @@ export const createExpense = async (req, res, next) => {
 
     if (!newExpense)
       return next(new ErrorHandler("Cannot create new expense", 400));
-
+    console.log("Expense created");
     res.status(201).json({
       message: "Expense created successfully",
       data: newExpense,
@@ -108,15 +111,14 @@ export const createExpense = async (req, res, next) => {
 //Updating an expense, changes group, wallet, user
 export const updateExpense = async (req, res, next) => {
   try {
+    console.log("Updating Expense");
     const { expense_id } = req.params;
     const updatedDetails = req.body;
     if(!updatedDetails) {
-      console.log("no details to update");
       return res.status(200).json({
         message: "No details to update expense"
       });
     }
-    console.log(updatedDetails);
     if(updatedDetails.lenders) updatedDetails.lenders = JSON.parse(updatedDetails.lenders);
     if(updatedDetails.borrowers) updatedDetails.borrowers = JSON.parse(updatedDetails.borrowers);
     if(updatedDetails.total_amount) updatedDetails.total_amount = Number(updatedDetails.total_amount);
@@ -166,7 +168,6 @@ export const updateExpense = async (req, res, next) => {
         updatedDetails,
         { new: true, runValidators: true }
       );
-
       if (!updatedExpense)
         return next(
           new ErrorHandler(
@@ -175,7 +176,6 @@ export const updateExpense = async (req, res, next) => {
           )
         );
 
-      console.log("reverted the previous expense effects");
        await handleExpenseRelations({
         lender_id: updatedExpense.lenders[0].user_id.toString(),
         total_amount: updatedExpense.total_amount,
@@ -190,17 +190,6 @@ export const updateExpense = async (req, res, next) => {
       return;
     }
 
-    // if(updatedDetails.filePath) {
-    //   const timeStamp = Date.now();
-    //   const publicId = `expense/${uuidv4()}/${timeStamp}`;
-    //   const result = await uploadMedia(updatedDetails.filePath, "expenseMedia", publicId);
-    //   if(!result) return next(new ErrorHandler("Error uplaoding photo"));
-    //   media = {
-    //     url: result.secure_url,
-    //     public_id: result.public_id,
-    //   };
-    // }
-
     const updatedExpense = await expense.findByIdAndUpdate(
       expense_id,
       updatedDetails,
@@ -213,6 +202,7 @@ export const updateExpense = async (req, res, next) => {
           400
         )
       );
+    console.log("Updated Expense");
 
     res.status(200).json({
       message : "Expense updated successfully",
@@ -236,17 +226,17 @@ export const deleteExpense = async (req, res, next) => {
     // find the expense
     // revert all changes
     // delete expense
-    console.log("deleting the expense...");
+    console.log("Deleting Expense");
     const { expense_id } = req.params;
     const curExpense = await expense.findById(expense_id);
     if (!curExpense)
       return next(
         new ErrorHandler(`Cannot delete expense with id: ${expense_id}`, 400)
       );
-
+    console.log("Reverting Expense");
     await revertExpenseEffects(curExpense);
     const deletedExpense = await expense.findByIdAndDelete(expense_id);
-
+    console.log("Deleted Expense");
     res.status(200).json({
       message: "Expense deleted successfully",
       data: deletedExpense,
@@ -258,7 +248,6 @@ export const deleteExpense = async (req, res, next) => {
 };
 
 export const getExpenseById = async (req, res, next) => {
-  console.log("getting expense...........");
   try {
     const { id } = req.params;
     const curExpense = await findExpenseById(id);
@@ -275,6 +264,7 @@ export const getExpenseById = async (req, res, next) => {
 
 export const getUserPeriodExpenses = async (req, res, next) => {
   try {
+    console.log("Fetch user period expenses");
     const userId = req.user.id;
     const { startDate, endDate } = req.query;
 
@@ -291,7 +281,7 @@ export const getUserPeriodExpenses = async (req, res, next) => {
 
     // Fetch expenses where user is involved
     const expenses = await findPeriodicExpenses({start, end, userId});
-
+    console.log("Fetched user period expenses");
     res.status(200).json({
       message: "User period expenses fetched successfully",
       data :expenses,
@@ -304,11 +294,12 @@ export const getUserPeriodExpenses = async (req, res, next) => {
 
 export const getUserExpenses = async (req, res, next) => {
   try {
+    console.log("Fetching user expenses");
     const userId = req.user.id;
     const { group_id } = req.query; // Optional Group ID
 
     const expenses = await findUserExpenses({userId, group_id});
-
+    console.log("Fetched user expenses");
     res.status(200).json({
       message: "User expenses fetched successfully",
       data : expenses,
@@ -321,6 +312,7 @@ export const getUserExpenses = async (req, res, next) => {
 
 export const getCustomExpenses = async (req, res, next) => {
   try {
+    console.log("Fetching custom expenses");
     const {
       description,
       lender_id,
@@ -333,7 +325,7 @@ export const getCustomExpenses = async (req, res, next) => {
     } = req.query;
 
     const expenses = await findCustomExpenses({description, lender_id, borrower_id, group_id, wallet_id, min_amount, max_amount, category});
-
+    console.log("Fetched user expenses");
     res.status(200).json({
       message : "Custom expenses fetched successfully",
       data : expenses,

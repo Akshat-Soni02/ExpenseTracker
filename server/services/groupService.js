@@ -38,10 +38,8 @@ export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
     }
 
     if (!currGroup) throw new Error("No group with the given ID");
-    console.log("this is the giver id,", giverId);
     const lender = currGroup.members.find(m => m.member_id.toString() === giverId.toString());
     if(!lender) throw new Error("lender not found");
-    console.log("borrowers in hereeeee,", borrowers);
     for (const { user_id: borrowerId, amount } of borrowers) {
         const res = updateTransaction(lender, borrowerId.toString(), amount, "lended"); //settled
         if(!res)
@@ -55,7 +53,6 @@ export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
         }
     }
     await currGroup.save();
-    console.log("Grouppppp done");
 };
 
 const updateTransaction = (member, otherMemberId, amount, type) => {
@@ -63,7 +60,6 @@ const updateTransaction = (member, otherMemberId, amount, type) => {
         t => t.other_member_id.toString() === otherMemberId
     );
     if (!transaction) return null;
-    console.log("Here Transaction",transaction);
     if (transaction.exchange_status === type) {
         transaction.amount += amount;
     } else if (transaction.exchange_status === "settled") {
@@ -386,7 +382,6 @@ const simplifyDebts = (group) => {
     balances.forEach((value, key) => {
       balances.set(key, value/2);
     });
-    console.log(balances);
 
     let creditors = [];
     let debtors = [];
@@ -420,7 +415,6 @@ const simplifyDebts = (group) => {
         if (creditor.balance === 0) j++;
     }
     let n = creditors.length + debtors.length;
-    console.log(simplifiedTransactions);
     // return {transactions: simplifiedTransactions, n};
     return simplifiedTransactions;
 };
@@ -505,16 +499,13 @@ function subtractMatrices(matrix1, matrix2) {
 
 const updateGroupToSimplify = async (matrix, group, keysArray) => {
     let keyToIndex = Object.fromEntries(keysArray.map((key, i) => [key, i]));
-    console.log("keytoindex",keyToIndex);
     group.members.forEach((member) => {
         member.other_members.forEach((other_member) => {
-            console.log("otherMember", other_member);
             let i = keyToIndex[member.member_id];
             if (i === undefined) return;
             let j = keyToIndex[other_member.other_member_id];
             if (j === undefined) return;
             if (i === j) return;
-            console.log("ij", i+" "+j);
             other_member.amount = Math.abs(matrix[i][j]);
             other_member.exchange_status = matrix[i][j] > 0 ? "lended" : matrix[i][j] < 0 ? "borrowed" : "settled";
         });
@@ -525,7 +516,6 @@ const updateGroupToSimplify = async (matrix, group, keysArray) => {
 
 const updateUserToSimplify = async (matrix, keysArray) => {
     let keyToIndex = Object.fromEntries(keysArray.map((key, i) => [key, i]));
-    console.log("keytoindex",keyToIndex);
     let size = keysArray.length;
     for(let i=0;i<size;i++) {
         for(let j=i+1;j<size;j++) {
@@ -544,15 +534,12 @@ export const simplifyDebtsService = async ({group, memberSize}) => {
     let n = memberSize;
     group.members.forEach((member) => keysArray.push(member.member_id));
     let transactions = simplifyDebts(group, keysArray);
-    console.log("transsjfakldj",transactions);
-    console.log("nnnn", n);
     if(!transactions) throw new Error("Error getting simplify debts transactions");
     if(transactions.length === 0) return;
     //convert simplified debts into matrix format
     let simplifyMatrix = transactionsToMatrix(transactions, n, keysArray);
     if(!simplifyMatrix) throw new Error("Error getting simplify matrix from transactions");
     if(!keysArray) throw new Error("Error getting keysArray transactions");
-    console.log("keyarray", keysArray);
     //convert members to matrix format
     let { matrix: earlierMatrix } = membersToMatrix(group.members, n, keysArray);
     if(!earlierMatrix) throw new Error("Error getting members matrix");
@@ -561,13 +548,5 @@ export const simplifyDebtsService = async ({group, memberSize}) => {
     //substract (members matrix - simplified matrix)
     let subtractedMatrix = subtractMatrices(simplifyMatrix, earlierMatrix)
     await updateUserToSimplify(subtractedMatrix,keysArray);
-    console.log("Keys Mapping:", keysArray);
-    console.log("Resulting Matrix:", simplifyMatrix);
-    console.log("earlier matrix: ", earlierMatrix);
-    console.log(group.members[0]);
-    console.log(group.members[1]);
-    console.log(group.members[2]);
-    console.log(group.members[3]);
-    console.log("subtracted Matrix:", subtractedMatrix)
 }
 

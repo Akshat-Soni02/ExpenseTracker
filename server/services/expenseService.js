@@ -10,8 +10,6 @@ export const handleExpenseRelations = async ({
   group_id,
   total_amount,
 }) => {
-  // console.log("bbb: ", borrowers);
-  console.log("ttt: ", total_amount);
   //Update Wallet
   if (wallet_id)
     await modifyWalletBalance({ id: wallet_id, amount: -total_amount });
@@ -27,7 +25,6 @@ export const handleExpenseRelations = async ({
       console.log("Error distributing amount:", err);
   }
 
-  // console.log("lender_id", lender_id);
   
     
   //Update Users friendly state
@@ -80,7 +77,6 @@ export const findPeriodicExpenses = async ({start, end, userId}) => {
 }
 
 export const findUserExpenses = async ({userId, group_id}) => {
-  console.log("userID     :",userId)
   let filter = {
     $or: [
       { "lenders.user_id": userId.toString() },
@@ -97,7 +93,6 @@ export const findUserExpenses = async ({userId, group_id}) => {
   });
   if(!expenses) throw new Error("Error fetching user expenses");
 
-  // console.log(expenses);
   const modifiedExpenses = expenses.map(expense => {
     const isLender =
       Array.isArray(expense.lenders) &&
@@ -115,7 +110,6 @@ export const findUserExpenses = async ({userId, group_id}) => {
       transactionType: isLender ? 'debit' : isBorrower ? 'credit' : undefined, // Add credit/debit field
     };
   });
-  // console.log(modifiedExpenses);
   return modifiedExpenses;
 }
 

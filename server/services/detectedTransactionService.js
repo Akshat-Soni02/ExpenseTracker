@@ -12,7 +12,6 @@ export const encryptMessage = (message, secretKey) => {
 // const message = "Your account XXXX1234 has been debited by ₹5000 on 12-02-2025.";
 // const encryptedMessage = encryptMessage(message, secretKey);
 
-// console.log("Encrypted:", encryptedMessage);
 
 
 export const decryptMessage = (encryptedMessage, secretKey) => {
