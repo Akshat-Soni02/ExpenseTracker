@@ -26,11 +26,13 @@ export const createExpense = async (req, res, next) => {
       group_id,
       created_at_date_time,
     } = req.body;
-    let lenders = JSON.parse(req.body.lenders);
-    let borrowers = JSON.parse(req.body.borrowers);
+    let lenders = JSON.parse(req.body.lenders);  //Not typecasted
+    let borrowers = JSON.parse(req.body.borrowers); //Not typecasted
     total_amount = Number(total_amount);
     const file = req.file;
     const user_id = req.user._id;
+
+
     // if (!description || !total_amount) {
     //   return next(new ErrorHandler("Missing required fields", 404));
     // }
@@ -113,7 +115,8 @@ export const updateExpense = async (req, res, next) => {
   try {
     console.log("Updating Expense");
     const { expense_id } = req.params;
-    const updatedDetails = req.body;
+    let updatedDetails = req.body;
+    updatedDetails.total_amount = Number(updatedDetails.total_amount);
     if(!updatedDetails) {
       return res.status(200).json({
         message: "No details to update expense"
@@ -142,11 +145,12 @@ export const updateExpense = async (req, res, next) => {
     //inorder to update expense, first we will find the expense
     // then if members is not present in update then its alright
     // else we need to revert the earlier expense and add the new changes in it
-    const existingExpense = await expense.findById(expense_id);
+    let existingExpense = await expense.findById(expense_id);
     if (!existingExpense) {
       return next(new ErrorHandler("Expense not found with the given id", 404));
     }
 
+    existingExpense.total_amount = Number(existingExpense.total_amount);
     //cases with wallet - 
     //earlier there was a wallet and now wallet is removed
     //earlier there was no wallet and now wallet is added

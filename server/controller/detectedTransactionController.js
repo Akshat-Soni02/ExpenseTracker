@@ -9,8 +9,8 @@ export const createAutoTransaction = async(req, res, next) => {
         const {smsMessage} = req.body;
         const encryptedMessage = encryptMessage(smsMessage, process.env.SMS_SECRET_KEY);
         const decryptedMessage = decryptMessage(encryptedMessage, process.env.SMS_SECRET_KEY);
-        const details = extractSMSDetails(decryptedMessage);
-
+        let details = extractSMSDetails(decryptedMessage);
+        details.amount = Number(details.amount);
 
         
         const newDetectedTransaction = new detectedTransaction({
