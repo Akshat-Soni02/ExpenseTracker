@@ -1,6 +1,6 @@
 import personalTransaction from "../models/personalTransaction.js";
 import { findBudgetByCategory,findBudgetById } from "./budgetService.js";
-import { transferWalletAmounts } from "./walletService.js";
+import { transferWalletAmounts, modifyWalletBalance } from "./walletService.js";
 
 export const findPersonalTransactionById = async (id) => {
     const currPersonalTransaction = await personalTransaction.findById(id);
@@ -64,10 +64,10 @@ export const updatePersonalTransactionType = async (id,transaction_type,amount) 
 export const updatePersonalTransactionWallet = async (id,currWallet_id,newWallet_id,amount) => {
     const currPersonalTransaction = await findPersonalTransactionById(id);
     if(currPersonalTransaction.transaction_type==="expense"){
-        await transferWalletAmounts(currWallet_id,newWallet_id,amount);
+        await transferWalletAmounts({toWallet: currWallet_id,fromWallet: newWallet_id,amount});
     }
     else{
-        await transferWalletAmounts(newWallet_id,currWallet_id,amount);
+        await transferWalletAmounts({toWallet:newWallet_id,fromWallet: currWallet_id,amount});
     }
     return true;
 };
@@ -75,7 +75,7 @@ export const updatePersonalTransactionWallet = async (id,currWallet_id,newWallet
 export const updatePersonalTransactionAmount = async (id,wallet_id,currAmount,newAmount) => {
     const currPersonalTransaction = await findPersonalTransactionById(id);
     if(currPersonalTransaction.transaction_type==="expense"){
-        await modifyWalletBalance(wallet_id, currAmount - newAmount);
+        await modifyWalletBalance({id:wallet_id, amount: currAmount - newAmount});
         if(currPersonalTransaction.budget_id){
             const existingBudget = await findBudgetById(currPersonalTransaction.budget_id.toString());
             if(existingBudget){
@@ -85,7 +85,7 @@ export const updatePersonalTransactionAmount = async (id,wallet_id,currAmount,ne
         }
     }
     else{
-        await modifyWalletBalance(wallet_id, newAmount - currAmount);
+        await modifyWalletBalance({id: wallet_id, amount: newAmount - currAmount});
     }
     return true;
 };
