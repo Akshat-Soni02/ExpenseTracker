@@ -37,7 +37,6 @@ const groupSchema = new mongoose.Schema({
   
 },{ timestamps: true });
 
-groupSchema.index({ creator_id: 1, group_title: 1 }, { unique: true });
 
 const group = mongoose.model("group", groupSchema);
 group.syncIndexes();
