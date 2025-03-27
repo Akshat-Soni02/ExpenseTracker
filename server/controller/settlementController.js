@@ -2,7 +2,6 @@ import settlement from "../models/settlement.js";
 import ErrorHandler from "../middlewares/error.js";
 import { modifyWalletBalance, transferWalletAmounts } from "../services/walletService.js";
 import { findSettlementById, findUserSettlements, handleSettlementRelations, revertSettlementEffects } from "../services/settlementService.js";
-import { Cursor } from "mongoose";
 
 //settlement can be created in a group, or personally 
 //creating a settlement means changing group states, also changing personal states with other people
