@@ -13,17 +13,20 @@ export const transferWalletAmounts = async({toWallet, fromWallet, amount}) => {
     const creditWallet = await findWalletById(toWallet);
     if (!debitWallet) throw new Error("from wallet doesn't exist to transfer amount");
     if (amount > debitWallet.amount) return null;
-    console.log(`transferring amount: ${amount} from wallet: ${debitWallet.wallet_title} to wallet: ${creditWallet.wallet_title}`);
-    await wallet.findByIdAndUpdate(
+    console.log(`transferring amount: ${amount} from wallet: ${debitWallet.wallet_title} having earlier balance: ${debitWallet.amount} to wallet: ${creditWallet.wallet_title}`);
+    const updatedDebitWallet = await wallet.findByIdAndUpdate(
       fromWallet,
       { amount: debitWallet.amount - amount },
       { runValidators: true }
     );
-    await wallet.findByIdAndUpdate(
+    if(!updatedDebitWallet) throw new Error("Cannot transfer amounts, debit wallet not found");
+    const updatedCreditWallet = await wallet.findByIdAndUpdate(
       toWallet,
       { amount: creditWallet.amount + amount },
       { runValidators: true }
     );
+    if(!updatedCreditWallet) throw new Error("Cannot transfer amounts, credit wallet not found");
+    console.log(`transferred amount: ${amount} from wallet: ${debitWallet.wallet_title} new balance: ${updatedDebitWallet.amount} to wallet: ${creditWallet.wallet_title} new balance: ${updatedCreditWallet.amount}`);
     return true;
 }
 
