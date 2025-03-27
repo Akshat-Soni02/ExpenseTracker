@@ -175,10 +175,10 @@ export const updatePersonalTransaction = async (req, res, next) => {
             }
             
             if(existingPersonalTransaction.transaction_type==="expense"){
-                if(existingPersonalTransaction.wallet_id) await modifyWalletBalance(existingPersonalTransaction.wallet_id,existingPersonalTransaction.amount);
+                if(existingPersonalTransaction.wallet_id) await modifyWalletBalance({id: existingPersonalTransaction.wallet_id,amount: existingPersonalTransaction.amount});
             }
             else{
-                if(existingPersonalTransaction.wallet_id) await modifyWalletBalance(existingPersonalTransaction.wallet_id,-1*existingPersonalTransaction.amount);
+                if(existingPersonalTransaction.wallet_id) await modifyWalletBalance({id: existingPersonalTransaction.wallet_id,amount: -1*existingPersonalTransaction.amount});
 
             }
             
