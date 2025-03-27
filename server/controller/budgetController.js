@@ -8,7 +8,8 @@ import { findBudgetById } from "../services/budgetService.js";
 export const createBudget = async (req, res, next) => {
     try {
         console.log("Creating Budget");
-        const { budget_title, amount, budget_category, period } = req.body;
+        const { budget_title, budget_category, period } = req.body;
+        const amount = Number(req.body.amount);
         const user_id = req.user._id; 
 
         if (!budget_title || !amount) {
@@ -39,7 +40,8 @@ export const updateBudget = async (req, res, next) => {
     try {
         console.log("Updating Budget");
         const { id } = req.params;
-        const { budget_title, amount, budget_category, period } = req.body;
+        const { budget_title, budget_category, period } = req.body;
+        const amount = Number(req.body.amount);
         const user_id = req.user._id; 
     
         const existingBudget = await findBudgetById(id);

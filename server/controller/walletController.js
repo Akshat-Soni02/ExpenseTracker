@@ -7,9 +7,9 @@ export const createWallet = async (req, res, next) => {
     console.log("Creating wallet");
     // wherever we are sending the array of members to the backend, the members array contains only other ids not the creater one, we will push creator id explicitly in the backend
     const id = req.user._id;
-    const { amount, wallet_title, lower_limit, members = [] } = req.body;
+    const { wallet_title, lower_limit, members = [] } = req.body;
     // members.push({ user_id: id });
-
+    const amount = Number(res.body.amount);
     const newWallet = await wallet.create({
       amount,
       wallet_title,
@@ -17,6 +17,7 @@ export const createWallet = async (req, res, next) => {
       creator_id: id,
       // members: members,
     });
+
 
     if(!newWallet) return next(new ErrorHandler("Error creating new wallet", 400));
     console.log("Created wallet");
@@ -41,7 +42,8 @@ export const updateWallet = async (req, res, next) => {
   try {
     console.log("Updating wallet");
     const { id } = req.params;
-    const updatedDetails = req.body;
+    let updatedDetails = req.body;
+    updatedDetails.amount = Number(updatedDetails.amount);
     const updatedWallet = await wallet.findByIdAndUpdate(id, updatedDetails, {
       new: true,
       runValidators: true,
@@ -120,8 +122,8 @@ export const walletsAmountTransfer = async (req, res, next) => {
   try {
     console.log("Wallet transfer");
     const { fromWallet, toWallet } = req.query;
-    const { amount } = req.body;
-
+    let  amount = Number(req.body.amount);
+    
     const transfer = await transferWalletAmounts({toWallet, fromWallet, amount});
     if(!transfer) return next(new ErrorHandler("Transfer amount is greater than wallet amount", 400))
     

@@ -7,8 +7,8 @@ export const createBill = async (req, res, next) => {
     try {
         console.log("Creating Bill");
         const id = req.user._id;
-        const {bill_title, amount, bill_category, due_date_time, recurring, members} = req.body;
-        
+        const {bill_title, bill_category, due_date_time, recurring, members} = req.body;
+        const amount  = Number(res.body.amount);
         // iterate to members array (exclude the user) and send push notification to others about the bill
 
         const newBill = await bill.create({
@@ -102,7 +102,8 @@ export const updateBill = async (req, res, next) => {
         // amount
         console.log("Updating Bill");
         const {id} = req.params;
-        const updatedDetails = req.body;
+        let updatedDetails = req.body;
+        updatedDetails.amount = Number(updatedDetails.amount);
         const updatedBill = await bill.findByIdAndUpdate(id, updatedDetails, {
             new: true,
             runValidators: true

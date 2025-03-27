@@ -15,7 +15,8 @@ import { uploadMedia } from "../services/cloudinaryService.js";
 export const createPersonalTransaction = async (req, res, next)=>{
     try {
         console.log("Creating Personal Transaction");
-        const {transaction_type, description, wallet_id, transaction_category, notes,amount, created_at_date_time} = req.body;
+        const {transaction_type, description, wallet_id, transaction_category, notes, created_at_date_time} = req.body;
+        const amount = Number(req.body.amount);
         const file = req.file;
         const user_id = req.user._id;
         if (!transaction_type || !description || !amount) {
@@ -91,8 +92,10 @@ export const updatePersonalTransaction = async (req, res, next) => {
     try {
         console.log("Updating personal transaction");
         const { personalTransaction_id } = req.params;
-        const { transaction_type, wallet_id,amount,transaction_category } = req.body;
-        const updatedDetails = req.body;
+        const { transaction_type, wallet_id,transaction_category } = req.body;
+        const amount = Number(req.body.amount);
+        let updatedDetails = req.body;
+        updatedDetails.amount = Number(updatedDetails.amount);
         const user_id = req.user._id; 
     
         const existingPersonalTransaction = await findPersonalTransactionById(personalTransaction_id);
@@ -165,8 +168,8 @@ export const updatePersonalTransaction = async (req, res, next) => {
             const { personalTransaction_id } = req.params;
             const user_id = req.user._id; 
 
-            const existingPersonalTransaction = await findPersonalTransactionById(personalTransaction_id);
-    
+            let existingPersonalTransaction = await findPersonalTransactionById(personalTransaction_id);
+            existingPersonalTransaction.amount = Number(existingPersonalTransaction.amount);
             if (existingPersonalTransaction.user_id.toString() !== user_id.toString()) {
                 return next(new ErrorHandler("Unauthorized to delete this Personal Transaction", 403));
             }

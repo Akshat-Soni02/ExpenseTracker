@@ -2,6 +2,7 @@ import settlement from "../models/settlement.js";
 import ErrorHandler from "../middlewares/error.js";
 import { modifyWalletBalance, transferWalletAmounts } from "../services/walletService.js";
 import { findSettlementById, findUserSettlements, handleSettlementRelations, revertSettlementEffects } from "../services/settlementService.js";
+import { Cursor } from "mongoose";
 
 //settlement can be created in a group, or personally 
 //creating a settlement means changing group states, also changing personal states with other people
@@ -18,7 +19,6 @@ export const createSettlement = async (req, res, next) => {
       payer_id,
       receiver_wallet_id,
       receiver_id,
-      amount,
       group_id,
       status,
     } = req.body;
@@ -26,6 +26,7 @@ export const createSettlement = async (req, res, next) => {
     //wallet changes
     //if its group then group changes
     //then personal changes
+    let amount = Number(req.body.amount);
     if (status === "sent") {
       payer_id = id;
       if (typeof payer_wallet_id !== "undefined") {
@@ -73,10 +74,10 @@ export const updateSettlement = async (req, res, next) => {
     // settlement_description, media,
     const userId = req.user.id;
     const { id } = req.params;
-    const updatedDetails = req.body;
-
-    const existingSettle = await settlement.findById(id);
-
+    let updatedDetails = req.body;
+    updatedDetails.amount = Number(updatedDetails.amount);
+    let existingSettle = await settlement.findById(id);
+    existingSettle.amount = Number(existingSettle.amount);
     if (!existingSettle) {
       return next(new ErrorHandler("Settlement not found with the given id", 404));
     }
@@ -110,7 +111,8 @@ export const deleteSettlement = async (req, res, next) => {
     // delete settle
     console.log("Deleting settlement");
     const { id: settlement_id } = req.params;
-    const curSettlement = await settlement.findById(settlement_id);
+    let curSettlement = await settlement.findById(settlement_id);
+    curSettlement.amount = Number(curSettlement.amount);
     if (!curSettlement)
       return next(
         new ErrorHandler(`Cannot delete settlement with id: ${settlement_id}`, 400)
