@@ -93,6 +93,7 @@ export const updatePersonalTransaction = async (req, res, next) => {
         console.log("Updating personal transaction");
         const { personalTransaction_id } = req.params;
         const { transaction_type, wallet_id,transaction_category } = req.body;
+        console.log("transaction update details",req.body);
         const amount = Number(req.body.amount);
         let updatedDetails = req.body;
         updatedDetails.amount = Number(updatedDetails.amount);
