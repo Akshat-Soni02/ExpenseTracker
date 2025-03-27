@@ -326,17 +326,53 @@ export const processSimplifyDebts = async (req, res, next) => {
 }
 
 
-// export const addToGroup = async (req, res, next) => {
-//   try {
-//     const {group_id} = req.params;
-//     const {memberIds = []} = req.body;
+export const addToGroup = async (req, res, next) => {
+  try {
+    const { group_id } = req.params;
+    const { newMemberIds = [] } = req.body;
 
-//     const curGroup = await findGroupById(group_id);
-//     let prevMemberIds = [];
-//     curGroup.members.forEach((member) => prevMemberIds.push(member.member_id));
-//     memberIds.forEach((memberId) => prevMemberIds.push(memberId));
-    
-//   } catch (error) {
-    
-//   }
-// }
+    const curGroup = await findGroupById(group_id);
+    if (!curGroup) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    let newMembers = newMemberIds.map(newMemId => ({
+      member_id: newMemId,
+      other_members: [
+        ...curGroup.members.map(member => ({
+          other_member_id: member.member_id,
+          amount: 0,
+          exchange_status: "settled"
+        })),
+        ...newMemberIds
+          .filter(id => id !== newMemId)
+          .map(otherNewId => ({
+            other_member_id: otherNewId,
+            amount: 0,
+            exchange_status: "settled"
+          }))
+      ]
+    }));
+
+    curGroup.members.forEach(member => {
+      newMemberIds.forEach(newMemId => {
+        member.other_members.push({
+          other_member_id: newMemId,
+          amount: 0,
+          exchange_status: "settled"
+        });
+      });
+    });
+
+    curGroup.members.push(...newMembers);
+
+    await curGroup.save();
+
+    return res.status(200).json({ message: "Members added successfully", group: curGroup });
+
+  } catch (error) {
+    console.error("Error adding members to group:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+

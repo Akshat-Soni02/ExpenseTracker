@@ -10,6 +10,7 @@ import {
   remindAllGroupBorrowers,
   getGroupHistory,
   processSimplifyDebts,
+  addToGroup,
 } from "../controller/groupController.js";
 
 const router = express.Router();
@@ -27,6 +28,7 @@ router.get("/history/:group_id", isAuthenticated, getGroupHistory);
 router.get("/:id", isAuthenticated, getGroupById);
 
 //* PUT APIs *//
+router.put("/add-to-group/:group_id", isAuthenticated, addToGroup);
 router.put("/:id", isAuthenticated, updateGroup);
 
 //* DELETE APIs *//

@@ -1,5 +1,6 @@
 import personalTransaction from "../models/personalTransaction.js";
 import { findBudgetByCategory,findBudgetById } from "./budgetService.js";
+import { transferWalletAmounts } from "./walletService.js";
 
 export const findPersonalTransactionById = async (id) => {
     const currPersonalTransaction = await personalTransaction.findById(id);
