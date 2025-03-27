@@ -27,7 +27,7 @@ export const findPersonalTransactionByQuery = async (query) => {
 export const updatePersonalTransactionType = async (id,transaction_type,amount) => {
     const currPersonalTransaction = await findPersonalTransactionById(id);
     if(transaction_type==="expense"){
-        await modifyWalletBalance(currPersonalTransaction.wallet_id,-2*amount);
+        await modifyWalletBalance({id: currPersonalTransaction.wallet_id,amount: -2*amount});
         if(currPersonalTransaction.transaction_category){
                 const existingBudget = await findBudgetByCategory(currPersonalTransaction.transaction_category.toString());
                 if(existingBudget){
