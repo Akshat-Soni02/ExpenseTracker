@@ -13,6 +13,7 @@ export const transferWalletAmounts = async({toWallet, fromWallet, amount}) => {
     const creditWallet = await findWalletById(toWallet);
     if (!debitWallet) throw new Error("from wallet doesn't exist to transfer amount");
     if (amount > debitWallet.amount) return null;
+    console.log(`transferring amount: ${amount} from wallet: ${debitWallet.wallet_title} to wallet: ${creditWallet.wallet_title}`);
     await wallet.findByIdAndUpdate(
       fromWallet,
       { amount: debitWallet.amount - amount },
