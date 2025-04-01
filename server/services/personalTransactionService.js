@@ -34,7 +34,7 @@ export const updatePersonalTransactionType = async (id,transaction_type,amount) 
     console.log("updating personal transaction type");
     const currPersonalTransaction = await findPersonalTransactionById(id);
     if(transaction_type==="expense"){
-        await modifyWalletBalance(currPersonalTransaction.wallet_id,-2*amount);
+        await modifyWalletBalance({id: currPersonalTransaction.wallet_id,amount: -2*amount});
         if(currPersonalTransaction.transaction_category){
                 const existingBudget = await findBudgetByCategory(currPersonalTransaction.transaction_category.toString());
                 if(existingBudget){
@@ -73,10 +73,10 @@ export const updatePersonalTransactionWallet = async (id,currWallet_id,newWallet
     console.log("updating personal transaction wallet");
     const currPersonalTransaction = await findPersonalTransactionById(id);
     if(currPersonalTransaction.transaction_type==="expense"){
-        await transferWalletAmounts(currWallet_id,newWallet_id,amount);
+        await transferWalletAmounts({toWallet: currWallet_id,fromWallet: newWallet_id,amount});
     }
     else{
-        await transferWalletAmounts(newWallet_id,currWallet_id,amount);
+        await transferWalletAmounts({toWallet:newWallet_id,fromWallet: currWallet_id,amount});
     }
     console.log("updated personal transaction wallet");
     return true;
@@ -86,7 +86,7 @@ export const updatePersonalTransactionAmount = async (id,wallet_id,currAmount,ne
     console.log("updating personal transaction amount");
     const currPersonalTransaction = await findPersonalTransactionById(id);
     if(currPersonalTransaction.transaction_type==="expense"){
-        await modifyWalletBalance(wallet_id, currAmount - newAmount);
+        await modifyWalletBalance({id:wallet_id, amount: currAmount - newAmount});
         if(currPersonalTransaction.budget_id){
             const existingBudget = await findBudgetById(currPersonalTransaction.budget_id.toString());
             if(existingBudget){
@@ -96,7 +96,7 @@ export const updatePersonalTransactionAmount = async (id,wallet_id,currAmount,ne
         }
     }
     else{
-        await modifyWalletBalance(wallet_id, newAmount - currAmount);
+        await modifyWalletBalance({id: wallet_id, amount: newAmount - currAmount});
     }
     console.log("updated personal transaction amount");
     return true;

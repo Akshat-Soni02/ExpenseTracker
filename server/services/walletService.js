@@ -16,19 +16,23 @@ export const transferWalletAmounts = async({toWallet, fromWallet, amount}) => {
     if (!creditWallet) throw new Error("to wallet doesn't exist to transfer amount");
 
     if (amount > debitWallet.amount) return null;
-    const fromWalletUpdated = await wallet.findByIdAndUpdate(
+    console.log(`transferring amount: ${amount} from wallet: ${debitWallet.wallet_title} having earlier balance: ${debitWallet.amount}`);
+    const updatedDebitWallet = await wallet.findByIdAndUpdate(
       fromWallet,
       { amount: debitWallet.amount - amount },
       { runValidators: true }
     );
-    if(!fromWalletUpdated) throw new Error("Error updating from wallet");
-    const toWalletUpdated = await wallet.findByIdAndUpdate(
+    if(!updatedDebitWallet) throw new Error("Cannot transfer amounts, debit wallet not found");
+    const creditWallet = await findWalletById(toWallet);
+    if (!creditWallet) throw new Error("to wallet doesn't exist to transfer amount");
+    const updatedCreditWallet = await wallet.findByIdAndUpdate(
       toWallet,
       { amount: creditWallet.amount + amount },
       { runValidators: true }
     );
-    if(!toWalletUpdated) throw new Error("Error updating to wallet");
-    console.log("Transfered Wallet Amounts");
+
+    if(!updatedCreditWallet) throw new Error("Cannot transfer amounts, credit wallet not found");
+    console.log(`transferred amount: ${amount} from wallet: ${debitWallet.wallet_title} new balance: ${updatedDebitWallet.amount} to wallet: ${creditWallet.wallet_title} new balance: ${updatedCreditWallet.amount}`);
     return {fromWalletUpdated, toWalletUpdated};
 }
 
@@ -37,6 +41,8 @@ export const modifyWalletBalance = async ({id, amount, zeroTrue}) => {
   console.log("Modifying Wallet Balance");
     const curWallet = await wallet.findById(id).select("amount");
     if(!curWallet) throw new Error(`Walled doesn't exist with given id ${id}`);
+    console.log("modifying wallet balance");
+    console.log(`wallet previous balance: ${curWallet.amount}, amount to be added: ${amount}`);
     if (curWallet.amount + amount < 0) {
       if(zeroTrue) amount = -curWallet.amount;
       else throw new Error("wallet doesn't have enough balance");

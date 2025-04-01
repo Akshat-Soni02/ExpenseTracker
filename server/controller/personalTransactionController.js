@@ -93,6 +93,7 @@ export const updatePersonalTransaction = async (req, res, next) => {
         console.log("Updating personal transaction");
         const { personalTransaction_id } = req.params;
         const { transaction_type, wallet_id,transaction_category } = req.body;
+        console.log("transaction update details",req.body);
         const amount = Number(req.body.amount);
         let updatedDetails = req.body;
         updatedDetails.amount = Number(updatedDetails.amount);
@@ -175,10 +176,10 @@ export const updatePersonalTransaction = async (req, res, next) => {
             }
             
             if(existingPersonalTransaction.transaction_type==="expense"){
-                if(existingPersonalTransaction.wallet_id) await modifyWalletBalance(existingPersonalTransaction.wallet_id,existingPersonalTransaction.amount);
+                if(existingPersonalTransaction.wallet_id) await modifyWalletBalance({id: existingPersonalTransaction.wallet_id,amount: existingPersonalTransaction.amount});
             }
             else{
-                if(existingPersonalTransaction.wallet_id) await modifyWalletBalance(existingPersonalTransaction.wallet_id,-1*existingPersonalTransaction.amount);
+                if(existingPersonalTransaction.wallet_id) await modifyWalletBalance({id: existingPersonalTransaction.wallet_id,amount: -1*existingPersonalTransaction.amount});
 
             }
             
