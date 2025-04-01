@@ -10,6 +10,7 @@ export const handleExpenseRelations = async ({
   group_id,
   total_amount,
 }) => {
+  console.log("Handling expense relations");
   //Update Wallet
   if (wallet_id)
     await modifyWalletBalance({ id: wallet_id, amount: -total_amount });
@@ -32,10 +33,12 @@ export const handleExpenseRelations = async ({
     lender_id: lender_id,
     borrowers
   });
+  console.log("Updated friendly exchange states");
 };
 
 export const revertExpenseEffects = async (curExpense) => {
   try {
+    console.log("Reverting expense effects");
     if (curExpense.wallet_id) {
       await modifyWalletBalance({
         id: curExpense.wallet_id,
@@ -50,18 +53,22 @@ export const revertExpenseEffects = async (curExpense) => {
         group_id: curExpense?.group_id?.toString(),
       });
     }
+    console.log("Reverted expense effects");
   } catch (error) {
     console.log("Error reverting expense", error);
   }
 };
 
 export const findExpenseById = async (id) => {
+  console.log("Finding expense by ID");
   const curExpense = await expense.findById(id);
   if (!curExpense) return null;
+  console.log("Expense found");
   return curExpense;
 }
 
 export const findPeriodicExpenses = async ({start, end, userId}) => {
+  console.log("Finding periodic expenses");
     const expenses = await expense
     .find({
       $or: [
@@ -72,11 +79,12 @@ export const findPeriodicExpenses = async ({start, end, userId}) => {
       created_at_date_time: { $gte: start, $lte: end },
     })
     .sort({ created_at_date_time: -1 }); // Sort by most recent
-
+  console.log("Periodic expenses found");
     return expenses;
 }
 
 export const findUserExpenses = async ({userId, group_id}) => {
+  console.log("Finding user expenses");
   let filter = {
     $or: [
       { "lenders.user_id": userId.toString() },
@@ -105,6 +113,7 @@ export const findUserExpenses = async ({userId, group_id}) => {
       expense.borrowers.some(
         borrower => borrower?.user_id?.toString() === userId.toString()
       );
+    console.log("Expense found");
     return {
       ...expense.toObject(), // Convert Mongoose document to plain object
       transactionType: isLender ? 'debit' : isBorrower ? 'credit' : undefined, // Add credit/debit field
@@ -121,6 +130,7 @@ export const findCustomExpenses = async ({description,
   min_amount,
   max_amount,
   category}) => {
+  console.log("Finding custom expenses");
     let filter = {};
 
     if (description) {
@@ -156,6 +166,6 @@ export const findCustomExpenses = async ({description,
     const expenses = await expense
       .find(filter)
       .sort({ created_at_date_time: -1 });
-    
+    console.log("Custom expenses found");
     return expenses;
 }

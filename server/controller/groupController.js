@@ -5,7 +5,7 @@ import { findGroupById, formatMembers, simplifyDebtsService } from "../services/
 import {sendBorrowerMail} from "../services/userService.js";
 import expense from "../models/expense.js";
 import settlement from "../models/settlement.js"
-
+import { GroupMemberStatus } from "../enums/groupEnums.js";
 // this is how it should look for members in group
 // {
 //     "group_title": "Weekday Trip",
@@ -44,7 +44,9 @@ export const createGroup = async (req, res, next) => {
     } = req.body;
     // memberIds.push(id);
     const members = formatMembers(memberIds);
-
+    if(!members || members.length === 0) {
+      return next(new ErrorHandler("Members are required to create a group", 400));
+    }
     const newGroup = await group.create({
       group_title,
       members,
@@ -126,7 +128,7 @@ export const leaveGroup = async (req, res, next) => {
     curGroup.members.forEach((member) => {
       if (member.member_id.toString() === id) {
         member.other_members.forEach((other_member) => {
-          if (other_member.exchange_status !== "settled") {
+          if (other_member.exchange_status !== GroupMemberStatus.SETTLED) {
             hasPendingDues = true;
           }
         });
@@ -248,7 +250,7 @@ export const remindAllGroupBorrowers = async (req, res, next) => {
     curGroup.members.forEach(async(member) => {
       if(member.member_id.toString() === id.toString()) {
         member.other_members.forEach(async(other_member) => {
-          if(other_member.exchange_status === "lended") {
+          if(other_member.exchange_status === GroupMemberStatus.LENDED) {
             const borrowerProfile = await user.findById(other_member.other_member_id);
             if(!borrowerProfile) return next(new ErrorHandler("Error remainding borrower", 400));
             sendBorrowerMail({lender: curUser, borrowerProfile,amount: other_member.amount, group: curGroup});
@@ -342,14 +344,14 @@ export const addToGroup = async (req, res, next) => {
         ...curGroup.members.map(member => ({
           other_member_id: member.member_id,
           amount: 0,
-          exchange_status: "settled"
+          exchange_status: GroupMemberStatus.SETTLED
         })),
         ...newMemberIds
           .filter(id => id !== newMemId)
           .map(otherNewId => ({
             other_member_id: otherNewId,
             amount: 0,
-            exchange_status: "settled"
+            exchange_status: GroupMemberStatus.SETTLED
           }))
       ]
     }));
@@ -359,7 +361,7 @@ export const addToGroup = async (req, res, next) => {
         member.other_members.push({
           other_member_id: newMemId,
           amount: 0,
-          exchange_status: "settled"
+          exchange_status: GroupMemberStatus.SETTLED
         });
       });
     });

@@ -9,7 +9,7 @@ export const createWallet = async (req, res, next) => {
     const id = req.user._id;
     const { wallet_title, lower_limit, members = [] } = req.body;
     // members.push({ user_id: id });
-    const amount = Number(res.body.amount);
+    const amount = Number(req.body.amount);
     const newWallet = await wallet.create({
       amount,
       wallet_title,
@@ -123,12 +123,12 @@ export const walletsAmountTransfer = async (req, res, next) => {
     console.log("Wallet transfer");
     const { fromWallet, toWallet } = req.query;
     let  amount = Number(req.body.amount);
-    
     const transfer = await transferWalletAmounts({toWallet, fromWallet, amount});
     if(!transfer) return next(new ErrorHandler("Transfer amount is greater than wallet amount", 400))
     
     res.status(200).json({
-      success: true,
+      message:"Successfully transfered amount",
+      data: transfer,
     });
   } catch (error) {
     console.log("Error transferring amount from one account to another", error);

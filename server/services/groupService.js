@@ -1,8 +1,10 @@
 import ErrorHandler from "../middlewares/error.js";
 import group from "../models/group.js";
 import { updateFriendlyExchangeStatesOnLending } from "./userService.js";
+import { GroupMemberStatus } from "../enums/groupEnums.js";
 
 export const formatMembers = (memberIds) => {
+    console.log("Formatting members");
     return memberIds.map((memberId, index) => ({
         member_id: memberId,
         other_members: memberIds
@@ -10,24 +12,29 @@ export const formatMembers = (memberIds) => {
         .map((otherMemberId) => ({
             other_member_id: otherMemberId,
             amount: 0,
-            exchange_status: "settled",
+            exchange_status: GroupMemberStatus.SETTLED,
         })),
     }));
 };
 
 export const findGroupById = async (id) => {
+    console.log("Finding group by ID");
     const curGroup = await group.findById(id);
     if (!curGroup) return null;
+    console.log("Group found");
     return curGroup;
 }
 
 export const findUserGroups = async (id) => {
+    console.log("Finding user groups");
     const groups = await group.find({"members.member_id": id});
     if(!groups) throw new Error("Error finding user groups");
+    console.log("User groups found");
     return groups;
 }
 
 export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
+    console.log("Distributing amount");
     let currGroup = null;
     
     try{
@@ -41,7 +48,7 @@ export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
     const lender = currGroup.members.find(m => m.member_id.toString() === giverId.toString());
     if(!lender) throw new Error("lender not found");
     for (const { user_id: borrowerId, amount } of borrowers) {
-        const res = updateTransaction(lender, borrowerId.toString(), amount, "lended"); //settled
+        const res = updateTransaction(lender, borrowerId.toString(), amount, GroupMemberStatus.LENDED); //settled
         if(!res)
         {
             throw new Error("cannot update group info for adding expense");
@@ -49,27 +56,29 @@ export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
         }
         const borrower = currGroup.members.find(m => m.member_id.toString() === borrowerId.toString());
         if (borrower) {
-            updateTransaction(borrower, giverId.toString(), amount, "borrowed"); //settled
+            updateTransaction(borrower, giverId.toString(), amount, GroupMemberStatus.BORROWED); //settled
         }
     }
     await currGroup.save();
+    console.log("Amount Distributed");
 };
 
 const updateTransaction = (member, otherMemberId, amount, type) => {
+    console.log("Updating transaction");
     const transaction = member.other_members.find(
         t => t.other_member_id.toString() === otherMemberId
     );
     if (!transaction) return null;
     if (transaction.exchange_status === type) {
         transaction.amount += amount;
-    } else if (transaction.exchange_status === "settled") {
+    } else if (transaction.exchange_status === GroupMemberStatus.SETTLED) {
         transaction.amount = amount;
         transaction.exchange_status = type;
     } else {
         if(transaction.amount === amount)
         {
             transaction.amount = 0;
-            transaction.exchange_status = "settled";
+            transaction.exchange_status = GroupMemberStatus.SETTLED;
         }
         else if(transaction.amount < amount)
         {
@@ -84,7 +93,7 @@ const updateTransaction = (member, otherMemberId, amount, type) => {
     transaction.amount = transaction.amount;
     const updatedMember = member;
     updatedMember.otherMembers = transaction;
-
+    console.log("Transaction updated");
     return updatedMember;
 };
 
@@ -356,6 +365,7 @@ const updateTransaction = (member, otherMemberId, amount, type) => {
 /////////////////////////////////////
 
 const simplifyDebts = (group) => {
+    console.log("Simplifying debts");
     let balances = new Map();
 
     group.members.forEach(member => {
@@ -369,10 +379,10 @@ const simplifyDebts = (group) => {
 
             if (!balances.has(otherMemberId)) balances.set(otherMemberId, 0);
 
-            if (status === "lended") {
+            if (status === GroupMemberStatus.LENDED) {
                 balances.set(memberId, balances.get(memberId) + amount);
                 balances.set(otherMemberId, balances.get(otherMemberId) - amount);
-            } else if (status === "borrowed") {
+            } else if (status === GroupMemberStatus.BORROWED) {
                 balances.set(memberId, balances.get(memberId) - amount);
                 balances.set(otherMemberId, balances.get(otherMemberId) + amount);
             }
@@ -416,10 +426,12 @@ const simplifyDebts = (group) => {
     }
     let n = creditors.length + debtors.length;
     // return {transactions: simplifiedTransactions, n};
+    console.log("Simplified transactions:");
     return simplifiedTransactions;
 };
 
 function transactionsToMatrix(transactions, n, keysArray) {
+    console.log("Converting transactions to matrix");
     let uniqueKeys = new Set();
     transactions.forEach(({ from, to }) => {
         uniqueKeys.add(from);
@@ -439,13 +451,14 @@ function transactionsToMatrix(transactions, n, keysArray) {
         matrix[j][i] = amount;
         }
     });
-
+    console.log("Matrix created");
     return matrix;
 }
 
 
 function membersToMatrix(members, n, keysArray) {
     // Extract unique member IDs
+    console.log("Converting members to matrix");
     let uniqueKeys = new Set();
     members.forEach(({ member_id, other_members }) => {
         uniqueKeys.add(member_id);
@@ -468,20 +481,21 @@ function membersToMatrix(members, n, keysArray) {
         if (j === undefined) return; // Skip if other_member_id is not in the index map
         if (i === j) return; // Keep diagonal 0
 
-        if (exchange_status === "lended") {
+        if (exchange_status === GroupMemberStatus.LENDED) {
             matrix[i][j] = +amount;
-        } else if (exchange_status === "borrowed") {
+        } else if (exchange_status === GroupMemberStatus.BORROWED) {
             matrix[i][j] = -amount;
-        } else if (exchange_status === "settled") {
+        } else if (exchange_status === GroupMemberStatus.SETTLED) {
             matrix[i][j] = 0;
         }
         });
     });
-
+    console.log("Members matrix created");
     return { matrix, keysArray };
 }
 
 function subtractMatrices(matrix1, matrix2) {
+    console.log("Subtracting matrices");
     let n = matrix1.length;
 
     // Ensure both matrices are of the same size
@@ -493,11 +507,12 @@ function subtractMatrices(matrix1, matrix2) {
     let result = Array.from({ length: n }, (_, i) =>
         Array.from({ length: n }, (_, j) => matrix1[i][j] - matrix2[i][j])
     );
-
+    console.log("Matrices subtracted");
     return result;
 }
 
 const updateGroupToSimplify = async (matrix, group, keysArray) => {
+    console.log("Updating group to simplify");
     let keyToIndex = Object.fromEntries(keysArray.map((key, i) => [key, i]));
     group.members.forEach((member) => {
         member.other_members.forEach((other_member) => {
@@ -507,14 +522,16 @@ const updateGroupToSimplify = async (matrix, group, keysArray) => {
             if (j === undefined) return;
             if (i === j) return;
             other_member.amount = Math.abs(matrix[i][j]);
-            other_member.exchange_status = matrix[i][j] > 0 ? "lended" : matrix[i][j] < 0 ? "borrowed" : "settled";
+            other_member.exchange_status = matrix[i][j] > 0 ? GroupMemberStatus.LENDED : matrix[i][j] < 0 ? GroupMemberStatus.BORROWED : GroupMemberStatus.SETTLED;
         });
     });
     await group.save();
+    console.log("Group updated");
 //save group in mongo
 }
 
 const updateUserToSimplify = async (matrix, keysArray) => {
+    console.log("Updating user to simplify");
     let keyToIndex = Object.fromEntries(keysArray.map((key, i) => [key, i]));
     let size = keysArray.length;
     for(let i=0;i<size;i++) {
@@ -525,10 +542,12 @@ const updateUserToSimplify = async (matrix, keysArray) => {
             } else await updateFriendlyExchangeStatesOnLending({lender_id: keysArray[j],borrowers: [{user_id: keysArray[i],amount: -matrix[i][j]}] });
         }
     }    
+    console.log("User updated");
 }
 
 
 export const simplifyDebtsService = async ({group, memberSize}) => {
+    console.log("Simplifying debts service");
     //get simplified debts
     let keysArray = [];
     let n = memberSize;
@@ -548,5 +567,6 @@ export const simplifyDebtsService = async ({group, memberSize}) => {
     //substract (members matrix - simplified matrix)
     let subtractedMatrix = subtractMatrices(simplifyMatrix, earlierMatrix)
     await updateUserToSimplify(subtractedMatrix,keysArray);
+    console.log("Debts simplified");
 }
 
