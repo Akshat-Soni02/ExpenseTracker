@@ -8,7 +8,7 @@ const billSchema = new mongoose.Schema(
     bill_category: { type: String },
     due_date_time: { type: Date, required: true },
     final_pay_date: { type: Date },
-    recurring: { type: Boolean },
+    recurring: { type: Boolean, default: false },
     status: { type: String },
     creator_id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
     members: [
