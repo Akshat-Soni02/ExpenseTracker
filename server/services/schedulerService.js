@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { handleBillRecurrence, getRecurringBills } from "./billService.js";
 
 export const billRecurScheduler = () => {
+    console.log("scheduler started");
     cron.schedule("* * * * *", async () => {
         console.log("cron job started");
         const bills  = await getRecurringBills();
@@ -19,6 +20,7 @@ export const billRecurScheduler = () => {
             }
         })
     });
+    console.log("scheduler ended");
 }
 
 export const scheduleCronJobs = () => {

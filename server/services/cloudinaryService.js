@@ -1,7 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 
 export const uploadMedia = async (mediaPath, folderName, public_id) => {
-  
+  console.log("Uploading Media");
   const options = {
     folder: folderName,
     public_id, // we are differentiating the files through their public id
@@ -22,6 +22,7 @@ export const uploadMedia = async (mediaPath, folderName, public_id) => {
 
 export const deleteMedia = async (public_id) => {
   try {
+    console.log("Deleting Media");
     const result = await cloudinary.uploader.destroy(public_id);
     if (result.result === "ok") {
       console.log(`Media with public_id: ${public_id} deleted successfully.`);

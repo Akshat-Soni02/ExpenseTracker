@@ -109,7 +109,7 @@ export const register = async (req, res, next) => {
     });
     if(!newUser) return next(new ErrorHandler("Error creating new user", 400));
 
-    sendToken(newUser, res, "Welcome to ExpenseTracker", 201);
+    sendToken(newUser, res, "Welcome to ExpenseEase", 201);
   } catch (error) {
     console.log("Error creating new user", error);
     next(error);
@@ -125,7 +125,7 @@ export const login = async (req, res, next) => {
     if (!loggedUser) return next(new ErrorHandler("Hey try registering first", 404));
     const isMatch = await bcrypt.compare(password, loggedUser.password);
     if (!isMatch) return next(new ErrorHandler("Invalid Password, Try again", 404));
-
+    console.log("Logged in");
     sendToken(
       loggedUser,
       res,
@@ -222,7 +222,7 @@ export const sendOtp = async (req, res, next) => {
       curUser.otpExpiry = otpExpiry;
       await curUser.save();
 
-      sendEmail({toMail: curUser.email, subject: "ExpenseTracker password reset", text: `Your OTP for resetting your password is ${otp}. It is valid for 5 minutes.`})
+      sendEmail({toMail: curUser.email, subject: "ExpenseEase password reset", text: `Your OTP for resetting your password is ${otp}. It is valid for 5 minutes.`})
       console.log("Sent OTP");
       res.status(200).json({message: "OTP sent successfully" });
   } catch (error) {
@@ -529,7 +529,7 @@ export const remindBorrowers = async (req, res, next) => {
     await findBorrowersAndRemind(id);
     console.log("Reminded borrowers");
     res.status(200).json({
-      message: "Remainders sent successfully"
+      message: "Reminders sent successfully"
     });
   } catch (error) {
     console.log("Error reminding borrowers");
@@ -543,17 +543,17 @@ export const remindBorrower = async (req, res, next) => {
     const id = req.user._id;
     const {borrower_id} = req.params;
     const curUser = await user.findById(id);
-    if(!curUser) return next(new ErrorHandler("Error fetching user details to remaind borrower", 400));
+    if(!curUser) return next(new ErrorHandler("Error fetching user details to remind borrower", 400));
     const borrowerProfile = await user.findById(borrower_id);
     const borrowerDetails = curUser.lended.find((borrower) => borrower.borrower_id.toString() === borrower_id.toString());
-    if(!borrowerProfile) return next(new ErrorHandler("Error remainding borrower", 400));
+    if(!borrowerProfile) return next(new ErrorHandler("Error reminding borrower", 400));
     sendBorrowerMail({lender: curUser, borrowerProfile,amount: borrowerDetails.amount});
     console.log("Reminding borrower");
     res.status(200).json({
       message: "successfully reminded"
     });
   } catch (error) {
-    console.log("Error remainding borrower");
+    console.log("Error reminding borrower");
     next(error);
   }
 }
