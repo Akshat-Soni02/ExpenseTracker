@@ -1,5 +1,6 @@
 import detectedTransaction from "../models/detectedTransaction.js";
 import CryptoJS from "crypto-js";
+import { DetectedTransactionType } from "../enums/detectedTransactionEnums.js";
 
 // import CryptoJS from "crypto-js";
 
@@ -20,6 +21,7 @@ export const decryptMessage = (encryptedMessage, secretKey) => {
 };
 
 export const extractSMSDetails = (message) => {
+    console.log("Extracting SMS details...");
     const regex =
     /(Sent|Received) Rs\.?\s*(\d+(?:\.\d{1,2})?) (?:from|in your) (\w+(?: \w+)*) Bank AC (\w+) (?:to|from) (\S+) on (\d{4}-\d{2}-\d{2})\.? UPI Ref[:]? ?(\d+)/i;
 
@@ -27,7 +29,7 @@ export const extractSMSDetails = (message) => {
 
     if (match) {
         return {
-            transaction_type: match[1].toLowerCase() === "sent" ? "debit" : "credit",
+            transaction_type: match[1].toLowerCase() === DetectedTransactionType.SENT ? DetectedTransactionType.DEBIT : DetectedTransactionType.CREDIT,
             amount: parseFloat(match[2]),
             bank_name: match[3],
             account_number: match[4],
@@ -36,13 +38,16 @@ export const extractSMSDetails = (message) => {
             upi_reference: match[7],
         };
     }
+
     return null;
 
 };
 
 export const findUserDetectedTransactions = async (id) => {
+    console.log("Finding user detected transactions...");
     const transactions = detectedTransaction.find({user_id: id});
     if(!transactions) throw new Error("Error fetching user auto transactions");
+    console.log("Transactions found:");
     return transactions;
 }  
   // **Testing with Standard Messages**

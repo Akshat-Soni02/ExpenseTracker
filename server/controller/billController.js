@@ -1,5 +1,6 @@
 import ErrorHandler from "../middlewares/error.js";
 import bill from "../models/bill.js"
+import { BillStatus ,BillMemberStatus} from "../enums/billEnums.js";
 
 // when a bill is created and shared with other members we have to let them know
 // in contrast with previous approach the members array does already contian user himself
@@ -8,9 +9,8 @@ export const createBill = async (req, res, next) => {
         console.log("Creating Bill");
         const id = req.user._id;
         const {bill_title, bill_category, due_date_time, recurring, members} = req.body;
-        const amount  = Number(res.body.amount);
+        const amount  = Number(req.body.amount);
         // iterate to members array (exclude the user) and send push notification to others about the bill
-
         const newBill = await bill.create({
             bill_title,
             bill_number: 1,
@@ -19,7 +19,7 @@ export const createBill = async (req, res, next) => {
             due_date_time,
             recurring,
             members, 
-            status: "pending",
+            status: BillStatus.PENDING,
             creator_id:id
         });
         console.log("Bill Created");
@@ -68,13 +68,13 @@ export const handleBillUserStatusUpdate = async (req, res, next) => {
             return res.status(403).json({ success: false, message: "User not a member of this bill to update the status" });
         }
 
-        const areAllStatusPaid = curBill.members.every(member => member.status === "paid");
+        const areAllStatusPaid = curBill.members.every(member => member.status === BillMemberStatus.PAID);
 
         const now = new Date();
         if (!areAllStatusPaid) {
-            curBill.status = curBill.due_date_time < now ? "missed" : "pending";
+            curBill.status = curBill.due_date_time < now ? BillStatus.MISSED : BillStatus.PENDING;
         } else {
-            curBill.status = "paid";
+            curBill.status = BillStatus.PAID;
         }
 
         await curBill.save();
@@ -103,7 +103,7 @@ export const updateBill = async (req, res, next) => {
         console.log("Updating Bill");
         const {id} = req.params;
         let updatedDetails = req.body;
-        updatedDetails.amount = Number(updatedDetails.amount);
+        if(updatedDetails.amount) updatedDetails.amount = Number(updatedDetails.amount);
         const updatedBill = await bill.findByIdAndUpdate(id, updatedDetails, {
             new: true,
             runValidators: true
@@ -147,6 +147,8 @@ export const getBillById = async (req, res, next) => {
         console.log("Getting Bill by ID");
         const {id} = req.params;
         const curBill = await bill.findById(id);
+        if(!curBill) return next(new ErrorHandler("Bill not found",404));
+
         console.log("Bill fetched successfully");
         res.status(200).json({
             message: "bill fetched successfully",

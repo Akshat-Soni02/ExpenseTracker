@@ -1,7 +1,7 @@
 import ErrorHandler from "../middlewares/error.js";
 import detectedTransaction from "../models/detectedTransaction.js"
 import { decryptMessage,extractSMSDetails, encryptMessage } from "../services/detectedTransactionService.js";
-
+import { DetectedTransactionType } from "../enums/detectedTransactionEnums.js";
 export const createAutoTransaction = async(req, res, next) => {
     try {
         console.log("Creating detected transaction");
@@ -16,8 +16,8 @@ export const createAutoTransaction = async(req, res, next) => {
         const newDetectedTransaction = new detectedTransaction({
             transaction_type: details.transaction_type,
             description: details.party,
-            from_account: details.transaction_type === "debit" ? details.bank_name + details.account_number : details.party,
-            to_account: details.transaction_type === "credit" ? details.bank_name + details.account_number : details.party,
+            from_account: details.transaction_type === DetectedTransactionType.DEBIT ? details.bank_name + details.account_number : details.party,
+            to_account: details.transaction_type === DetectedTransactionType.CREDIT ? details.bank_name + details.account_number : details.party,
             amount: details.amount,
             user_id: id,
             created_at_date_time: new Date(details.date),
