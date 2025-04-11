@@ -7,7 +7,7 @@ export const createWallet = async (req, res, next) => {
     console.log("Creating wallet");
     // wherever we are sending the array of members to the backend, the members array contains only other ids not the creater one, we will push creator id explicitly in the backend
     const id = req.user._id;
-    const { wallet_title, lower_limit, members = [], amount } = req.body;
+    const { wallet_title, lower_limit, members = []} = req.body;
     // members.push({ user_id: id });
     const amount = Number(req.body.amount);
     const newWallet = await wallet.create({

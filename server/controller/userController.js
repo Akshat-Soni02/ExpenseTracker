@@ -40,7 +40,7 @@ export const googleLogin = async (req, res, next) => {
     //   }
     // }
     console.log("Google login");
-    const { idToken, user: curUser } = req.body;
+    const { idToken } = req.body;
     
     if (!idToken) {
       return res.status(400).json({ message: "ID Token is required" });

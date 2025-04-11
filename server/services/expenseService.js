@@ -101,25 +101,26 @@ export const findUserExpenses = async ({userId, group_id}) => {
   });
   if(!expenses) throw new Error("Error fetching user expenses");
 
-  const modifiedExpenses = expenses.map(expense => {
-    const isLender =
-      Array.isArray(expense.lenders) &&
-      expense.lenders.some(
-        lender => lender?.user_id?.toString() === userId.toString()
-      );
+  // const modifiedExpenses = expenses.map(expense => {
+  //   const isLender =
+  //     Array.isArray(expense.lenders) &&
+  //     expense.lenders.some(
+  //       lender => lender?.user_id?.toString() === userId.toString()
+  //     );
 
-    const isBorrower =
-      Array.isArray(expense.borrowers) &&
-      expense.borrowers.some(
-        borrower => borrower?.user_id?.toString() === userId.toString()
-      );
-    console.log("Expense found");
-    return {
-      ...expense.toObject(), // Convert Mongoose document to plain object
-      transactionType: isLender ? 'debit' : isBorrower ? 'credit' : undefined, // Add credit/debit field
-    };
-  });
-  return modifiedExpenses;
+  //   const isBorrower =
+  //     Array.isArray(expense.borrowers) &&
+  //     expense.borrowers.some(
+  //       borrower => borrower?.user_id?.toString() === userId.toString()
+  //     );
+  //   console.log("Expense found");
+  //   return {
+  //     ...expense.toObject(), // Convert Mongoose document to plain object
+  //     transactionType: isLender ? 'debit' : isBorrower ? 'credit' : undefined, // Add credit/debit field
+  //   };
+  // });
+  // return modifiedExpenses;
+  return expenses;
 }
 
 export const findCustomExpenses = async ({description,
