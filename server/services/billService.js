@@ -2,6 +2,7 @@ import bill from "../models/bill.js"
 import { BillStatus ,BillMemberStatus} from "../enums/billEnums.js";
 import { sendNotificationService } from "./notificationService.js";
 import { findUserById } from "./userService.js";
+import ErrorHandler from "../middlewares/error.js";
 
 export const findBillById = async (id) => {
     console.log("Finding bill by id");
