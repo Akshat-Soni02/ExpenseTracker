@@ -1,6 +1,6 @@
 import ErrorHandler from "../middlewares/error.js";
 import group from "../models/group.js";
-import { updateFriendlyExchangeStatesOnLending } from "./userService.js";
+import { updateFriendlyExchangeStatesOnLending, findUserById } from "./userService.js";
 import { GroupMemberStatus } from "../enums/groupEnums.js";
 import { sendNotificationService } from "./notificationService.js";
 
