@@ -102,8 +102,21 @@ export const sendNotificationService = async ({token, title, body}) => {
 
 export const getAccessToken = async () => {
   console.log("Getting access token");
+  const firebaseKey = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+  if (!firebaseKey) {
+    throw new Error('Missing FIREBASE_SERVICE_ACCOUNT env var');
+  }
+
+  let parsedKey;
+  try {
+    parsedKey = JSON.parse(firebaseKey);
+  } catch (err) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT is not valid JSON');
+  }
+
   const auth = new google.auth.GoogleAuth({
-    keyFile: path.join(__dirname, '../serviceAccountKey.json'), // path to the service account key
+    keyFile: parsedKey, // path to the service account key
     scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
   });
 
