@@ -116,7 +116,8 @@ export const getAccessToken = async () => {
   }
 
   const auth = new google.auth.GoogleAuth({
-    keyFile: parsedKey, // path to the service account key
+    // keyFile: parsedKey, // path to the service account key
+    credentials: parsedKey,
     scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
   });
 
