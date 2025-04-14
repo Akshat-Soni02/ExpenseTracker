@@ -58,6 +58,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       select: false,
     },
+    accessTokens: [
+      {
+        type: String,
+      },
+    ],
   },
   { timestamps: true }
 );
