@@ -57,7 +57,7 @@ export const createGroup = async (req, res, next) => {
 
     if(!newGroup) return next(new ErrorHandler("Error creating new Group"));
     console.log("Created Group");
-    await sendNewGroupNotifications(newGroup._id,id);
+    await sendNewGroupNotifications(newGroup._id.toString(),id);
 
     res.status(201).json({
       data: newGroup,

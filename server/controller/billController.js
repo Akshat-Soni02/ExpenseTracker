@@ -25,7 +25,7 @@ export const createBill = async (req, res, next) => {
         });
         console.log("Bill Created");
         if(!newBill) return next(new ErrorHandler("Error creating new bill",404));
-        await sendNewBillNotifications(newBill._id,id);
+        await sendNewBillNotifications(newBill._id.toString(),id);
 
         res.status(201).json({
             message: "Successfully created new bill",
