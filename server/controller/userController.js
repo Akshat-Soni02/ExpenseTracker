@@ -138,6 +138,31 @@ export const login = async (req, res, next) => {
   }
 };
 
+export const updateUserNotificationToken = async (req, res, next) => {
+  try {
+    console.log("Updating user notification token");
+    const id = req.user.id;
+    console.log("USER ID,",id);
+    const {token} = req.body;
+    console.log("Token,",token);
+    const updatedUser = await user.findByIdAndUpdate(
+      id,
+      {
+        $addToSet: { accessTokens: token }, 
+      },
+      {
+        new: true, 
+      }
+    );
+    if(!updateUser) return next(new ErrorHandler("Error updating user", 400));
+    console.log("Updated user notification token");
+    res.status(200).json({ message: "Details updated successfully", data: updatedUser });
+  } catch (error) {
+    console.log("Error updating user", error);
+    next(error);
+  }
+};
+
 
 export const updateProfilePhoto = async (req, res, next) => {
   try {

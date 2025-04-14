@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
 import { errorMiddleware } from "./middlewares/error.js";
 import { v2 as cloudinary } from "cloudinary";
+import admin from "firebase-admin";
 
 import userRouter from "./routes/user.js";
 import walletRouter from "./routes/wallet.js";
@@ -32,6 +33,23 @@ cloudinary.config({
 const app = express();
 const PORT = process.env.PORT || 3002;
 const URI = process.env.MONGO_URI;
+
+const firebaseKey = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+if (!firebaseKey) {
+  throw new Error('Missing FIREBASE_SERVICE_ACCOUNT env var');
+}
+
+let parsedKey;
+try {
+  parsedKey = JSON.parse(firebaseKey);
+} catch (err) {
+  throw new Error('FIREBASE_SERVICE_ACCOUNT is not valid JSON');
+}
+
+admin.initializeApp({
+  credential: admin.credential.cert(parsedKey),
+});
 
 app.use(
   cors({

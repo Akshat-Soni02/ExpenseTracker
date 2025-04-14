@@ -1,5 +1,6 @@
 import bill from "../models/bill.js"
 import { BillStatus ,BillMemberStatus} from "../enums/billEnums.js";
+import { sendNotificationService } from "./notificationService.js";
 
 export const findBillById = async (id) => {
     console.log("Finding bill by id");
@@ -73,18 +74,61 @@ export const getUserBills = async ({ userId, status }) => {
 };
 
 
-export const handleBillRemind = async () => {
+export const handleBillRemind = async (id) => {
     try {
-        
-    } catch (error) {
-        
+        console.log("Sending bill reminders");
+        const currBill = await findBillById(id);
+        if(!currBill) throw new Error("Error finding bill");
+        const members = currBill.members;
+        if(!members) throw new Error("Error finding bill members");
+        for (const member of members) {
+            if (member.status.toString() === "pending") {
+                const user = await findUserById(member.user_id);
+                if (!user) throw new Error("Error finding user");
+                const tokens = user.accessTokens;
+                const body = `₹${member.amount} for "${currBill.bill_title}" is pending.\nLet’s make it disappear😅`;
+                for (const token of tokens) {
+                    await sendNotificationService({
+                        token: token,
+                        title: "🔥Your share’s still hanging!",
+                        body: body,
+                    });
+                }
+                
+            }
+        }
+    } catch (err) {
+        console.log("Error sending bill reminders", err);
+        throw new ErrorHandler("Error sending bill reminders", 500);
     }
 }
 
-export const sendBillJoinInvite = async ({id,}) => {
-    try {
-        
-    } catch (error) {
-        
+export const sendNewBillNotifications = async (id,userId) => {
+    try{
+        console.log("Sending new bill notifications");
+        const currBill = await findBillById(id);
+        if(!currBill) throw new Error("Error finding bill");
+        const members = currBill.members;
+        if(!members) throw new Error("Error finding bill members");
+        for (const member of members) {
+            if (member.user_id.toString() !== userId.toString()) {
+                const user = await findUserById(member.user_id);
+                if (!user) throw new Error("Error finding user");
+                const tokens = user.accessTokens;
+                const body = `You’ve been added to "${currBill.bill_title}".\n🤑Let’s settle this.`;
+                for (const token of tokens) {
+                    await sendNotificationService({
+                        token: token,
+                        title: "🧾 Bill added!",
+                        body: body,
+                    });
+                }
+                
+            }
+          }
+    }
+    catch(err){
+        console.log("Error sending new bill notifications", err);
+        throw new ErrorHandler("Error sending new bill notifications", 500);
     }
 }

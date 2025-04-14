@@ -1,5 +1,5 @@
 import user from "../models/user.js";
-import { sendEmail } from "./notificationService.js";
+import { sendEmail, sendNotificationService } from "./notificationService.js";
 
 export const findUserById = async (id) => {
   console.log("Finding User by ID");
@@ -171,6 +171,17 @@ export const addUserFriend = async ({ inviter, invitee }) => {
     invitee.settled.push({ user_id: inviter._id, amount: 0 });
     await inviter.save();
     await invitee.save();
+
+    const body = `You and ${inviter.name} are now friends. Let the splitting begin!`;
+    const tokens = invitee.accessTokens;
+    for(const token of tokens) {
+      await sendNotificationService({
+        token,
+        title: "🎉 New Friend Added!",
+        body,
+      });
+    }
+
     console.log("User Friend Added");
   } catch (error) {
     console.log("Error adding user friend:", error);

@@ -2,6 +2,7 @@ import ErrorHandler from "../middlewares/error.js";
 import group from "../models/group.js";
 import { updateFriendlyExchangeStatesOnLending } from "./userService.js";
 import { GroupMemberStatus } from "../enums/groupEnums.js";
+import { sendNotificationService } from "./notificationService.js";
 
 export const formatMembers = (memberIds) => {
     console.log("Formatting members");
@@ -570,3 +571,32 @@ export const simplifyDebtsService = async ({group, memberSize}) => {
     console.log("Debts simplified");
 }
 
+export const sendNewGroupNotifications = async (id,userId) => {
+    try{
+        console.log("Sending new group notifications");
+        const currGroup = await findGroupById(id);
+        if(!currGroup) throw new Error("Error finding group");
+        const members = currGroup.members;
+        if(!members) throw new Error("Error finding group members");
+        for (const member of members) {
+            if (member.member_id.toString() !== userId.toString()) {
+                const user = await findUserById(member.member_id);
+                if (!user) throw new Error("Error finding user");
+                const tokens = user.accessTokens;
+                const body = `Welcome to ${currGroup.group_title}!\nShared expenses made easy — you're in!`;
+                for (const token of tokens) {
+                    await sendNotificationService({
+                        token: token,
+                        title: "🔔 You've been added to a group!",
+                        body: body,
+                    });
+                }
+                
+            }
+          }
+    }
+    catch(err){
+        console.log("Error sending new group notifications", err);
+        throw new ErrorHandler("Error sending new group notifications", 500);
+    }
+}

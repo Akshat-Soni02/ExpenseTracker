@@ -1,7 +1,7 @@
 import group from "../models/group.js";
 import user from "../models/user.js";
 import ErrorHandler from "../middlewares/error.js";
-import { findGroupById, formatMembers, simplifyDebtsService } from "../services/groupService.js";
+import { findGroupById, formatMembers, simplifyDebtsService, sendNewGroupNotifications } from "../services/groupService.js";
 import {sendBorrowerMail} from "../services/userService.js";
 import expense from "../models/expense.js";
 import settlement from "../models/settlement.js"
@@ -57,6 +57,8 @@ export const createGroup = async (req, res, next) => {
 
     if(!newGroup) return next(new ErrorHandler("Error creating new Group"));
     console.log("Created Group");
+    await sendNewGroupNotifications(newGroup._id,id);
+
     res.status(201).json({
       data: newGroup,
     });

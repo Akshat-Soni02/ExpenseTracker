@@ -25,6 +25,7 @@ import {
   getUserById,
   addUserFriends,
   autoAddFutureFriends,
+  updateUserNotificationToken
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 import multer from "multer";
@@ -63,5 +64,6 @@ router.get("/:id", isAuthenticated, getUserById);
 //* PUT APIs *//
 router.put("/profile-details", isAuthenticated,upload.single("media"), updateUser);
 router.put("/profile-photo", isAuthenticated, updateProfilePhoto);
+router.put("/update-access-token", isAuthenticated, updateUserNotificationToken);
 
 export default router;

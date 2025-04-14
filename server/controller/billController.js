@@ -1,6 +1,7 @@
 import ErrorHandler from "../middlewares/error.js";
 import bill from "../models/bill.js"
 import { BillStatus ,BillMemberStatus} from "../enums/billEnums.js";
+import { sendNewBillNotifications } from "../services/billService.js";
 
 // when a bill is created and shared with other members we have to let them know
 // in contrast with previous approach the members array does already contian user himself
@@ -24,7 +25,8 @@ export const createBill = async (req, res, next) => {
         });
         console.log("Bill Created");
         if(!newBill) return next(new ErrorHandler("Error creating new bill",404));
-        
+        await sendNewBillNotifications(newBill._id,id);
+
         res.status(201).json({
             message: "Successfully created new bill",
             data: newBill
