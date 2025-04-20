@@ -6,10 +6,12 @@ import {
     deleteBudget,
     getBudgetById
 } from "../controller/budgetController.js";
+import { predictBudgetHandler } from "../controller/budgetPredictionController.js";
 const router = express.Router();
 
 //* POST APIs *//
 router.post("/new", isAuthenticated, createBudget);
+router.post('/predict', isAuthenticated,predictBudgetHandler);
 
 //* GET APIs *//
 router.get("/:id", isAuthenticated, getBudgetById);
