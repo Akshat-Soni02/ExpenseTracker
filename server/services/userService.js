@@ -29,7 +29,7 @@ export const sendBorrowerMail = ({borrowerProfile, lender, amount, group}) => {
 
 export const sendInviteMail = ({inviter, invitee}) => {
   console.log("Sending Invite Mail");
-  sendEmail({toMail: invitee.email, subject: "Invitation to join ExpenseEase", text: `Hey,\n\n${inviter.name} has invited you to join ExpenseEase!\n\nClick the link below to download the app:\n\nhttps://expo.dev/artifacts/eas/jEjS4ZQTJegTXz4UEKW6JH.apk\n\nYou will be added as friend to ${inviter.name} as you create account.\n\nBest,\nExpenseEase Team`});
+  sendEmail({toMail: invitee.email, subject: "Invitation to join ExpenseEase", text: `Hey,\n\n${inviter.name} has invited you to join ExpenseEase!\n\nClick the link below to download the app:\n\nhttps://expo.dev/artifacts/eas/jcvy7AAZgCBa5Z4V7X8FXF.apk\n\nYou will be added as friend to ${inviter.name} as you create account.\n\nBest,\nExpenseEase Team`});
   console.log("Invite Mail Sent");
 }
 
