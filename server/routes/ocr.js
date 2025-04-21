@@ -1,10 +1,10 @@
-import express from "express";
-import { isAuthenticated } from "../middlewares/auth.js";
-import { processOCR } from "../controller/ocrController.js";
+// import express from "express";
+// import { isAuthenticated } from "../middlewares/auth.js";
+// import { processOCR } from "../controller/ocrController.js";
 
-const router = express.Router();
+// const router = express.Router();
 
-//* POST APIs *//
-router.post("/new", isAuthenticated, processOCR);
+// //* POST APIs *//
+// router.post("/new", isAuthenticated, processOCR);
 
-export default router;
+// export default router;
