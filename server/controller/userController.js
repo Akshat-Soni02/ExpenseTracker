@@ -5,10 +5,11 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { deleteMedia, uploadMedia } from "../services/cloudinaryService.js";
 import { OAuth2Client } from "google-auth-library";
-
+import { v4 as uuidv4 } from 'uuid';
 import path from "path";
 import { fileURLToPath } from "url";
-import { addUserFriend, extractTempName, findBorrowersAndRemind, findUserById, sendBorrowerMail, sendInviteMail } from "../services/userService.js";
+
+import { addUserFriend, extractTempName, findBorrowersAndRemind, findTodaySpend, findUserById, sendBorrowerMail, sendInviteMail } from "../services/userService.js";
 import { findUserWallets } from "../services/walletService.js";
 import { sendEmail } from "../services/notificationService.js";
 import { findUserGroups } from "../services/groupService.js";
@@ -18,7 +19,7 @@ import { findUserPersonalTransactions } from "../services/personalTransactionSer
 import { findUserSettlements } from "../services/settlementService.js";
 import { findUserDetectedTransactions } from "../services/detectedTransactionService.js";
 import { getUserBills } from "../services/billService.js";
-import { v4 as uuidv4 } from 'uuid';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -546,6 +547,22 @@ export const getCurrentExhanges = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getUserTodaySpend = async (req ,res, next) => {
+  try {
+    const id = req.user.id;
+    const todaySpend = await findTodaySpend(id);
+    console.log("Today spend fetched", todaySpend);
+    res.status(200).json({
+      data: {
+        todaySpend
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+}
 
 export const remindBorrowers = async (req, res, next) => {
   try {

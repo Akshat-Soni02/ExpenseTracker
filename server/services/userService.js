@@ -1,5 +1,8 @@
 import user from "../models/user.js";
 import { sendEmail, sendNotificationService } from "./notificationService.js";
+import personalTransaction from "../models/personalTransaction.js";
+import expense from "../models/expense.js";
+import bill from "../models/bill.js";
 
 export const findUserById = async (id) => {
   console.log("Finding User by ID");
@@ -9,6 +12,42 @@ export const findUserById = async (id) => {
   console.log("User found");
   return curUser;
 };
+
+export const isToday = (date) => {
+  const today = new Date();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+}
+
+export const findTodaySpend = async(id) => {
+  try {
+    const personalTransactions = await personalTransaction.find({transaction_type: 'expense', user_id: id}, 'created_at_date_time amount');
+    const expenses = await expense.find({'lenders.user_id': id}, 'created_at_date_time lenders');
+    let todaysSpend = 0;
+
+    for (const expense of expenses){
+      if(isToday(expense.created_at_date_time)) {
+        const lender = expense.lenders[0];
+        if(lender){
+          todaysSpend += lender.amount;
+        }
+      }
+    }
+
+    for(const transaction of personalTransactions){
+      if(isToday(transaction.created_at_date_time)) {
+        todaysSpend += transaction.amount;
+      }
+    }
+    return todaysSpend;
+  } catch (error) {
+    console.log("Error calculating todays spend", error);
+    throw new Error("Error calculating todays spend");
+  }
+}
 
 export const extractTempName = (email) => {
   console.log("Extracting Temporary Name");

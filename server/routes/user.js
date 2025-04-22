@@ -25,7 +25,8 @@ import {
   getUserById,
   addUserFriends,
   autoAddFutureFriends,
-  updateUserNotificationToken
+  updateUserNotificationToken,
+  getUserTodaySpend
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 import multer from "multer";
@@ -59,6 +60,7 @@ router.get("/personal-transactions", isAuthenticated, getMyPersonalTransactions)
 router.get("/detected-transactions", isAuthenticated, getMyDetectedTransactions);
 router.get("/friends", isAuthenticated, getFriendlyUsers);
 router.get("/current-exchange-status", isAuthenticated, getCurrentExhanges);
+router.get("/today-spend", isAuthenticated, getUserTodaySpend);
 router.get("/:id", isAuthenticated, getUserById);
 
 //* PUT APIs *//
