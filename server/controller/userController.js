@@ -1,5 +1,4 @@
 import ErrorHandler from "../middlewares/error.js";
-import user from "../models/user.js";
 import { sendToken } from "../utils/features.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
@@ -19,6 +18,7 @@ import { findUserPersonalTransactions } from "../services/personalTransactionSer
 import { findUserSettlements } from "../services/settlementService.js";
 import { findUserDetectedTransactions } from "../services/detectedTransactionService.js";
 import { getUserBills } from "../services/billService.js";
+import user from "../models/user.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -626,6 +626,31 @@ export const autoAddFutureFriends = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getUserFutureFriends = async(req, res, next) => {
+  try {
+    const id = req.user.id;
+    const user = await findUserById(id);
+    const futureFriends = user.futureFriends;
+    res.status(200).json({
+      data: futureFriends
+    });
+  } catch (error) {
+    console.log("Error getting invited Friends", error);
+    next(error);
+  }
+}
+
+// export const removerUserFutureFriends = async (req, res, next) => {
+//   try {
+//     const id = req.user.id;
+//     const user = await findUserById(id);
+//     const {removeFriends} = req.body;
+
+//   } catch (error) {
+    
+//   }
+// }
 
 
 export const getUserById = async (req, res, next) => {
