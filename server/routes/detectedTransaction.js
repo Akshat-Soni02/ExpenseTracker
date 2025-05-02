@@ -1,6 +1,6 @@
 import express from "express";
 import { isAuthenticated } from "../middlewares/auth.js";
-import { createAutoTransaction, getAutoTransactionById } from "../controller/detectedTransactionController.js";
+import { createAutoTransaction, getAutoTransactionById ,deleteAutoTransaction} from "../controller/detectedTransactionController.js";
 
 
 const router = express.Router();
@@ -15,6 +15,6 @@ router.get("/:id", isAuthenticated, getAutoTransactionById);
 // router.put("/:id", isAuthenticated, );
 
 //* DELETE APIs *//
-router.delete("/:id", isAuthenticated, );
+router.delete("/:id", isAuthenticated, deleteAutoTransaction);
 
 export default router;
