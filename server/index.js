@@ -44,7 +44,7 @@ if (!firebaseKey) {
 
 let parsedKey;
 try {
-  parsedKey = JSON.parse(firebaseKey);
+  parsedKey = JSON.parse(Buffer.from(firebaseKey, 'base64').toString('utf-8'));
 } catch (err) {
   throw new Error('FIREBASE_SERVICE_ACCOUNT is not valid JSON');
 }
