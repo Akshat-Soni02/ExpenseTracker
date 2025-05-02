@@ -7,6 +7,7 @@ import bodyParser from "body-parser";
 import { errorMiddleware } from "./middlewares/error.js";
 import { v2 as cloudinary } from "cloudinary";
 import admin from "firebase-admin";
+dotenv.config();
 
 import userRouter from "./routes/user.js";
 import walletRouter from "./routes/wallet.js";
@@ -18,14 +19,13 @@ import billRouter from "./routes/bill.js";
 import personalTransactionRouter from "./routes/personalTransaction.js";
 import testRouter from "./routes/test.js";
 import detectedTransactionRouter from "./routes/detectedTransaction.js";
-// import ocrRouter from "./routes/ocr.js";
+import ocrRouter from "./routes/ocr.js";
 // import chatbotRouter from "./routes/chatbot.js";
 // import budgetPredictionRouter from "./routes/budgetPrediction.js";
 
 import { scheduleCronJobs } from "./services/schedulerService.js";
 import { sendEmail } from "./services/notificationService.js";
 
-dotenv.config();
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -88,7 +88,7 @@ app.use("/api/v1/personal-transactions",personalTransactionRouter);
 app.use("/api/v1/expenses", expenseRouter);
 app.use("/api/v1/test", testRouter);
 app.use("/api/v1/detected-transactions", detectedTransactionRouter);
-// app.use("/api/v1/ocrs", ocrRouter);
+app.use("/api/v1/ocrs", ocrRouter);
 // app.use("/api/v1/budget-prediction", budgetPredictionRouter);
 // app.use("/api/v1/chatbot",chatbotRouter);
 app.use(errorMiddleware);
