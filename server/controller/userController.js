@@ -28,6 +28,52 @@ const filePath = path.resolve(__dirname, "../assets/panda.jpg");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+export const googleLoginAccesstoken = async (req, res, next) => {
+  try {
+
+    //   "user": {
+    //     "email": "the.akshhh@gmail.com",
+    //     "name": "Akshat Soni",
+    //     "picture": "https://lh3.googleusercontent.com/a/...",
+    //     "id": "104475546723009620506"
+    //   }
+
+    console.log("Google login");
+    const { user: userData } = req.body;
+    
+    if (!userData) {
+      return res.status(400).json({ message: "No user details from google" });
+    }
+
+    const { email, name, picture, id: googleId } = userData;
+
+    let existingUser = await user.findOne({ email });
+
+    if (!existingUser) {
+      const result = await uploadMedia(picture, "userProfiles", email);
+      const auth = {
+        auth_id: googleId,
+        auth_provider: "google"
+      }
+
+      existingUser = await user.create({
+        name,
+        email,
+        oauth: [auth],
+        profile_photo: {
+          url: result.secure_url,
+          public_id: result.public_id,
+        },
+      });
+    }
+
+    sendToken(existingUser, res, "Welcome to ExpenseTracker", 201);
+  } catch (error) {
+    console.error("Google Login Error:", error);
+    next(error);
+  }
+};
+
 export const googleLogin = async (req, res, next) => {
   try {
 
