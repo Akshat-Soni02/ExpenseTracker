@@ -72,7 +72,7 @@ export const settleAllGroups = async (mem1, mem2) => {
 export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
     console.log("Distributing amount");
     let currGroup = null;
-    
+    //abc
     try{
         currGroup = await group.findById(groupId).select("members");
     }
