@@ -27,7 +27,8 @@ import {
   autoAddFutureFriends,
   updateUserNotificationToken,
   getUserTodaySpend,
-  getUserFutureFriends
+  getUserFutureFriends,
+  googleLoginAccesstoken
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 import multer from "multer";
@@ -38,7 +39,7 @@ const upload = multer({ storage });
 
 //* POST APIs *//
 router.post("/new", register);
-router.post("/auth/google", googleLogin);
+router.post("/auth/google", googleLoginAccesstoken);
 router.post("/login", login);
 router.post("/send-otp", sendOtp);
 router.post("/verify-otp", verifyOtp);

@@ -3,6 +3,7 @@ import group from "../models/group.js";
 import { updateFriendlyExchangeStatesOnLending, findUserById } from "./userService.js";
 import { GroupMemberStatus } from "../enums/groupEnums.js";
 import { sendNotificationService } from "./notificationService.js";
+import mongoose from "mongoose";
 
 export const formatMembers = (memberIds) => {
     console.log("Formatting members");
@@ -32,6 +33,40 @@ export const findUserGroups = async (id) => {
     if(!groups) throw new Error("Error finding user groups");
     console.log("User groups found");
     return groups;
+}
+
+export const settleAllGroups = async (mem1, mem2) => {
+    console.log("Settling all the groups");
+    console.log(mem1);
+    console.log(mem2);
+    const groups = await group.find({
+    "members.member_id": {
+        $all: [new mongoose.Types.ObjectId(mem1), new mongoose.Types.ObjectId(mem2)]
+    }
+    });
+    for (const group of groups) {
+        for (const member of group.members) {
+          if (member.member_id.toString() === mem1) {
+            for (const other_mem of member.other_members) {
+              if (other_mem.other_member_id.toString() === mem2) {
+                other_mem.amount = 0;
+                other_mem.exchange_status = "settled";
+              }
+            }
+          }
+      
+          if (member.member_id.toString() === mem2) {
+            for (const other_mem of member.other_members) {
+              if (other_mem.other_member_id.toString() === mem1) {
+                other_mem.amount = 0;
+                other_mem.exchange_status = "settled";
+              }
+            }
+          }
+        }
+        await group.save();
+    }
+      
 }
 
 export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
