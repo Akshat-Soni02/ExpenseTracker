@@ -1,26 +1,22 @@
 import nodemailer from "nodemailer";
 import admin from "firebase-admin";
 import { google } from "googleapis";
-import path from "path";
-import { fileURLToPath } from 'url';
 import axios from "axios";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 
 
 export const sendEmail = ({toMail, subject, text}) => {
-    console.log("sending email");
+
+  try {
+    console.log("Sending Email Notification");
+
     const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        auth: {
-          user: 'expensetracker414@gmail.com',
-          pass: 'buygfdapgkgjofol',
-        },
-      });
-    
+      host: 'smtp.gmail.com',
+      port: 465,
+      auth: {
+        user: 'expensetracker414@gmail.com',
+        pass: 'buygfdapgkgjofol',
+      },
+    });
     
     const mailOptions = {
         from: 'expensetraker414@gmail.com',
@@ -29,7 +25,6 @@ export const sendEmail = ({toMail, subject, text}) => {
         text
     };
     
-    // Send the email
     transporter.sendMail(mailOptions, function(error, info){
         if (error) {
         console.log('Error:', error);
@@ -38,13 +33,28 @@ export const sendEmail = ({toMail, subject, text}) => {
         console.log("email sent to: ", toMail);
         }
     });
+
     console.log("email sent");
+  } catch (error) {
+    console.log(`Error sending email notification`, error);
+  }
 }
 
-const FCM_API_URL = 'https://fcm.googleapis.com/v1/projects/expensetracker-451815/messages:send';
 
+const FCM_API_URL = process.env.FCM_API_URL;
 
 export const sendNotificationService = async ({token, title, body}) => {
+
+  if(!token) {
+    console.log(`Bad notification request, No token provided`);
+    return;
+  }
+
+  if(!title || !body) {
+    console.log(`Bad notification request, No title/body provided`);
+    return;
+  }
+
   const message = {
     notification: {
       title,
@@ -66,7 +76,8 @@ export const sendNotificationService = async ({token, title, body}) => {
   };
 
   try {
-    console.log("Sending notification");
+    console.log("Sending push notification");
+
     const response = await admin.messaging().send(message);
     const accessToken =  await getAccessToken();
     const notificationBody = {
@@ -78,7 +89,9 @@ export const sendNotificationService = async ({token, title, body}) => {
         }
       }
     };
+
     let notificationResponse={};
+
     axios.post(FCM_API_URL, notificationBody, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -91,6 +104,7 @@ export const sendNotificationService = async ({token, title, body}) => {
     .catch(err => {
       console.error('Error sending notification:', err.response?.data || err.message);
     });
+
     console.log("Notification sent successfully:");
     return {response, accessToken, notificationResponse};
   } catch (error) {
@@ -116,7 +130,6 @@ export const getAccessToken = async () => {
   }
 
   const auth = new google.auth.GoogleAuth({
-    // keyFile: parsedKey, // path to the service account key
     credentials: parsedKey,
     scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
   });
@@ -128,4 +141,5 @@ export const getAccessToken = async () => {
     console.error("Error fetching access token:", error);
     throw error;
   }
+  
 }

@@ -5,11 +5,12 @@ import expense from "../models/expense.js";
 import bill from "../models/bill.js";
 
 export const findUserById = async (id) => {
-  console.log("Finding User by ID");
+  console.log(`Finding User with ID: ${id}`);
   if (!id) throw new Error("No user id provided");
+
   const curUser = await user.findById(id);
   if (!curUser) throw new Error("No user with given id exists");
-  console.log("User found");
+
   return curUser;
 };
 
