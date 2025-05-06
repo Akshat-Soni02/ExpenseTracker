@@ -6,6 +6,7 @@ import ErrorHandler from "../middlewares/error.js";
 
 export const findBillById = async (id) => {
     console.log("Finding bill by id");
+    //abc
     const curBill = await bill.findById(id);
     if (!curBill) {
         throw new Error("Bill with this id doesn't exist");
