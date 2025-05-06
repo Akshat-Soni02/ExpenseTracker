@@ -67,7 +67,7 @@ export const googleLoginAccesstoken = async (req, res, next) => {
       });
     }
 
-    sendToken(existingUser, res, "Welcome to ExpenseTracker", 201);
+    sendToken(existingUser, res, "Welcome to ExpenseEase", 201);
   } catch (error) {
     console.error("Google Login Error:", error);
     next(error);
