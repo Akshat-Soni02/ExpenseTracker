@@ -6,131 +6,178 @@ import { sendNotificationService } from "./notificationService.js";
 import mongoose from "mongoose";
 
 export const formatMembers = (memberIds) => {
-    console.log("Formatting members");
-    return memberIds.map((memberId, index) => ({
-        member_id: memberId,
-        other_members: memberIds
-        .filter((otherId) => otherId !== memberId)
-        .map((otherMemberId) => ({
-            other_member_id: otherMemberId,
-            amount: 0,
-            exchange_status: GroupMemberStatus.SETTLED,
-        })),
-    }));
+    try{
+        console.log("Formatting members");
+        return memberIds.map((memberId, index) => ({
+            member_id: memberId,
+            other_members: memberIds
+            .filter((otherId) => otherId !== memberId)
+            .map((otherMemberId) => ({
+                other_member_id: otherMemberId,
+                amount: 0,
+                exchange_status: GroupMemberStatus.SETTLED,
+            })),
+        }));
+    }
+    catch(err){
+        console.log("Error formatting members", err);
+        throw new Error("Error formatting members");
+    }
 };
 
 export const findGroupById = async (id) => {
-    console.log("Finding group by ID");
-    const curGroup = await group.findById(id);
-    if (!curGroup) return null;
-    console.log("Group found");
-    return curGroup;
+    try{
+        console.log("Finding group by ID");
+        if(!id) {
+            console.log(`Group id is undefined: ${id}`);
+            throw new Error(`Group id is undefined: ${id}`);
+        }
+        const curGroup = await group.findById(id);
+        return curGroup;
+    }
+    catch(err){
+        console.log("Error finding group by ID", err);
+        throw new Error("Error finding group by ID");
+    }
 }
 
 export const findUserGroups = async (id) => {
-    console.log("Finding user groups");
-    const groups = await group.find({"members.member_id": id});
-    if(!groups) throw new Error("Error finding user groups");
-    console.log("User groups found");
-    return groups;
+    try{        
+        console.log("Finding user groups");
+        if(!id){
+            console.log(`User id is undefined: ${id}`);
+            throw new Error(`User id is undefined: ${id}`);
+        }
+        const groups = await group.find({"members.member_id": id});
+        return groups;
+    }
+    catch(err){
+        console.log("Error finding user groups", err);
+        throw new Error("Error finding user groups");
+    }
 }
 
 export const settleAllGroups = async (mem1, mem2) => {
-    console.log("Settling all the groups");
-    console.log(mem1);
-    console.log(mem2);
-    const groups = await group.find({
-    "members.member_id": {
-        $all: [new mongoose.Types.ObjectId(mem1), new mongoose.Types.ObjectId(mem2)]
-    }
-    });
-    for (const group of groups) {
-        for (const member of group.members) {
-          if (member.member_id.toString() === mem1) {
-            for (const other_mem of member.other_members) {
-              if (other_mem.other_member_id.toString() === mem2) {
-                other_mem.amount = 0;
-                other_mem.exchange_status = "settled";
-              }
-            }
-          }
-      
-          if (member.member_id.toString() === mem2) {
-            for (const other_mem of member.other_members) {
-              if (other_mem.other_member_id.toString() === mem1) {
-                other_mem.amount = 0;
-                other_mem.exchange_status = "settled";
-              }
-            }
-          }
+    try{    
+        console.log("Settling all the groups");
+        console.log(mem1);
+        console.log(mem2);
+        if(!mem1 || !mem2) {
+            console.log(`Member ids are undefined: ${mem1}, ${mem2}`);
+            throw new Error(`Member ids are undefined: ${mem1}, ${mem2}`);
         }
-        await group.save();
+        const groups = await group.find({
+        "members.member_id": {
+            $all: [new mongoose.Types.ObjectId(mem1), new mongoose.Types.ObjectId(mem2)]
+        }
+        });
+        for (const group of groups) {
+            for (const member of group.members) {
+                if (member.member_id.toString() === mem1) {
+                    for (const other_mem of member.other_members) {
+                        if (other_mem.other_member_id.toString() === mem2) {
+                            other_mem.amount = 0;
+                            other_mem.exchange_status = "settled";
+                        }
+                    }
+                }
+        
+                if (member.member_id.toString() === mem2) {
+                    for (const other_mem of member.other_members) {
+                        if (other_mem.other_member_id.toString() === mem1) {
+                            other_mem.amount = 0;
+                            other_mem.exchange_status = "settled";
+                        }
+                    }
+                }
+            }
+            await group.save();
+        }
     }
-      
+    catch(err){
+        console.log("Error settling all groups", err);
+        throw new Error("Error settling all groups");
+    }
 }
 
 export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
-    console.log("Distributing amount");
-    let currGroup = null;
-    //abc
-    try{
-        currGroup = await group.findById(groupId).select("members");
+    try{    
+        console.log("Distributing amount");
+        if(!groupId || !giverId || !borrowers) {
+            console.log(`Group id, giver id or borrowers are undefined: ${groupId}, ${giverId}, ${borrowers}`);
+            throw new Error(`Group id, giver id or borrowers are undefined: ${groupId}, ${giverId}, ${borrowers}`);
+        }
+        let currGroup = null;
+        try{
+            currGroup = await group.findById(groupId).select("members");
+        }
+        catch(err){
+            console.log("Error finding group",err);
+            throw new Error("Error finding group");
+        }
+
+        const lender = currGroup.members.find(m => m.member_id.toString() === giverId.toString());
+
+        for (const { user_id: borrowerId, amount } of borrowers) {
+            const res = updateTransaction(lender, borrowerId.toString(), amount, GroupMemberStatus.LENDED); //settled
+            if(!res)
+            {
+                throw new Error("cannot update group info for adding expense");
+            }
+            const borrower = currGroup.members.find(m => m.member_id.toString() === borrowerId.toString());
+            if (borrower) {
+                updateTransaction(borrower, giverId.toString(), amount, GroupMemberStatus.BORROWED); //settled
+            }
+        }
+        await currGroup.save();
     }
     catch(err){
-        console.log("Error finding group",err);
+        console.log("Error distributing amount", err);
+        throw new Error("Error distributing amount");
     }
-
-    if (!currGroup) throw new Error("No group with the given ID");
-    const lender = currGroup.members.find(m => m.member_id.toString() === giverId.toString());
-    if(!lender) throw new Error("lender not found");
-    for (const { user_id: borrowerId, amount } of borrowers) {
-        const res = updateTransaction(lender, borrowerId.toString(), amount, GroupMemberStatus.LENDED); //settled
-        if(!res)
-        {
-            throw new Error("cannot update group info for adding expense");
-            // return error 
-        }
-        const borrower = currGroup.members.find(m => m.member_id.toString() === borrowerId.toString());
-        if (borrower) {
-            updateTransaction(borrower, giverId.toString(), amount, GroupMemberStatus.BORROWED); //settled
-        }
-    }
-    await currGroup.save();
-    console.log("Amount Distributed");
 };
 
 const updateTransaction = (member, otherMemberId, amount, type) => {
-    console.log("Updating transaction");
-    const transaction = member.other_members.find(
-        t => t.other_member_id.toString() === otherMemberId
-    );
-    if (!transaction) return null;
-    if (transaction.exchange_status === type) {
-        transaction.amount += amount;
-    } else if (transaction.exchange_status === GroupMemberStatus.SETTLED) {
-        transaction.amount = amount;
-        transaction.exchange_status = type;
-    } else {
-        if(transaction.amount === amount)
-        {
-            transaction.amount = 0;
-            transaction.exchange_status = GroupMemberStatus.SETTLED;
+    try{    
+        console.log("Updating transaction");
+        if(!member || !otherMemberId || !amount || !type) {
+            console.log(`Member, other member id, amount or type are undefined: ${member}, ${otherMemberId}, ${amount}, ${type}`);
+            throw new Error(`Member, other member id, amount or type are undefined: ${member}, ${otherMemberId}, ${amount}, ${type}`);
         }
-        else if(transaction.amount < amount)
-        {
-            transaction.amount = amount - transaction.amount;
+        const transaction = member.other_members.find(
+            t => t.other_member_id.toString() === otherMemberId
+        );
+        if (!transaction) return null;
+        if (transaction.exchange_status === type) {
+            transaction.amount += amount;
+        } else if (transaction.exchange_status === GroupMemberStatus.SETTLED) {
+            transaction.amount = amount;
             transaction.exchange_status = type;
+        } else {
+            if(transaction.amount === amount)
+            {
+                transaction.amount = 0;
+                transaction.exchange_status = GroupMemberStatus.SETTLED;
+            }
+            else if(transaction.amount < amount)
+            {
+                transaction.amount = amount - transaction.amount;
+                transaction.exchange_status = type;
+            }
+            else
+            {
+                transaction.amount -= amount;
+            }
         }
-        else
-        {
-            transaction.amount -= amount;
-        }
+        transaction.amount = transaction.amount;
+        const updatedMember = member;
+        updatedMember.otherMembers = transaction;
+        return updatedMember;
     }
-    transaction.amount = transaction.amount;
-    const updatedMember = member;
-    updatedMember.otherMembers = transaction;
-    console.log("Transaction updated");
-    return updatedMember;
+    catch(err){
+        console.log("Error updating transaction", err);
+        throw new Error("Error updating transaction");
+    }
 };
 
 /////////////////////
