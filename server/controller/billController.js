@@ -3,15 +3,17 @@ import bill from "../models/bill.js"
 import { BillStatus ,BillMemberStatus} from "../enums/billEnums.js";
 import { sendNewBillNotifications } from "../services/billService.js";
 
-// when a bill is created and shared with other members we have to let them know
-// in contrast with previous approach the members array does already contian user himself
+
 export const createBill = async (req, res, next) => {
     try {
-        console.log("Creating Bill");
+        console.log("creating Bill");
+
         const id = req.user._id;
-        const {bill_title, bill_category, due_date_time, recurring, members} = req.body;        
-        const amount  = Number(req.body.amount);
-        // iterate to members array (exclude the user) and send push notification to others about the bill
+        const {bill_title, bill_category, due_date_time, recurring, members} = req.body;  
+
+        //below transformation is not required due to middleware      
+        // const amount  = Number(req.body.amount);
+
         const newBill = await bill.create({
             bill_title,
             bill_number: 1,
@@ -23,8 +25,10 @@ export const createBill = async (req, res, next) => {
             status: BillStatus.PENDING,
             creator_id:id
         });
-        console.log("Bill Created");
+
         if(!newBill) return next(new ErrorHandler("Error creating new bill",404));
+
+        console.log("Bill Created");
         await sendNewBillNotifications(newBill._id.toString(),id);
 
         res.status(201).json({
@@ -46,8 +50,9 @@ export const createBill = async (req, res, next) => {
 
 export const handleBillUserStatusUpdate = async (req, res, next) => {
     try {
-        console.log("Updating Bill Status");
-        const id = req.user._id.toString();
+        console.log("updating Bill Status");
+
+        const id = req.user.id;
         const { status } = req.body;
         const { billId } = req.params;
 
@@ -103,14 +108,20 @@ export const updateBill = async (req, res, next) => {
         // members
         // amount
         console.log("Updating Bill");
+
         const {id} = req.params;
         let updatedDetails = req.body;
-        if(updatedDetails.amount) updatedDetails.amount = Number(updatedDetails.amount);
+
+        //below code is not temporarily not neccessary due to validation middlewares for now
+        // if(updatedDetails.amount) updatedDetails.amount = Number(updatedDetails.amount);
+
         const updatedBill = await bill.findByIdAndUpdate(id, updatedDetails, {
             new: true,
             runValidators: true
         });
+
         if(!updatedBill) return next(new ErrorHandler("Error updating bill", 400));
+
         console.log("Bill updating successfully");
         res.status(200).json({
             message: "Successfully updated bill",
@@ -132,8 +143,11 @@ export const updateBill = async (req, res, next) => {
 export const deleteBill = async (req, res, next) => {
     try {
         console.log("Deleting Bill");
+
         const {id} = req.params;
+
         await bill.findByIdAndDelete(id);
+
         console.log("Bill deleted successfully");
         res.status(200).json({
             message: "Successfully deleted bill"
@@ -144,11 +158,15 @@ export const deleteBill = async (req, res, next) => {
     }
 }
 
+
 export const getBillById = async (req, res, next) => {
     try {
         console.log("Getting Bill by ID");
+
         const {id} = req.params;
+
         const curBill = await bill.findById(id);
+        
         if(!curBill) return next(new ErrorHandler("Bill not found",404));
 
         console.log("Bill fetched successfully");

@@ -12,24 +12,27 @@ import {
   processSimplifyDebts,
   addToGroup,
 } from "../controller/groupController.js";
+import { validate } from "../middlewares/validateRequest.js";
+import { createGroupSchema, remindGroupBorrowerSchema, remindAllGroupBorrowersSchema, processSimplifyDebtsSchema, leaveGroupSchema, getGroupExchangeStateWithOthersSchema, getGroupHistorySchema, getGroupByIdSchema, addToGroupSchema, updateGroupSchema } from "../validators/group.schema.js";
+
 
 const router = express.Router();
 
 //* POST APIs *//
-router.post("/new", isAuthenticated, createGroup);
-router.post("/remind-group-borrower/:group_id", isAuthenticated, remindGroupBorrower);
-router.post("/remind-all-group-borrowers/:group_id", isAuthenticated, remindAllGroupBorrowers);
-router.post("/simplify-debt/:group_id", isAuthenticated, processSimplifyDebts);
+router.post("/new", isAuthenticated, validate(createGroupSchema), createGroup);
+router.post("/remind-group-borrower/:group_id", isAuthenticated, validate(remindGroupBorrowerSchema), remindGroupBorrower);
+router.post("/remind-all-group-borrowers/:group_id", isAuthenticated,validate(remindAllGroupBorrowersSchema), remindAllGroupBorrowers);
+router.post("/simplify-debt/:group_id", isAuthenticated, validate(processSimplifyDebtsSchema), processSimplifyDebts);
 
 //* GET APIs *//
-router.get("/leave/:groupId", isAuthenticated, leaveGroup);
-router.get("/exchange-state/:group_id", isAuthenticated, getGroupExchangeStateWithOthers);
-router.get("/history/:group_id", isAuthenticated, getGroupHistory);
-router.get("/:id", isAuthenticated, getGroupById);
+router.get("/leave/:groupId", isAuthenticated, validate(leaveGroupSchema), leaveGroup);
+router.get("/exchange-state/:group_id", isAuthenticated, validate(getGroupExchangeStateWithOthersSchema), getGroupExchangeStateWithOthers);
+router.get("/history/:group_id", isAuthenticated, validate(getGroupHistorySchema), getGroupHistory);
+router.get("/:id", isAuthenticated,validate(getGroupByIdSchema), getGroupById);
 
 //* PUT APIs *//
-router.put("/add-to-group/:group_id", isAuthenticated, addToGroup);
-router.put("/:id", isAuthenticated, updateGroup);
+router.put("/add-to-group/:group_id", isAuthenticated,validate(addToGroupSchema), addToGroup);
+router.put("/:id", isAuthenticated,validate(updateGroupSchema), updateGroup);
 
 //* DELETE APIs *//
 router.delete("/:id", isAuthenticated);
