@@ -15,7 +15,7 @@ export const findWalletById = async (id) => {
     return curWallet;
   } catch (error) {
     console.log(error);
-    throw new error;
+    throw error;
   }
 };
 
@@ -57,7 +57,7 @@ export const transferWalletAmounts = async({toWallet, fromWallet, amount}) => {
     return {updatedDebitWallet, updatedCreditWallet};
   } catch (error) {
     console.log(error);
-    throw new error;
+    throw error;
   }
 
     
@@ -85,7 +85,7 @@ export const modifyWalletBalance = async ({id, amount, zeroTrue}) => {
     return true;
   } catch (error) {
     console.log(error);
-    throw new error;
+    throw error;
   }
   
 };
@@ -97,7 +97,7 @@ export const findUserWallets = async (id) => {
     return wallets;
   } catch (error) {
     console.log(error);
-    throw new error;
+    throw error;
   }
 };
 
@@ -113,6 +113,6 @@ export const sufficientBalance = async ({id, amount}) => {
     return false;
   } catch (error) {
     console.log(error);
-    throw new error;
+    throw error;
   }
 }

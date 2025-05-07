@@ -12,10 +12,11 @@ export const handleExpenseRelations = async ({
 }) => {
   try{
     console.log("Handling expense relations");
-    if(!total_amount || !lender_id || !borrowers){
+    if(!total_amount || !lender_id || borrowers.length === 0){
       console.log("Lender ID, borrowers, or total amount is undefined");
       throw new Error("Lender id, borrowers, or total amount is undefined");
     }
+
     //Update Wallet
     if (wallet_id){
       try{
@@ -23,7 +24,7 @@ export const handleExpenseRelations = async ({
       }
       catch (err) {
         console.log("Error modifying wallet balance:", err);
-        throw new Error("Error modifying wallet balance");
+        throw new err;
       }
     }
 
@@ -36,7 +37,7 @@ export const handleExpenseRelations = async ({
         });
       } catch (err) {
           console.log("Error distributing amount:", err);
-          throw new Error("Error distributing amount");
+          throw new err;
       }
     }
     
@@ -46,21 +47,25 @@ export const handleExpenseRelations = async ({
       lender_id: lender_id,
       borrowers
     });
+
     console.log("Updated friendly exchange states");
+
   }
   catch (error) {
     console.log("Error handling expense relations", error);
-    throw new Error("Error handling expense relations");
+    throw error;
   }
 };
 
 export const revertExpenseEffects = async (curExpense) => {
   try {
+
     console.log("Reverting expense effects");
     if (!curExpense) {
       console.log("Current expense is undefined");
       throw new Error("Current expense is undefined");
     }
+
     if (curExpense.wallet_id) {
       try{
         await modifyWalletBalance({
@@ -96,10 +101,12 @@ export const revertExpenseEffects = async (curExpense) => {
 export const findExpenseById = async (id) => {
   try{
     console.log("Finding expense by ID");
+
     if(!id) {
       console.log(`Expense id is undefined: ${id}`);
       throw new Error(`Expense id is undefined: ${id}`);
     }
+
     const curExpense = await expense.findById(id);
     return curExpense;
   }
@@ -112,10 +119,12 @@ export const findExpenseById = async (id) => {
 export const findPeriodicExpenses = async ({start, end, userId}) => {
   try{
     console.log("Finding periodic expenses");
+
     if(!start || !end || !userId) {
       console.log(`Start date, end date, or user ID is undefined: ${start}, ${end}, ${userId}`);
       throw new Error(`Start date, end date, or user ID is undefined: ${start}, ${end}, ${userId}`);
     }
+
     const expenses = await expense
     .find({
       $or: [
@@ -137,10 +146,12 @@ export const findPeriodicExpenses = async ({start, end, userId}) => {
 export const findUserExpenses = async ({userId, group_id}) => {
   try{
     console.log("Finding user expenses");
+
     if(!userId) {
       console.log(`User ID is undefined: ${userId}`);
       throw new Error(`User ID is undefined: ${userId}`);
     }
+    
     let filter = {
       $or: [
         { "lenders.user_id": userId.toString() },
