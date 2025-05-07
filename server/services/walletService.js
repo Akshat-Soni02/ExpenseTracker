@@ -1,67 +1,118 @@
 import wallet from "../models/wallet.js";
 
 export const findWalletById = async (id) => {
+  try {
+    if(!id) {
+      throw new Error("Missing id to look for wallet");
+    }
+  
     const curWallet = await wallet.findById(id);
     if (!curWallet) {
-        throw new Error("Wallet with this id doesn't exist");
+        console.log(`Wallet with id: ${id} doesn't exist`);
+        return null;
     }
+  
     return curWallet;
+  } catch (error) {
+    console.log(error);
+    throw new error;
+  }
 };
 
 export const transferWalletAmounts = async({toWallet, fromWallet, amount}) => {
-    console.log("Transfering Wallet Amounts");
+
+  try {
+    if(!toWallet || !fromWallet || !amount) {
+      console.log(`Details missing to transfer wallet amounts`);
+      throw new Error(`Unable to transfer amount, details insuffecient`);
+    }
+
+    if(toWallet.toString() === fromWallet.toString()) return {fromWallet, toWallet};
+
+    console.log(`Transfering ${amount} from ${fromWallet} to ${toWallet}`);
+
     const debitWallet = await findWalletById(fromWallet);
-    if (!debitWallet) throw new Error("from wallet doesn't exist to transfer amount");
+    if (!debitWallet) throw new Error(`Unable to find wallet to debit amount from`);
+
+    const creditWallet = await findWalletById(toWallet);
+    if (!creditWallet) throw new Error(`Unable to find wallet to credit amount to`);
 
     if (amount > debitWallet.amount) return null;
-    console.log(`transferring amount: ${amount} from wallet: ${debitWallet.wallet_title} having earlier balance: ${debitWallet.amount}`);
+
     const updatedDebitWallet = await wallet.findByIdAndUpdate(
       fromWallet,
       { amount: debitWallet.amount - amount },
-      { runValidators: true }
+      { runValidators: true, new: true }
     );
-    if(!updatedDebitWallet) throw new Error("Cannot transfer amounts, debit wallet not found");
-    const creditWallet = await findWalletById(toWallet);
-    if (!creditWallet) throw new Error("to wallet doesn't exist to transfer amount");
+
+    if(!updatedDebitWallet) throw new Error("Cannot transfer amounts, debit wallet validation fail");
+    
     const updatedCreditWallet = await wallet.findByIdAndUpdate(
       toWallet,
       { amount: creditWallet.amount + amount },
-      { runValidators: true }
+      { runValidators: true, new: true }
     );
 
-    if(!updatedCreditWallet) throw new Error("Cannot transfer amounts, credit wallet not found");
-    console.log(`transferred amount: ${amount} from wallet: ${debitWallet.wallet_title} new balance: ${updatedDebitWallet.amount} to wallet: ${creditWallet.wallet_title} new balance: ${updatedCreditWallet.amount}`);
-    return {fromWalletUpdated, toWalletUpdated};
+    if(!updatedCreditWallet) throw new Error("Cannot transfer amounts, credit wallet validation fail");
+    return {updatedDebitWallet, updatedCreditWallet};
+  } catch (error) {
+    console.log(error);
+    throw new error;
+  }
+
+    
 }
 
 //takes amount with sign
 export const modifyWalletBalance = async ({id, amount, zeroTrue}) => {
-  console.log("Modifying Wallet Balance");
+  try {
+    console.log(`Modifying Wallet Balance of ${id}`);
+
+    if(!id || !amount) throw new Error(`Insuffecient details, id or amount missing`);
+
     const curWallet = await wallet.findById(id).select("amount");
     if(!curWallet) throw new Error(`Walled doesn't exist with given id ${id}`);
-    console.log("modifying wallet balance");
-    console.log(`wallet previous balance: ${curWallet.amount}, amount to be added: ${amount}`);
+
     if (curWallet.amount + amount < 0) {
       if(zeroTrue) amount = -curWallet.amount;
       else throw new Error("wallet doesn't have enough balance");
-    } 
-    await wallet.findByIdAndUpdate(id, {amount: curWallet.amount + amount}, {new: true, runValidators: true});
-    console.log("Modified Wallet Balance");
+    }
+
+    const updatedWallet = await wallet.findByIdAndUpdate(id, {amount: curWallet.amount + amount}, {new: true, runValidators: true});
+    if(!updatedWallet) throw new Error(`Unable to update wallet, validation fail`);
+
+    console.log(`Modified Wallet ${id} Balance`);
     return true;
+  } catch (error) {
+    console.log(error);
+    throw new error;
+  }
+  
 };
 
 export const findUserWallets = async (id) => {
-  console.log("finding user wallets");
-  const wallets = await wallet.find({ creator_id: id, deleted: false });
-  if(!wallets) throw new Error("Error fetching user wallets");
-  console.log("found user wallets");
-  return wallets;
+  try {
+    console.log(`finding user - ${id} wallets`);
+    const wallets = await wallet.find({ creator_id: id, deleted: false });
+    return wallets;
+  } catch (error) {
+    console.log(error);
+    throw new error;
+  }
 };
 
 export const sufficientBalance = async ({id, amount}) => {
-  console.log("checking sufficient balance");
-  const curWallet = await wallet.findById(id).select("amount");
-  if(!curWallet) throw new Error("Walled doesn't exist with given id");
-  if (curWallet.amount - amount >= 0) return true;
-  return false;
+  try {
+    console.log("checking wallet balance");
+    if(!id || !amount) throw new Error(`Insuffecient details, id or amount`);
+
+    const curWallet = await wallet.findById(id).select("amount");
+    if(!curWallet) throw new Error("Walled doesn't exist with given id");
+
+    if (curWallet.amount - amount >= 0) return true;
+    return false;
+  } catch (error) {
+    console.log(error);
+    throw new error;
+  }
 }
