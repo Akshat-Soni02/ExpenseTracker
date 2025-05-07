@@ -12,5 +12,7 @@ const budgetSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+budgetSchema.index({ user_id: 1, budget_category: 1 }, { unique: true });
+
 const budget = mongoose.model("budget", budgetSchema);
 export default budget;

@@ -5,19 +5,13 @@ import expense from "../models/expense.js";
 import bill from "../models/bill.js";
 
 export const findUserById = async (id) => {
-  try{
-    console.log("Finding User by ID");
-    if(!id) {
-      console.log(`User id is undefined: ${id}`);
-      throw new Error(`User id is undefined: ${id}`);
-    }
-    const curUser = await user.findById(id);
-    return curUser;
-  }
-  catch (error) {
-    console.log("Error finding user by ID", error);
-    throw new Error("Error finding user by ID");
-  }
+  console.log(`Finding User with ID: ${id}`);
+  if (!id) throw new Error("No user id provided");
+
+  const curUser = await user.findById(id);
+  if (!curUser) throw new Error("No user with given id exists");
+
+  return curUser;
 };
 
 export const isToday = (date) => {
