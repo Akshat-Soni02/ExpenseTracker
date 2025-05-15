@@ -29,7 +29,7 @@ export const createBill = async (req, res, next) => {
 
         res.status(201).json({
             message: "Successfully created new bill",
-            data: newBill
+            // data: newBill
         });
     } catch (error) {   
         if (error.code === 11000) {

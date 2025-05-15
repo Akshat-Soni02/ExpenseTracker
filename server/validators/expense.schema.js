@@ -1,99 +1,203 @@
+import { query } from "express";
 import { z } from "zod";
+import group from "../models/group";
 
-export const lenderBorrowerSchema = z.object({
-  user_id: z.string().min(1, "User id is required"),
-  amount: z
-  .union([z.string(), z.number()])
-  .transform((val) => Number(val))
-  .refine((val) => !isNaN(val) && val > 0, {
+const lenderBorrowerSchema = z.object({
+  user_id: z.string({
+    required_error: "User id is required",
+  })
+  .trim()
+  .min(1, "User id cannot be empty"),
+  amount: z.coerce.number({
+    required_error: "Amount is required",
+    invalid_type_error: "Amount must be a number or string of numbers",
+  }).refine((val) => val > 0, {
     message: "Amount must be a positive number",
   }), 
 });
 
 export const createExpenseSchema = z.object({
-  description: z.string().min(1, "Description is required"),
-  wallet_id: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-    message: "Expense wallet id cannot be empty",
-  }),
-  total_amount: z
-  .union([z.string(), z.number()])
-  .transform((val) => Number(val))
-  .refine((val) => !isNaN(val) && val > 0, {
-    message: "Amount must be a positive number",
-  }),
-  expense_category: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-    message: "Expense category cannot be empty",
-  }),
-  notes: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-    message: "Expense notes cannot be empty",
-  }),
-  group_id: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-    message: "Expense group id cannot be empty",
-  }),
-  created_at_date_time: z.coerce.date().or(z.string().datetime()),
+  body: z.object({
+    description: z.string({        
+      required_error: "Description is required",
+    })
+    .trim()
+    .min(1, "Description cannot be empty"),
+    wallet_id:  z.string()
+    .trim()
+    .min(1, "Wallet id cannot be empty")
+    .optional(),
+    total_amount: z.coerce.number({
+      required_error: "Amount is required",
+      invalid_type_error: "Amount must be a number or string of numbers",
+    }).refine((val) => val > 0, {
+      message: "Amount must be a positive number",
+    }),
+    expense_category: z.string()
+    .trim()
+    .min(1, "Expense category cannot be empty")
+    .optional(),
+    notes: z.string()
+    .trim()
+    .min(1, "Notes cannot be empty")
+    .optional(),
+    group_id: z.string()
+    .trim()
+    .min(1, "Group id cannot be empty")
+    .optional(),
+    created_at_date_time: z.coerce.date().or(z.string().datetime()),
 
-  // JSON parsed fields from req.body
-  lenders: z.array(lenderBorrowerSchema).min(1, "At least one lender is required"),
-  borrowers: z.array(lenderBorrowerSchema).min(1, "At least one borrower is required"),
+    // JSON parsed fields from req.body
+    lenders: z.array(lenderBorrowerSchema).min(1, "At least one lender is required"),
+    borrowers: z.array(lenderBorrowerSchema).min(1, "At least one borrower is required"),
+  }),
+  params: z.object({}).optional(), // Add fields if you want to validate params
+  query: z.object({}).optional(),  // Add fields if you want to validate query
+  file: z.any().optional(), 
 });
 
-import { z } from "zod";
 
-// ObjectId validator (24-char hex string)
 
 export const updateExpenseSchema = z.object({
     params: z.object({
-        expense_id: z.string().min(1, "Budget id is required") // For something like /bills/:id
+        expense_id: z.string({
+          required_error: "Expense id is required",
+        })
+        .trim()
+        .min(1, "Budget id cannot be empty") 
     }),
-  description: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-    message: "Expense description cannot be empty",
-  }),
-  total_amount: z.optional()
-  .union([z.string(), z.number()])
-  .transform((val) => Number(val))
-  .refine((val) => !isNaN(val) && val > 0, {
-    message: "Amount must be a positive number",
-  }),
-  expense_category: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-    message: "Expense category cannot be empty",
-  }),
-  notes: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-    message: "Expense notes cannot be empty",
-  }),
-  wallet_id: objectId.optional().refine(val => val === undefined || val.trim().length > 0 ,{
-    message: "Expense wallet id cannot be empty",
-  }),
-  group_id: objectId.optional().refine(val => val === undefined || val.trim().length > 0 ,{
-    message: "Expense group id cannot be empty",
-  }),
-  created_at_date_time: z.coerce.date().or(z.string().datetime()).optional(),
+    body: z.object({
+      description: z.string()
+      .trim()
+      .min(1, "Description cannot be empty")
+      .optional(),
+      total_amount: z.coerce.number({
+        required_error: "Amount is required",
+        invalid_type_error: "Amount must be a number or string of numbers",
+      }).refine((val) => val > 0, {
+        message: "Amount must be a positive number",
+      })
+      .optional(),
+      expense_category: z.string()
+      .trim()
+      .min(1, "Expense category cannot be empty")
+      .optional(),
+      notes: z.string()
+      .trim()
+      .min(1, "Notes cannot be empty")
+      .optional(),
+      wallet_id: z.string()
+      .trim()
+      .min(1, "Wallet id cannot be empty")
+      .optional(),
+      group_id: z.string()
+      .trim()
+      .min(1, "Group id cannot be empty")
+      .optional(),
+      created_at_date_time: z.coerce.date().or(z.string().datetime()).optional(),
 
-  lenders: z.array(lenderBorrowerSchema).optional(),
-  borrowers: z.array(lenderBorrowerSchema).optional(),
+      lenders: z.array(lenderBorrowerSchema).optional(),
+      borrowers: z.array(lenderBorrowerSchema).optional(),
+    }),
+    query: z.object({}).optional(), // Add fields if you want to validate query
+    file: z.any().optional(),
 });
 
 
 export const deleteExpenseSchema = z.object({
     params: z.object({
-      id: z.string().min(1, "Expense id is required") 
+      id: z.string({
+        required_error: "Expense id is required",
+      })
+      .trim()
+      .min(1, "Expense id cannot be empty") 
     }),
+    body: z.object({}).optional(), 
+    query: z.object({}).optional(), 
+    file: z.any().optional(), 
 }); 
 
 export const getExpenseSchema = z.object({
     params: z.object({
-      id: z.string().min(1, "Expense id is required") 
+      id: z.string({
+        required_error: "Expense id is required",
+      })
+      .trim()
+      .min(1, "Expense id cannot be empty") 
     }),
+    body: z.object({}).optional(),
+    query: z.object({}).optional(),
+    file: z.any().optional(),
   });
 
 export const getUserPeriodExpensesSchema = z.object({
-    startDate: z.string().refine(
-      (val) => !isNaN(Date.parse(val)),
-      "startDate must be a valid ISO date string"
-    ),
-    endDate: z.string().refine(
-      (val) => !isNaN(Date.parse(val)),
-      "endDate must be a valid ISO date string"
-    ),
-  });
+  query: z.object({
+    start_date: z.string().datetime({
+      message: "Start date must be a valid ISO datetime string",
+    }),
+    end_date: z.string().datetime({
+      message: "End date must be a valid ISO datetime string",
+    }),
+  }),
+  params: z.object({}).optional(),
+  body: z.object({}).optional(), 
+  file: z.any().optional(),
+});
 
-  
+export const getUserExpensesSchema = z.object({
+  query: z.object({
+    group_id: z.string({
+      required_error: "Group id is required",
+    })
+    .trim()
+    .min(1, 'Group id cannot be empty')
+  }),
+  params: z.object({}).optional(),
+  body: z.object({}).optional(), 
+  file: z.any().optional(),
+});
+
+export const getCustomExpensesSchema = z.object({
+  query: z.object({
+    description: z.string({        
+      required_error: "Description is required",
+    })
+    .trim()
+    .min(1, "Description cannot be empty")
+    .optional(),
+    lender_id: z.string()
+    .trim()
+    .min(1, "Lender id cannot be empty")
+    .optional(),
+    borrower_id: z.string()
+    .trim()
+    .min(1, "Borrower id cannot be empty")
+    .optional(),
+    wallet_id: z.string()
+    .trim()
+    .min(1, "Wallet id cannot be empty")
+    .optional(),
+    group_id: z.string()
+    .trim()
+    .min(1, "Group id cannot be empty")
+    .optional(),
+    category: z.string()
+    .trim()
+    .min(1, "Expense category cannot be empty")
+    .optional(),
+    min_amount : z.coerce.number({
+      invalid_type_error: "Min amount must be a number or string of numbers",
+    }).refine((val) => val > 0, {
+      message: "Min amount must be a positive number",
+    }).optional(),
+    max_amount : z.coerce.number({
+      invalid_type_error: "Max amount must be a number or string of numbers",
+    }).refine((val) => val > 0, {
+      message: "Max amount must be a positive number",
+    })
+    .optional(),
+  }),
+  params: z.object({}).optional(),
+  body: z.object({}).optional(), 
+  file: z.any().optional(),
+});  

@@ -7,19 +7,26 @@ import {
     getBudgetById
 } from "../controller/budgetController.js";
 import { predictBudgetHandler } from "../controller/budgetPredictionController.js";
+import {validate} from "../middlewares/validateRequest.js";
+import {
+    createBudgetSchema,
+    updateBudgetSchema,
+    deleteBudgetSchema,
+    getBudgetSchema
+} from "../validators/budget.schema.js";
 const router = express.Router();
 
 //* POST APIs *//
-router.post("/new", isAuthenticated, createBudget);
+router.post("/new", validate(createBudgetSchema),isAuthenticated, createBudget);
 router.post('/predict', isAuthenticated,predictBudgetHandler);
 
 //* GET APIs *//
-router.get("/:id", isAuthenticated, getBudgetById);
+router.get("/:id",validate(getBudgetSchema), isAuthenticated, getBudgetById);
 
 //* PUT APIs *//
-router.put("/:id", isAuthenticated, updateBudget);
+router.put("/:id",validate(updateBudgetSchema), isAuthenticated, updateBudget);
 
 //* DELETE APIs *//
-router.delete("/:id", isAuthenticated, deleteBudget);
+router.delete("/:id",validate(deleteBudgetSchema), isAuthenticated, deleteBudget);
 
 export default router;

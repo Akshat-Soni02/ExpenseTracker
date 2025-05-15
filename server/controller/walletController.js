@@ -43,7 +43,15 @@ export const updateWallet = async (req, res, next) => {
     console.log("Updating wallet");
     const { id } = req.params;
     let updatedDetails = req.body;
-    updatedDetails.amount = Number(updatedDetails.amount);
+    
+    if (updatedDetails.amount){
+      updatedDetails.amount = Number(updatedDetails.amount);
+    }
+    
+    if (updatedDetails.lower_limit) {
+      updatedDetails.lower_limit = Number(updatedDetails.lower_limit);
+    }
+
     const updatedWallet = await wallet.findByIdAndUpdate(id, updatedDetails, {
       new: true,
       runValidators: true,
@@ -52,11 +60,14 @@ export const updateWallet = async (req, res, next) => {
     if (!updatedWallet) {
       return next(new ErrorHandler("Wallet not found", 404));
     }
+
     console.log("Updated wallet");
+    
     res.status(200).json({
       message: "Wallet updated Successfully",
       data: updateWallet,
     });
+  
   } catch (error) {
     if (error.code === 11000) {
       // Duplicate key error (E11000)

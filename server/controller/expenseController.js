@@ -33,20 +33,20 @@ export const createExpense = async (req, res, next) => {
     const user_id = req.user._id;
 
 
-    // if (!description || !total_amount) {
-    //   return next(new ErrorHandler("Missing required fields", 404));
-    // }
+    if (!description || !total_amount) {
+      return next(new ErrorHandler("Missing required fields", 404));
+    }
 
-    // let mediaData = {};
-    // if (req.file) {
-    //   const result = await uploadMedia(req.file.path, "expenseReceipts", next);
-    //   if (result) {
-    //     mediaData = {
-    //       url: result.secure_url,
-    //       public_id: result.public_id,
-    //     };
-    //   }
-    // }
+    let mediaData = {};
+    if (req.file) {
+      const result = await uploadMedia(req.file.path, "expenseReceipts", next);
+      if (result) {
+        mediaData = {
+          url: result.secure_url,
+          public_id: result.public_id,
+        };
+      }
+    }
 
     // we will create new expense
     // if we are able to successfully create expense then we will do the below things

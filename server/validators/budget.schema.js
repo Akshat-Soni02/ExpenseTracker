@@ -1,57 +1,91 @@
 import { z } from "zod";
 
 export const createBudgetSchema = z.object({
-  budget_title: z.string().min(1, "Budget title is required"),
-  amount: z
-    .union([z.string(), z.number()])
-    .transform((val) => Number(val))
-    .refine((val) => !isNaN(val) && val > 0, {
-      message: "Amount must be a positive number",
-    }),
-  budget_category: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-    message: "Budget category cannot be empty",
+  body: z.object({
+    budget_title: z.string({
+        required_error: "Budget title is required",
+      })
+      .trim()
+      .min(1,'Budget title cannot be empty'),
+    amount: z.coerce.number({
+        required_error: "Amount is required",
+        invalid_type_error: "Amount must be a number or string of numbers",
+      }).refine((val) => val > 0, {
+        message: "Amount must be a positive number",
+      }),
+    budget_category: z.string()
+      .trim()
+      .min(1,'Budget category cannot be empty')
+      .optional(),
+    period: z.string()
+      .trim()
+      .min(1,'Budget period cannot be empty')
+      .optional(),
   }),
-  period: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-    message: "Budget period cannot be empty",
-  }),
+  query: z.object({}),
+  params: z.object({}),
+  file: z.object({}).optional(),
 });
 
 
 export const updateBudgetSchema = z.object({
     params: z.object({
-      id: z.string().min(1, "Budget id is required") // For something like /bills/:id
+      id: z.string({
+        required_error: "Budget id is required",
+      })
+      .trim()
+      .min(1, "Budget id cannot be empty") 
     }),
     body: z.object({
-      budget_title: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-        message: "Budget title cannot be empty",
-      }),
-      budget_category: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-        message: "Budget category cannot be empty",
-      }),
-      period: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
-        message: "Budget period cannot be empty",
-      }),
-      amount: z
-        .union([z.string(), z.number()])
-        .transform((val) => Number(val))
-        .refine((val) => !isNaN(val) && val > 0, {
-          message: "Amount must be a positive number",
-        })
-        .optional(),
+      budget_title: z.string()
+      .trim()
+      .min(1,'Budget title cannot be empty')
+      .optional(),
+      budget_category: z.string()
+      .trim()
+      .min(1,'Budget category cannot be empty')
+      .optional(),
+      period: z.string()
+      .trim()
+      .min(1,'Budget period cannot be empty')
+      .optional(),
+      amount: z.coerce.number({
+        required_error: "Amount is required",
+        invalid_type_error: "Amount must be a number or string of numbers",
+      }).refine((val) => val > 0, {
+        message: "Amount must be a positive number",
+      })
+      .optional(),
     }),
+    query: z.object({}),
+    file: z.object({}).optional(),
   }); 
 
   export const deleteBudgetSchema = z.object({
     params: z.object({
-      id: z.string().min(1, "Budget id is required") // For something like /bills/:id
+      id: z.string({
+        required_error: "Budget id is required",
+      })
+      .trim()
+      .min(1, "Budget id cannot be empty") 
     }),
+    body: z.object({}),
+    query: z.object({}),
+    file: z.object({}).optional()
   }); 
 
 
   export const getBudgetSchema = z.object({
     params: z.object({
-      id: z.string().min(1, "Budget id is required") // For something like /bills/:id
+      id: z.string({
+        required_error: "Budget id is required",
+      })
+      .trim()
+      .min(1, "Budget id cannot be empty") 
     }),
+    body: z.object({}),
+    query: z.object({}),
+    file: z.object({}).optional()
   }); 
 
 
