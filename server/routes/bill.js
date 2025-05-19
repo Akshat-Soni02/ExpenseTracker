@@ -18,16 +18,16 @@ import {
 const router = express.Router();
 
 //* POST APIs *//
-router.post("/new",validate(createBillSchema),isAuthenticated, createBill);
-router.post("/bill-status-update/:billId",validate(handleBillUserStatusUpdateSchema), isAuthenticated, handleBillUserStatusUpdate);
+router.post("/new",isAuthenticated,validate(createBillSchema), createBill);
+router.post("/bill-status-update/:billId", isAuthenticated,validate(handleBillUserStatusUpdateSchema), handleBillUserStatusUpdate);
 
 //* GET APIs *//
-router.get("/:id",validate(getBillByIdParamsSchema), isAuthenticated, getBillById);
+router.get("/:id", isAuthenticated,validate(getBillByIdParamsSchema), getBillById);
 
 //* PUT APIs *//
-router.put("/:id",validate(updateBillSchema), isAuthenticated, updateBill);
+router.put("/:id", isAuthenticated,validate(updateBillSchema), updateBill);
 
 //* DELETE APIs *//
-router.delete("/:id",validate(deleteBillParamsSchema), isAuthenticated, deleteBill);
+router.delete("/:id", isAuthenticated,validate(deleteBillParamsSchema), deleteBill);
 
 export default router;

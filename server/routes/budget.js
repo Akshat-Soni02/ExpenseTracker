@@ -17,16 +17,16 @@ import {
 const router = express.Router();
 
 //* POST APIs *//
-router.post("/new", validate(createBudgetSchema),isAuthenticated, createBudget);
+router.post("/new",isAuthenticated, validate(createBudgetSchema), createBudget);
 router.post('/predict', isAuthenticated,predictBudgetHandler);
 
 //* GET APIs *//
-router.get("/:id",validate(getBudgetSchema), isAuthenticated, getBudgetById);
+router.get("/:id", isAuthenticated,validate(getBudgetSchema), getBudgetById);
 
 //* PUT APIs *//
-router.put("/:id",validate(updateBudgetSchema), isAuthenticated, updateBudget);
+router.put("/:id", isAuthenticated,validate(updateBudgetSchema), updateBudget);
 
 //* DELETE APIs *//
-router.delete("/:id",validate(deleteBudgetSchema), isAuthenticated, deleteBudget);
+router.delete("/:id", isAuthenticated,validate(deleteBudgetSchema), deleteBudget);
 
 export default router;

@@ -18,16 +18,16 @@ import {
 const router = express.Router();
 
 //* POST APIs *//
-router.post("/new", validate(createWalletSchema),isAuthenticated, createWallet);
+router.post("/new",isAuthenticated, validate(createWalletSchema), createWallet);
 
 //* GET APIs *//
-router.get("/:id",validate(getWalletByIdParamsSchema), isAuthenticated, getWalletById);
+router.get("/:id", isAuthenticated,validate(getWalletByIdParamsSchema), getWalletById);
 
 //* PUT APIs *//
-router.put("/transfer",validate(walletsAmountTransferSchema), isAuthenticated, walletsAmountTransfer);
-router.put("/:id",validate(updateWalletSchema), isAuthenticated, updateWallet);
+router.put("/transfer", isAuthenticated,validate(walletsAmountTransferSchema), walletsAmountTransfer);
+router.put("/:id", isAuthenticated,validate(updateWalletSchema), updateWallet);
 
 //* DELETE APIs *//
-router.delete("/:id",validate(deleteWalletParamsSchema), isAuthenticated, deleteWallet);
+router.delete("/:id", isAuthenticated,validate(deleteWalletParamsSchema), deleteWallet);
 
 export default router;

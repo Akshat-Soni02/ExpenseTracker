@@ -23,16 +23,16 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 //* POST APIs *//
-router.post("/new",validate(createPersonalTransactionSchema), isAuthenticated,upload.single("media"), createPersonalTransaction);
+router.post("/new", isAuthenticated,validate(createPersonalTransactionSchema),upload.single("media"), createPersonalTransaction);
 
 //* GET APIs *//
-router.get("/userPeriod",validate(getUserPeriodTypeTransactionsSchema),isAuthenticated,getUserPeriodTypeTransactions)
-router.get("/:personalTransaction_id",validate(getPersonalTransactionSchema), isAuthenticated, getPersonalTransactionById);
+router.get("/userPeriod",isAuthenticated,validate(getUserPeriodTypeTransactionsSchema),getUserPeriodTypeTransactions)
+router.get("/:personalTransaction_id", isAuthenticated,validate(getPersonalTransactionSchema), getPersonalTransactionById);
 
 //* PUT APIs *//
-router.put("/:personalTransaction_id",validate(updatePersonalTransactionSchema), isAuthenticated, updatePersonalTransaction);
+router.put("/:personalTransaction_id", isAuthenticated,validate(updatePersonalTransactionSchema), updatePersonalTransaction);
 
 //* DELETE APIs *//
-router.delete("/:personalTransaction_id",validate(deletePersonalTransactionSchema), isAuthenticated, deletePersonalTransaction);
+router.delete("/:personalTransaction_id", isAuthenticated,validate(deletePersonalTransactionSchema), deletePersonalTransaction);
 
 export default router;

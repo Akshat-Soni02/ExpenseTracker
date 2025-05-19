@@ -17,15 +17,15 @@ import {
 const router = express.Router();
 
 //* POST APIs *//
-router.post("/new",validate(createSettlementSchema), isAuthenticated, createSettlement);
+router.post("/new", isAuthenticated,validate(createSettlementSchema), createSettlement);
 
 //* GET APIs *//
-router.get("/:id",validate(getSettlementByIdParamsSchema), isAuthenticated, getSettlementById);
+router.get("/:id", isAuthenticated,validate(getSettlementByIdParamsSchema), getSettlementById);
 
 //* PUT APIs *//
-router.put("/update/:id",validate(updateSettlementSchema), isAuthenticated, updateSettlement);
+router.put("/update/:id", isAuthenticated,validate(updateSettlementSchema), updateSettlement);
 
 //* DELETE APIs *//
-router.delete("/:id",validate(deleteSettlementParamsSchema), isAuthenticated, deleteSettlement);
+router.delete("/:id", isAuthenticated,validate(deleteSettlementParamsSchema), deleteSettlement);
 
 export default router;

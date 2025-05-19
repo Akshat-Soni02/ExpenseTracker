@@ -32,15 +32,15 @@ router.post("/new", isAuthenticated, validate(createExpenseSchema),upload.single
 
 //* GET APIs *//
 
-router.get("/user/period",validate(getUserPeriodExpensesSchema), isAuthenticated, getUserPeriodExpenses);
-router.get("/user",validate(getUserExpensesSchema), isAuthenticated, getUserExpenses);
-router.get("/custom",validate(getCustomExpensesSchema), isAuthenticated, getCustomExpenses); // Uses query parameters for custom filtering
-router.get("/:id",validate(getExpenseSchema), isAuthenticated, getExpenseById);
+router.get("/user/period", isAuthenticated,validate(getUserPeriodExpensesSchema), getUserPeriodExpenses);
+router.get("/user", isAuthenticated,validate(getUserExpensesSchema), getUserExpenses);
+router.get("/custom", isAuthenticated,validate(getCustomExpensesSchema), getCustomExpenses); // Uses query parameters for custom filtering
+router.get("/:id", isAuthenticated,validate(getExpenseSchema), getExpenseById);
 
 //* PUT APIs *//
-router.put("/:expense_id",validate(updateExpenseSchema), isAuthenticated, upload.single("media"), updateExpense);
+router.put("/:expense_id", isAuthenticated,validate(updateExpenseSchema), upload.single("media"), updateExpense);
 
 //* DELETE APIs *//
-router.delete("/:expense_id",validate(deleteExpenseSchema), isAuthenticated, deleteExpense);
+router.delete("/:expense_id", isAuthenticated,validate(deleteExpenseSchema), deleteExpense);
 
 export default router;
