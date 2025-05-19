@@ -27,7 +27,7 @@ export const createBudget = async (req, res, next) => {
         console.log("Budget created successfully");
         res.status(201).json({
             message : "Budget created successfully",
-            data : newBudget,
+            // data : newBudget,
         });
     }
     catch(error){
@@ -63,7 +63,7 @@ export const updateBudget = async (req, res, next) => {
         console.log("Budget updated successfully");
         res.status(200).json({
             message : "Budget updated successfully",
-            data : existingBudget,
+            // data : existingBudget,
         });
         } 
         catch (error) {
@@ -79,33 +79,33 @@ export const updateBudget = async (req, res, next) => {
         }
     };
 
-    export const deleteBudget = async (req, res, next) => {
-        try{
+export const deleteBudget = async (req, res, next) => {
+    try{
 
-            console.log("Deleting Budget");
-            const { id } = req.params;
-            const user_id = req.user._id; 
+        console.log("Deleting Budget");
+        const { id } = req.params;
+        const user_id = req.user._id; 
 
-            const existingBudget = await findBudgetById(id);
-            if (!existingBudget) {
-                return next(new ErrorHandler("Budget not found", 404));
-            }
-    
-            if (existingBudget.user_id.toString() !== user_id.toString()) {
-                return next(new ErrorHandler("Unauthorized to delete this budget", 403));
-            }
-            const deletedBudget = await existingBudget.deleteOne();
-            console.log("Budget deleted successfully");
-            res.status(200).json({
-                message: "Budget deleted successfully",
-                data : deletedBudget,
-            });
+        const existingBudget = await findBudgetById(id);
+        if (!existingBudget) {
+            return next(new ErrorHandler("Budget not found", 404));
         }
-        catch(error){
-            console.error("Error deleting budget:", error);
-            next(error);
+
+        if (existingBudget.user_id.toString() !== user_id.toString()) {
+            return next(new ErrorHandler("Unauthorized to delete this budget", 403));
         }
+        const deletedBudget = await existingBudget.deleteOne();
+        console.log("Budget deleted successfully");
+        res.status(200).json({
+            message: "Budget deleted successfully",
+            data : deletedBudget,
+        });
     }
+    catch(error){
+        console.error("Error deleting budget:", error);
+        next(error);
+    }
+}
     
 
     export const getBudgetById = async (req, res, next) =>{

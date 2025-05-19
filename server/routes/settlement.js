@@ -1,8 +1,18 @@
 import express from "express";
 import { isAuthenticated } from "../middlewares/auth.js";
-import { createSettlement, updateSettlement, getSettlementById, deleteSettlement } from "../controller/settlementController.js";
+import { 
+    createSettlement, 
+    updateSettlement, 
+    getSettlementById, 
+    deleteSettlement 
+} from "../controller/settlementController.js";
 import {validate} from "../middlewares/validateRequest.js";
-import { createSettlementSchema, getSettlementByIdSchema, updateSettlementSchema, deleteSettlementSchema } from "../validators/settlement.schema.js";
+import {
+    createSettlementSchema,
+    updateSettlementSchema,
+    deleteSettlementParamsSchema,
+    getSettlementByIdParamsSchema
+} from "../validators/settlement.schema.js";
 
 const router = express.Router();
 
@@ -10,12 +20,12 @@ const router = express.Router();
 router.post("/new", isAuthenticated,validate(createSettlementSchema), createSettlement);
 
 //* GET APIs *//
-router.get("/:id", isAuthenticated,validate(getSettlementByIdSchema), getSettlementById);
+router.get("/:id", isAuthenticated,validate(getSettlementByIdParamsSchema), getSettlementById);
 
 //* PUT APIs *//
 router.put("/update/:id", isAuthenticated,validate(updateSettlementSchema), updateSettlement);
 
 //* DELETE APIs *//
-router.delete("/:id", isAuthenticated,validate(deleteSettlementSchema), deleteSettlement);
+router.delete("/:id", isAuthenticated,validate(deleteSettlementParamsSchema), deleteSettlement);
 
 export default router;

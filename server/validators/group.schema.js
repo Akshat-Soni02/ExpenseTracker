@@ -1,79 +1,175 @@
-import {z} from 'zod';
+import { z } from 'zod';
 
 export const createGroupSchema = z.object({
     body: z.object({
-        group_title: z.string().min(1, "Group title is required"),
-        memberIds: z.array(z.string()).min(2, "Members required for a group"),
-        initial_budget: z.union([z.string(), z.number()]).transform(Number).refine(val => val > -1, "Inital Budget must be greater than 0").optional(),
-        settle_up_date: z.coerce.date().optional()
-    })
+        group_title: z.string({
+            required_error: "Group title is required",
+        })
+        .trim()
+        .min(1, 'Group title cannot be empty'), 
+        memberIds: z.array(
+            z.string()
+            .trim()
+            .min(1,'Member Id cannot be empty')
+        ).min(1, 'At least one member is required'),
+        initial_budget: z.coerce.number({
+            required_error: "Amount is required",
+            invalid_type_error: "Amount must be a number or string of numbers",
+        }).refine((val) => val > 0, {
+            message: "Amount must be a positive number",
+        }).optional(),
+        settle_up_date:z.coerce.date().optional(), 
+    }),
+    query: z.object({}),
+    params: z.object({}),
+    file: z.object({}).optional()
 });
 
 export const updateGroupSchema = z.object({
-    params: z.object({
-        id: z.string().min(1, "Group id required to update group")
-    }),
     body: z.object({
-        group_title: z.string().min(1, "Group title cannot be empty string").optional(),
-        initial_budget: z.union([z.string(), z.number()]).transform(Number).refine(val => val > 0, "Inital Budget must be greater than 0").optional(),
-        settle_up_date: z.coerce.date().optional()
-    })
-});
-
-export const leaveGroupSchema = z.object({
-    params: z.object({
-        groupId: z.string().min(1, "Group id is required to leave group")
-    })
-});
-
-export const getGroupByIdSchema = z.object({
-    params: z.object({
-        id: z.string().min(1, "Group id is required to get group")
-    })
-});
-
-export const getGroupExchangeStateWithOthersSchema = z.object({
-    params: z.object({
-        group_id: z.string().min(1,"Group id is required to get exchange state with members")
-    })
-});
-
-export const remindGroupBorrowerSchema = z.object({
-    params: z.object({
-        group_id: z.string().min(1,"Group id is required to remind in group"),
+        group_title: z.string()
+        .trim()
+        .min(1, 'Group title cannot be empty')
+        .optional(), 
+        initial_budget: z.coerce.number({
+            invalid_type_error: "Amount must be a number or string of numbers",
+        }).refine((val) => val > 0, {
+            message: "Amount must be a positive number",
+        }).optional(),
+        settle_up_date:z.coerce.date().optional(), 
     }),
+    query: z.object({}), 
+    params:z.object({
+        id: z.string({
+            required_error: "Group id is required",
+        })
+        .trim()
+        .min(1, 'Group id cannot be empty'),
+    }),
+    file: z.object({}).optional()
+});
+
+export const leaveGroupParamsSchema = z.object({
+    body: z.object({}),
+    query: z.object({}), 
+    params: z.object({
+        groupId: z.string({
+            required_error: "Group id is required",
+        })
+        .trim()
+        .min(1, 'Group id cannot be empty'),
+    }),
+    file: z.object({}).optional()
+});
+
+export const getGroupByIdParamsSchema = z.object({
+    body: z.object({}),
+    query: z.object({}), 
+    params: z.object({
+        id: z.string({
+            required_error: "Group id is required",
+        })
+        .trim()
+        .min(1, 'Group id cannot be empty'),
+    }),
+    file: z.object({}).optional()
+});
+
+export const getGroupExchangeStateWithOthersParamsSchema = z.object({
+    body: z.object({}),
+    query: z.object({}), 
+    params: z.object({
+        group_id: z.string({
+            required_error: "Group id is required",
+        })
+        .trim()
+        .min(1, 'Group id cannot be empty'),
+    }),
+    file: z.object({}).optional()
+});
+
+export const remindGroupBorrowerParamsSchema = z.object({
+    body: z.object({}),
     query: z.object({
-        borrower_id: z.string().min(1, "Borrower id is required to remind group"),
-        amount: z.union([z.string(), z.number()])
-    })
-});
-
-export const remindAllGroupBorrowersSchema = z.object({
+        borrower_id: z.string({
+            required_error: "Borrower id is required",
+        })
+        .trim()
+        .min(1, 'Borrower id cannot be empty'),
+        amount : z.coerce.number({
+            invalid_type_error: "Amount must be a number or string of numbers",
+        }).refine((val) => val > 0, {
+            message: "Amount must be a positive number",
+        }),
+    }), 
     params: z.object({
-        group_id: z.string().min(1,"Group id is required to remind in group")
-    })
-});
-
-export const getGroupHistorySchema = z.object({
-    params: z.object({
-        group_id: z.string().min(1,"Group id is required to get group history")
+        group_id: z.string({
+            required_error: "Group id is required",
+        })
+        .trim()
+        .min(1, 'Group id cannot be empty'),
     }),
+    file: z.object({}).optional()
+});
+
+export const remindAllGroupBorrowersParamsSchema = z.object({
+    body: z.object({}),
+    query: z.object({}), 
+    params: z.object({
+        group_id: z.string({
+            required_error: "Group id is required",
+        })
+        .trim()
+        .min(1, 'Group id cannot be empty'),
+    }),
+    file: z.object({}).optional()
+});
+
+export const getGroupHistoryParamsSchema = z.object({
+    body: z.object({}),
     query: z.object({
-        since: z.string().optional()
-    })
-});
-
-export const processSimplifyDebtsSchema = z.object({
+        since : z.coerce.date().optional(), 
+    }), 
     params: z.object({
-        group_id: z.string().min(1,"Group id is required to process group simplify debts")
-    })
-});
-
-export const addToGroupSchema = z.object({
-    params: z.object({
-        group_id: z.string().min(1,"Group id is required to add to group")
+        group_id: z.string({
+            required_error: "Group id is required",
+        })
+        .trim()
+        .min(1, 'Group id cannot be empty'),
     }),
+    file: z.object({}).optional()
+});
+
+export const processSimplifyDebtsParamsSchema = z.object({
+    body: z.object({}),
+    query: z.object({}), 
+    params: z.object({
+        group_id: z.string({
+            required_error: "Group id is required",
+        })
+        .trim()
+        .min(1, 'Group id cannot be empty'),
+    }),
+    file: z.object({}).optional()
+});
+
+export const addToGroupParamsSchema = z.object({
     body: z.object({
-        newMemberIds: z.array(z.string()).min(1, "Empty new members array"),
-    })
+        newMemberIds: z.array(
+            z.string({
+                required_error:"Member id is required"
+            })
+            .trim()
+            .min(1,'Member Id cannot be empty')
+        ).min(1, 'At least one member is required'),
+    }),
+    query: z.object({}), 
+    params: z.object({
+        group_id: z.string({
+            required_error: "Group id is required",
+        })
+        .trim()
+        .min(1, 'Group id cannot be empty'),
+    }),
+    file: z.object({}).optional()
 });

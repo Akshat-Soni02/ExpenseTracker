@@ -9,22 +9,29 @@ import {
   walletsAmountTransfer,
   walletTransactions
 } from "../controller/walletController.js";
-import { walletTransactionsSchema } from "../validators/wallet.schema.js";
-
+import { validate } from "../middlewares/validateRequest.js";
+import { 
+  createWalletSchema, 
+  updateWalletSchema,
+  deleteWalletParamsSchema,
+  getWalletByIdParamsSchema,
+  walletsAmountTransferSchema,
+  walletTransactionsSchema
+} from "../validators/wallet.schema.js";
 const router = express.Router();
 
 //* POST APIs *//
-router.post("/new", isAuthenticated, createWallet);
+router.post("/new",isAuthenticated, validate(createWalletSchema), createWallet);
 
 //* GET APIs *//
-router.get("/:id", isAuthenticated, getWalletById);
+router.get("/:id", isAuthenticated,validate(getWalletByIdParamsSchema), getWalletById);
 router.get("/transactions/:wallet_id", isAuthenticated, validate(walletTransactionsSchema), walletTransactions);
 
 //* PUT APIs *//
-router.put("/transfer", isAuthenticated, walletsAmountTransfer);
-router.put("/:id", isAuthenticated, updateWallet);
+router.put("/transfer", isAuthenticated,validate(walletsAmountTransferSchema), walletsAmountTransfer);
+router.put("/:id", isAuthenticated,validate(updateWalletSchema), updateWallet);
 
 //* DELETE APIs *//
-router.delete("/:id", isAuthenticated, deleteWallet);
+router.delete("/:id", isAuthenticated,validate(deleteWalletParamsSchema), deleteWallet);
 
 export default router;
