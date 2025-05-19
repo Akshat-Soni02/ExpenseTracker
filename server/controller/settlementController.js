@@ -21,6 +21,7 @@ export const createSettlement = async (req, res, next) => {
       receiver_id,
       group_id,
       status,
+      amount
     } = req.body;
     //create settlement
     //wallet changes

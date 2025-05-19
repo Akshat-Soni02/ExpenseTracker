@@ -1,5 +1,7 @@
 import ErrorHandler from "../middlewares/error.js";
 import wallet from "../models/wallet.js";
+import { findCustomExpenses } from "../services/expenseService.js";
+import { findPersonalTransactionByQuery } from "../services/personalTransactionService.js";
 import { findWalletById, transferWalletAmounts } from "../services/walletService.js";
 
 export const createWallet = async (req, res, next) => {
@@ -135,3 +137,27 @@ export const walletsAmountTransfer = async (req, res, next) => {
     next(error);
   }
 };
+
+export const walletTransactions = async (req, res, next) => {
+  try {
+    const { wallet_id } = req.params;
+    const id = req.user._id;
+
+    const expensesWithWallet = await findCustomExpenses({wallet_id, lender_id: id});
+    if(!expensesWithWallet) return next(new ErrorHandler("Cannot get wallet transactions", 400));
+
+    const personalsWithWallet = await findPersonalTransactionByQuery({wallet_id, user_id: id});
+    if(!personalsWithWallet) return next(new ErrorHandler("Cannot get wallet transactions", 400));
+
+    res.status(200).json({
+      message:"Successfully retreived wallet transactions",
+      data: {
+        expenses: expensesWithWallet,
+        personals: personalsWithWallet
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+}

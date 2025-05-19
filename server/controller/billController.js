@@ -9,7 +9,7 @@ export const createBill = async (req, res, next) => {
         console.log("creating Bill");
 
         const id = req.user._id;
-        const {bill_title, bill_category, due_date_time, recurring, members} = req.body;  
+        const {bill_title, bill_category, due_date_time, recurring, members, amount} = req.body;  
 
         //below transformation is not required due to middleware      
         // const amount  = Number(req.body.amount);

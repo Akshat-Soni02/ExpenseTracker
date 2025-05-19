@@ -5,10 +5,7 @@ export const createBillSchema = z.object({
     bill_title: z.string().min(1, "Bill title is required"),
     bill_category: z
     .string()
-    .optional()
-    .refine(val => val === undefined || val.trim().length > 0, {
-      message: "Bill category cannot be empty",
-    }),
+    .optional(),
     amount: z.union([z.string(), z.number()]).transform(Number).refine(val => val > 0, "Amount must be greater than 0"),
     due_date_time: z.coerce.date(),
     recurring: z.boolean().optional().default(false),

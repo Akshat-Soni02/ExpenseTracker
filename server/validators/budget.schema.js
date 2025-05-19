@@ -19,7 +19,7 @@ export const createBudgetSchema = z.object({
 
 export const updateBudgetSchema = z.object({
     params: z.object({
-      id: z.string().min(1, "Budget id is required") // For something like /bills/:id
+      id: z.string().min(1, "Budget id is required")
     }),
     body: z.object({
       budget_title: z.string().optional().refine(val => val === undefined || val.trim().length > 0 ,{
@@ -43,14 +43,14 @@ export const updateBudgetSchema = z.object({
 
   export const deleteBudgetSchema = z.object({
     params: z.object({
-      id: z.string().min(1, "Budget id is required") // For something like /bills/:id
+      id: z.string().min(1, "Budget id is required")
     }),
   }); 
 
 
   export const getBudgetSchema = z.object({
     params: z.object({
-      id: z.string().min(1, "Budget id is required") // For something like /bills/:id
+      id: z.string().min(1, "Budget id is required")
     }),
   }); 
 

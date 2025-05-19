@@ -1,5 +1,3 @@
-import { file } from "pdfkit";
-
 export const validate = (schema) => (req, res, next) => {
     try {
       schema.parse({

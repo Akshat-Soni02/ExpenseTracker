@@ -318,15 +318,27 @@ export const getGroupHistory = async (req, res, next) => {
     const expenses = await expense.find(filter1).lean();
     const settlements = await settlement.find(filter2).lean();
 
-    const formattedExpenses = expenses.map(exp => ({
-      ...exp,
-      type: "expense",
-    }));
+    const formattedExpenses = await Promise.all(
+      expenses.map(async (exp) => {
+        const giver = await user.findById(exp.lenders[0].user_id).select("name");
+        return {
+          ...exp,
+          type: "expense",
+          giver: giver.name,
+        };
+      })
+    );
 
-    const formattedSettlements = settlements.map(set => ({
-      ...set,
-      type: "settlement",
-    }));
+    const formattedSettlements = await Promise.all(
+      settlements.map(async (set) => {
+        const giver = await user.findById(set.payer_id).select("name");
+        return {
+          ...set,
+          type: "settlement",
+          giver: giver.name,
+        };
+      })
+    );
 
     const history = [...formattedExpenses, ...formattedSettlements].sort(
       (a, b) => new Date(b.created_at_date_time || b.createdAt) - new Date(a.created_at_date_time || a.createdAt)
