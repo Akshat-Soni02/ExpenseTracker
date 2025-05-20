@@ -9,7 +9,6 @@ import {
   walletsAmountTransfer,
   walletTransactions
 } from "../controller/walletController.js";
-import { validate } from "../middlewares/validateRequest.js";
 import { 
   createWalletSchema, 
   updateWalletSchema,

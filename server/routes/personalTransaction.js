@@ -15,7 +15,7 @@ import {
     deletePersonalTransactionSchema,
     getPersonalTransactionSchema,
     getUserPeriodTypeTransactionsSchema
-} from "../validations/personalTransaction.schema.js";
+} from "../validators/personalTransaction.schema.js";
 const router = express.Router();
 
 

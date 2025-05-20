@@ -1,6 +1,4 @@
-import { query } from "express";
 import { z } from "zod";
-import group from "../models/group";
 
 const lenderBorrowerSchema = z.object({
   user_id: z.string({

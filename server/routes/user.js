@@ -28,7 +28,8 @@ import {
   updateUserNotificationToken,
   getUserTodaySpend,
   getUserFutureFriends,
-  googleLoginAccesstoken
+  googleLoginAccesstoken,
+  removeFriendInvite
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 import multer from "multer";
@@ -48,8 +49,9 @@ import {
   RemindBorrowerParamsSchema,
   autoAddFutureFriendsSchema,
   GetUserByIdParamsSchema,
-  AddUserFriendsBodySchema
-} from "../validations/user.schema.js";
+  AddUserFriendsBodySchema,
+  RemoveFriendInviteSchema
+} from "../validators/user.schema.js";
 
 const router = express.Router();
 const storage = multer.memoryStorage();
@@ -66,6 +68,7 @@ router.post("/send-invites", isAuthenticated,validate(AddUserFriendsBodySchema),
 router.post("/auto-add-friends",validate(autoAddFutureFriendsSchema), autoAddFutureFriends);
 router.post("/remind-borrowers", isAuthenticated, remindBorrowers);
 router.post("/remind-borrower/:borrower_id", isAuthenticated,validate(RemindBorrowerParamsSchema), remindBorrower);
+router.post("/remove-friend-invite", isAuthenticated,validate(RemoveFriendInviteSchema), removeFriendInvite);
 
 //* GET APIs *//
 router.get("/me", isAuthenticated, getMyProfile);

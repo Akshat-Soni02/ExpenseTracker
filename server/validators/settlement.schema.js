@@ -18,9 +18,9 @@ export const createSettlementSchema = z.object({
         .min(1, 'Payer wallet id cannot be empty')
         .optional(), 
         payer_id: z.string()
-        .optional()
         .trim()
-        .min(1, 'Payer id cannot be empty'),
+        .min(1, 'Payer id cannot be empty')
+        .optional(),
         receiver_wallet_id: z.string()
         .trim()
         .min(1, 'Receiver wallet id cannot be empty')
