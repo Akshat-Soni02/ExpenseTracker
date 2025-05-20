@@ -49,7 +49,7 @@ import {
   autoAddFutureFriendsSchema,
   GetUserByIdParamsSchema,
   AddUserFriendsBodySchema
-} from "../validations/user.schema.js";
+} from "../validators/user.schema.js";
 
 const router = express.Router();
 const storage = multer.memoryStorage();

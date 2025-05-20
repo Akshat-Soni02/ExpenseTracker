@@ -28,7 +28,13 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 //* POST APIs *//
-router.post("/new", isAuthenticated, validate(createExpenseSchema),upload.single("media"), createExpense);
+router.post(
+  "/new",
+  isAuthenticated,
+  upload.single("media"),          // ✅ handles optional file + fields
+  validate(createExpenseSchema),   // ✅ Zod will receive fields correctly
+  createExpense
+);
 
 //* GET APIs *//
 

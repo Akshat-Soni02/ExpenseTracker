@@ -24,7 +24,7 @@ import {
   getGroupHistoryParamsSchema,
   processSimplifyDebtsParamsSchema,
   addToGroupParamsSchema
-} from "../validations/group.schema.js";
+} from "../validators/group.schema.js";
 
 const router = express.Router();
 

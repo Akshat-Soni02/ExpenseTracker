@@ -1,6 +1,4 @@
-import { query } from "express";
 import { z } from "zod";
-import group from "../models/group";
 
 const lenderBorrowerSchema = z.object({
   user_id: z.string({
@@ -15,6 +13,23 @@ const lenderBorrowerSchema = z.object({
     message: "Amount must be a positive number",
   }), 
 });
+
+const parseJsonArray = (schema) =>
+  z
+    .string()
+    .transform((val, ctx) => {
+      try {
+        const parsed = JSON.parse(val);
+        return parsed;
+      } catch (e) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Invalid JSON array",
+        });
+        return z.NEVER;
+      }
+    })
+    .pipe(z.array(schema));
 
 export const createExpenseSchema = z.object({
   body: z.object({
@@ -48,8 +63,8 @@ export const createExpenseSchema = z.object({
     created_at_date_time: z.coerce.date().or(z.string().datetime()),
 
     // JSON parsed fields from req.body
-    lenders: z.array(lenderBorrowerSchema).min(1, "At least one lender is required"),
-    borrowers: z.array(lenderBorrowerSchema).min(1, "At least one borrower is required"),
+    // lenders: z.array(lenderBorrowerSchema).min(1, "At least one lender is required"),
+    // borrowers: z.array(lenderBorrowerSchema).min(1, "At least one borrower is required"),
   }),
   params: z.object({}).optional(), // Add fields if you want to validate params
   query: z.object({}).optional(),  // Add fields if you want to validate query

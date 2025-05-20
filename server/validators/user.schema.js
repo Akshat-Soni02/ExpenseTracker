@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BillStatus } from "../enums/billEnums";
+import { BillStatus } from "../enums/billEnums.js";
 
 export const GoogleUserSchema = z.object({
     body: z.object({
@@ -170,7 +170,8 @@ export const GetSettlementsQuerySchema = z.object({
             required_error: "Group id is required",
         })
         .trim()
-        .min(1, 'Group id cannot be empty'),
+        .min(1, 'Group id cannot be empty')
+        .optional(),
     }),
     params: z.object({}),
     body: z.object({}),
