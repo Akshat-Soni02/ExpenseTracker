@@ -96,3 +96,9 @@ export const walletsAmountTransferSchema = z.object({
     params: z.object({}),
     file: z.object({}).optional()
   });
+
+  export const walletTransactionsSchema = z.object({
+    params: z.object({
+      wallet_id: z.string().min(1, 'Wallet id is required'),
+    }),
+  });

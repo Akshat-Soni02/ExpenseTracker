@@ -21,12 +21,13 @@ export const createSettlement = async (req, res, next) => {
       receiver_id,
       group_id,
       status,
+      amount
     } = req.body;
     //create settlement
     //wallet changes
     //if its group then group changes
     //then personal changes
-    let amount = Number(req.body.amount);
+    // let amount = Number(req.body.amount);
     if (status === "sent") {
       payer_id = id;
       if (typeof payer_wallet_id !== "undefined") {

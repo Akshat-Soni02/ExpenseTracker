@@ -147,6 +147,17 @@ export const VerifyOtpSchema = z.object({
     file: z.object({}).optional(),
 });
 
+export const RemoveFriendInviteSchema = z.object({
+    body: z.object({
+        email: z.string({        
+            required_error: "Email id is required",
+        })
+        .trim()
+        .email("Invalid email address"),
+    }),
+    query: z.object({}),
+    params: z.object({}),
+});
 
 export const ResetPasswordSchema = z.object({
     body: z.object({

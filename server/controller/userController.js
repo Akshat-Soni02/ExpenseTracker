@@ -747,3 +747,24 @@ export const addUserFriends = async (req, res, next) => {
     next(error);
   }
 };
+
+export const removeFriendInvite = async (req, res, next) => {
+  try {
+    const {email} = req.body;
+    const id = req.user._id;
+
+    const curUser = await findUserById(id);
+    if(!curUser) return next(new ErrorHandler("Error fetching user details", 400));
+    const updatedFriends = curUser.futureFriends.filter((friend) => friend.email !== email);
+    curUser.futureFriends = updatedFriends;
+    await curUser.save();
+
+    console.log("invite removed");
+    return res.status(200).json({
+      message: "Successfully removed friend invite",
+    });
+  } catch (error) {
+    console.log("Error removing invite:", error);
+    next(error);
+  }
+}

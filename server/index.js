@@ -24,6 +24,7 @@ import detectedTransactionRouter from "./routes/detectedTransaction.js";
 
 import { scheduleCronJobs } from "./services/schedulerService.js";
 import { sendEmail } from "./services/notificationService.js";
+import { requestCounterMiddleware } from "./middlewares/requests.js";
 
 dotenv.config();
 cloudinary.config({
@@ -64,6 +65,7 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.json({ limit: "30mb", extended: true }));
+app.use(requestCounterMiddleware);
 
 
 app.listen(PORT, () => {
