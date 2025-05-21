@@ -6,131 +6,195 @@ import { sendNotificationService } from "./notificationService.js";
 import mongoose from "mongoose";
 
 export const formatMembers = (memberIds) => {
-    console.log("Formatting members");
-    return memberIds.map((memberId, index) => ({
-        member_id: memberId,
-        other_members: memberIds
-        .filter((otherId) => otherId !== memberId)
-        .map((otherMemberId) => ({
-            other_member_id: otherMemberId,
-            amount: 0,
-            exchange_status: GroupMemberStatus.SETTLED,
-        })),
-    }));
+    try{
+        console.log("Formatting members");
+
+        return memberIds.map((memberId, index) => ({
+            member_id: memberId,
+            other_members: memberIds
+            .filter((otherId) => otherId !== memberId)
+            .map((otherMemberId) => ({
+                other_member_id: otherMemberId,
+                amount: 0,
+                exchange_status: GroupMemberStatus.SETTLED,
+            })),
+        }));
+
+    }
+    catch(err){
+        console.log("Error formatting members", err);
+        throw new Error("Error formatting members");
+    }
 };
 
 export const findGroupById = async (id) => {
-    console.log("Finding group by ID");
-    const curGroup = await group.findById(id);
-    if (!curGroup) return null;
-    console.log("Group found");
-    return curGroup;
+    try{
+        console.log("Finding group by ID");
+
+        if(!id) {
+            console.log(`Group id is undefined: ${id}`);
+            throw new Error(`Group id is undefined: ${id}`);
+        }
+
+        const curGroup = await group.findById(id);
+        return curGroup;
+    }
+    catch(err){
+        console.log("Error finding group by ID", err);
+        throw new Error("Error finding group by ID");
+    }
 }
 
 export const findUserGroups = async (id) => {
-    console.log("Finding user groups");
-    const groups = await group.find({"members.member_id": id});
-    if(!groups) throw new Error("Error finding user groups");
-    console.log("User groups found");
-    return groups;
+    try{        
+        console.log("Finding user groups");
+
+        if(!id){
+            console.log(`User id is undefined: ${id}`);
+            throw new Error(`User id is undefined: ${id}`);
+        }
+
+        const groups = await group.find({"members.member_id": id});
+        return groups;
+    }
+    catch(err){
+        console.log("Error finding user groups", err);
+        throw new Error("Error finding user groups");
+    }
 }
 
 export const settleAllGroups = async (mem1, mem2) => {
-    console.log("Settling all the groups");
-    console.log(mem1);
-    console.log(mem2);
-    const groups = await group.find({
-    "members.member_id": {
-        $all: [new mongoose.Types.ObjectId(mem1), new mongoose.Types.ObjectId(mem2)]
-    }
-    });
-    for (const group of groups) {
-        for (const member of group.members) {
-          if (member.member_id.toString() === mem1) {
-            for (const other_mem of member.other_members) {
-              if (other_mem.other_member_id.toString() === mem2) {
-                other_mem.amount = 0;
-                other_mem.exchange_status = "settled";
-              }
-            }
-          }
-      
-          if (member.member_id.toString() === mem2) {
-            for (const other_mem of member.other_members) {
-              if (other_mem.other_member_id.toString() === mem1) {
-                other_mem.amount = 0;
-                other_mem.exchange_status = "settled";
-              }
-            }
-          }
+    try{    
+        console.log("Settling all the groups");
+
+        if(!mem1 || !mem2) {
+            console.log(`Member ids are undefined: ${mem1}, ${mem2}`);
+            throw new Error(`Member ids are undefined: ${mem1}, ${mem2}`);
         }
-        await group.save();
+
+        const groups = await group.find({
+        "members.member_id": {
+            $all: [new mongoose.Types.ObjectId(mem1), new mongoose.Types.ObjectId(mem2)]
+        }
+        });
+
+        for (const group of groups) {
+            for (const member of group.members) {
+                if (member.member_id.toString() === mem1) {
+                    for (const other_mem of member.other_members) {
+                        if (other_mem.other_member_id.toString() === mem2) {
+                            other_mem.amount = 0;
+                            other_mem.exchange_status = "settled";
+                        }
+                    }
+                }
+        
+                if (member.member_id.toString() === mem2) {
+                    for (const other_mem of member.other_members) {
+                        if (other_mem.other_member_id.toString() === mem1) {
+                            other_mem.amount = 0;
+                            other_mem.exchange_status = "settled";
+                        }
+                    }
+                }
+            }
+            await group.save();
+        }
     }
-      
+    catch(err){
+        console.log("Error settling all groups", err);
+        throw new Error("Error settling all groups");
+    }
 }
 
 export const distributeAmount = async ({ groupId, giverId, borrowers }) => {
-    console.log("Distributing amount");
-    let currGroup = null;
-    
-    try{
-        currGroup = await group.findById(groupId).select("members");
+    try{    
+        console.log("Distributing amount");
+
+        if(!groupId || !giverId || borrowers.length === 0) {
+            console.log(`Group id, giver id or borrowers are undefined: ${groupId}, ${giverId}, ${borrowers}`);
+            throw new Error(`Group id, giver id or borrowers are undefined: ${groupId}, ${giverId}, ${borrowers}`);
+        }
+
+        let currGroup = await group.findById(groupId).select("members");
+        if(!currGroup) {
+            console.log("Error finding group",err);
+            throw new Error("Error finding group");
+        }
+
+        const lender = currGroup.members.find(m => m.member_id.toString() === giverId.toString());
+        if(!lender) {
+            console.log(`No lender with ${giverId} exisits`,err);
+            throw new Error(`No lender exists to distribute amount`);
+        }
+
+        for (const { user_id: borrowerId, amount } of borrowers) {
+            const res = updateTransaction(lender, borrowerId.toString(), amount, GroupMemberStatus.LENDED); //settled
+            if(!res) throw new Error("cannot update group info for adding expense");
+            
+            const borrower = currGroup.members.find(m => m.member_id.toString() === borrowerId.toString());
+            if (borrower) {
+                const res = updateTransaction(borrower, giverId.toString(), amount, GroupMemberStatus.BORROWED); //settled
+                if(!res) throw new Error("cannot update group info for adding expense");
+            }
+        }
+
+        await currGroup.save();
     }
     catch(err){
-        console.log("Error finding group",err);
+        console.log("Error distributing amount", err);
+        throw new Error("Error distributing amount");
     }
-
-    if (!currGroup) throw new Error("No group with the given ID");
-    const lender = currGroup.members.find(m => m.member_id.toString() === giverId.toString());
-    if(!lender) throw new Error("lender not found");
-    for (const { user_id: borrowerId, amount } of borrowers) {
-        const res = updateTransaction(lender, borrowerId.toString(), amount, GroupMemberStatus.LENDED); //settled
-        if(!res)
-        {
-            throw new Error("cannot update group info for adding expense");
-            // return error 
-        }
-        const borrower = currGroup.members.find(m => m.member_id.toString() === borrowerId.toString());
-        if (borrower) {
-            updateTransaction(borrower, giverId.toString(), amount, GroupMemberStatus.BORROWED); //settled
-        }
-    }
-    await currGroup.save();
-    console.log("Amount Distributed");
 };
 
 const updateTransaction = (member, otherMemberId, amount, type) => {
-    console.log("Updating transaction");
-    const transaction = member.other_members.find(
-        t => t.other_member_id.toString() === otherMemberId
-    );
-    if (!transaction) return null;
-    if (transaction.exchange_status === type) {
-        transaction.amount += amount;
-    } else if (transaction.exchange_status === GroupMemberStatus.SETTLED) {
-        transaction.amount = amount;
-        transaction.exchange_status = type;
-    } else {
-        if(transaction.amount === amount)
-        {
-            transaction.amount = 0;
-            transaction.exchange_status = GroupMemberStatus.SETTLED;
+    try{
+        console.log("Updating transaction in group");
+
+        if(!member || !otherMemberId || !amount || !type) {
+            console.log(`Member, other member id, amount or type are undefined: ${member}, ${otherMemberId}, ${amount}, ${type}`);
+            throw new Error(`Member, other member id, amount or type are undefined: ${member}, ${otherMemberId}, ${amount}, ${type}`);
         }
-        else if(transaction.amount < amount)
-        {
-            transaction.amount = amount - transaction.amount;
+
+        const transaction = member.other_members.find(
+            t => t.other_member_id.toString() === otherMemberId
+        );
+
+        if (!transaction) {
+            console.warn(`No transaction found to make changes in group`);
+            return null;
+        }
+
+        if (transaction.exchange_status === type) {
+            transaction.amount += amount;
+        } else if (transaction.exchange_status === GroupMemberStatus.SETTLED) {
+            transaction.amount = amount;
             transaction.exchange_status = type;
+        } else {
+            if(transaction.amount === amount)
+            {
+                transaction.amount = 0;
+                transaction.exchange_status = GroupMemberStatus.SETTLED;
+            }
+            else if(transaction.amount < amount)
+            {
+                transaction.amount = amount - transaction.amount;
+                transaction.exchange_status = type;
+            }
+            else
+            {
+                transaction.amount -= amount;
+            }
         }
-        else
-        {
-            transaction.amount -= amount;
-        }
+        transaction.amount = transaction.amount;
+        const updatedMember = member;
+        updatedMember.otherMembers = transaction;
+        return updatedMember;
     }
-    transaction.amount = transaction.amount;
-    const updatedMember = member;
-    updatedMember.otherMembers = transaction;
-    console.log("Transaction updated");
-    return updatedMember;
+    catch(err){
+        console.log("Error updating transaction", err);
+        throw new Error("Error updating transaction");
+    }
 };
 
 /////////////////////
@@ -236,172 +300,14 @@ const updateTransaction = (member, otherMemberId, amount, type) => {
 //         ],
 // }
 
-// const simplifyDebts = (group) => {
-//     let balances = new Map(); // Store net balance per user
-
-//     // Step 1: Compute net balance for each user
-//     group.members.forEach(member => {
-//         let memberId = member.member_id.toString();
-//         if (!balances.has(memberId)) balances.set(memberId, 0);
-
-//         member.other_members.forEach(transaction => {
-//             let otherMemberId = transaction.other_member_id.toString();
-//             let amount = transaction.amount;
-//             let status = transaction.exchange_status;
-
-//             if (!balances.has(otherMemberId)) balances.set(otherMemberId, 0);
-
-//             if (status === "lended") {
-//                 balances.set(memberId, balances.get(memberId) + amount);
-//                 balances.set(otherMemberId, balances.get(otherMemberId) - amount);
-//             } else if (status === "borrowed") {
-//                 balances.set(memberId, balances.get(memberId) - amount);
-//                 balances.set(otherMemberId, balances.get(otherMemberId) + amount);
-//             }
-//         });
-//     });
-    
-//     balances.forEach((value, key) => {
-//       balances.set(key, value/2);
-//     });
-//     console.log(balances);
-
-//     // Step 2: Convert balances to a sorted list of creditors (+ve) and debtors (-ve)
-//     let creditors = [];
-//     let debtors = [];
-
-//     balances.forEach((balance, userId) => {
-//         if (balance > 0) creditors.push({ userId, balance });
-//         else if (balance < 0) debtors.push({ userId, balance: -balance });
-//     });
-
-//     creditors.sort((a, b) => b.balance - a.balance); // Largest creditor first
-//     debtors.sort((a, b) => b.balance - a.balance);   // Largest debtor first
-
-//     let simplifiedTransactions = [];
-
-//     // Step 3: Match debtors with creditors
-//     let i = 0, j = 0;
-//     while (i < debtors.length && j < creditors.length) {
-//         let debtor = debtors[i];
-//         let creditor = creditors[j];
-
-//         let minAmount = Math.min(debtor.balance, creditor.balance);
-//         simplifiedTransactions.push({
-//             from: debtor.userId,
-//             to: creditor.userId,
-//             amount: minAmount
-//         });
-
-//         debtor.balance -= minAmount;
-//         creditor.balance -= minAmount;
-
-//         if (debtor.balance === 0) i++;
-//         if (creditor.balance === 0) j++;
-//     }
-//     console.log(simplifiedTransactions);
-//     return simplifiedTransactions;
-// };
-
-// function transactionsToMatrix(transactions, n) {
-//   // Extract unique keys
-//   let uniqueKeys = new Set();
-//   transactions.forEach(({ from, to }) => {
-//     uniqueKeys.add(from);
-//     uniqueKeys.add(to);
-//   });
-
-//   // Map each unique key to an index (0 to n-1)
-//   let keysArray = Array.from(uniqueKeys).slice(0, n); // Ensure max n keys
-//   let keyToIndex = Object.fromEntries(keysArray.map((key, i) => [key, i]));
-
-//   // Initialize an n × n matrix filled with 0s
-//   let matrix = Array.from({ length: n }, () => Array(n).fill(0));
-
-//   // Populate the matrix with transactions
-//   transactions.forEach(({ from, to, amount }) => {
-//     if (keyToIndex[from] !== undefined && keyToIndex[to] !== undefined) {
-//       let i = keyToIndex[from];
-//       let j = keyToIndex[to];
-//       matrix[i][j] = -amount; // From i to j (negative)
-//       matrix[j][i] = amount;  // From j to i (positive)
-//     }
-//   });
-
-//   return { matrix, keysArray };
-// }
-
-// function membersToMatrix(members, n, keysArray) {
-//   // Extract unique member IDs
-//   let uniqueKeys = new Set();
-//   members.forEach(({ member_id, other_members }) => {
-//     uniqueKeys.add(member_id);
-//     other_members.forEach(({ other_member_id }) => uniqueKeys.add(other_member_id));
-//   });
-
-//   // Map each unique member_id to an index (0 to n-1)
-//   let keyToIndex = Object.fromEntries(keysArray.map((key, i) => [key, i]));
-
-//   // Initialize an n × n matrix filled with 0s
-//   let matrix = Array.from({ length: n }, () => Array(n).fill(0));
-
-//   // Populate the matrix with transactions
-//   members.forEach(({ member_id, other_members }) => {
-//     let i = keyToIndex[member_id]; // Get index of member_id
-//     if (i === undefined) return; // Skip if member_id is not in the index map
-
-//     other_members.forEach(({ other_member_id, amount, exchange_status }) => {
-//       let j = keyToIndex[other_member_id]; // Get index of other_member_id
-//       if (j === undefined) return; // Skip if other_member_id is not in the index map
-//       if (i === j) return; // Keep diagonal 0
-
-//       if (exchange_status === "lended") {
-//         matrix[i][j] = +amount;
-//       } else if (exchange_status === "borrowed") {
-//         matrix[i][j] = -amount;
-//       } else if (exchange_status === "settled") {
-//         matrix[i][j] = 0;
-//       }
-//     });
-//   });
-
-//   return { matrix, keysArray };
-// }
-
-// function subtractMatrices(matrix1, matrix2) {
-//   let n = matrix1.length;
-
-//   // Ensure both matrices are of the same size
-//   if (n !== matrix2.length || matrix1.some((row, i) => row.length !== matrix2[i].length)) {
-//     throw new Error("Matrix dimensions do not match");
-//   }
-
-//   // Perform element-wise subtraction
-//   let result = Array.from({ length: n }, (_, i) =>
-//     Array.from({ length: n }, (_, j) => matrix1[i][j] - matrix2[i][j])
-//   );
-
-//   return result;
-// }
-
-// const makeDebtMatrix = () => {
-//     let transactions = simplifyDebts(group);
-//     let n = 4;
-//     let { matrix: simplifyMatrix, keysArray } = transactionsToMatrix(transactions, n);
-//     let { matrix: earlierMatrix } = membersToMatrix(group.members, n, keysArray);
-//     let subtractedMatrix = subtractMatrices(simplifyMatrix, earlierMatrix)
-//     console.log("Keys Mapping:", keysArray);
-//     console.log("Resulting Matrix:", simplifyMatrix);
-//     console.log("earlier below");
-//     console.log("Resulting Matrix:", earlierMatrix);
-//     console.log("subtracted Matrix:", subtractedMatrix)
-// }
-
-// makeDebtMatrix();
-/////////////////////////////////////
+//////////////////
 
 const simplifyDebts = (group) => {
     console.log("Simplifying debts");
+    if(!group) {
+        throw new Error(`Unable to simplify debts, group undefined`);
+    }
+
     let balances = new Map();
 
     group.members.forEach(member => {
@@ -468,6 +374,9 @@ const simplifyDebts = (group) => {
 
 function transactionsToMatrix(transactions, n, keysArray) {
     console.log("Converting transactions to matrix");
+
+    if(!transactions || !n || !keysArray) throw new Error(`Unable to transform transactions to matrix, details missing`);
+
     let uniqueKeys = new Set();
     transactions.forEach(({ from, to }) => {
         uniqueKeys.add(from);
@@ -487,6 +396,7 @@ function transactionsToMatrix(transactions, n, keysArray) {
         matrix[j][i] = amount;
         }
     });
+
     console.log("Matrix created");
     return matrix;
 }
@@ -495,6 +405,9 @@ function transactionsToMatrix(transactions, n, keysArray) {
 function membersToMatrix(members, n, keysArray) {
     // Extract unique member IDs
     console.log("Converting members to matrix");
+
+    if(!members || !n || !keysArray) throw new Error(`Unable to transform members to matrix, details missing`);
+
     let uniqueKeys = new Set();
     members.forEach(({ member_id, other_members }) => {
         uniqueKeys.add(member_id);
@@ -532,6 +445,9 @@ function membersToMatrix(members, n, keysArray) {
 
 function subtractMatrices(matrix1, matrix2) {
     console.log("Subtracting matrices");
+
+    if(!matrix1 || !matrix2) throw new Error(`Unable to calc difference between matrices, details missing`);
+
     let n = matrix1.length;
 
     // Ensure both matrices are of the same size
@@ -549,6 +465,9 @@ function subtractMatrices(matrix1, matrix2) {
 
 const updateGroupToSimplify = async (matrix, group, keysArray) => {
     console.log("Updating group to simplify");
+
+    if(!matrix || !group || !keysArray) throw new Error(`Unable to update group for simplify, details missing`);
+
     let keyToIndex = Object.fromEntries(keysArray.map((key, i) => [key, i]));
     group.members.forEach((member) => {
         member.other_members.forEach((other_member) => {
@@ -563,72 +482,117 @@ const updateGroupToSimplify = async (matrix, group, keysArray) => {
     });
     await group.save();
     console.log("Group updated");
-//save group in mongo
+
 }
 
 const updateUserToSimplify = async (matrix, keysArray) => {
-    console.log("Updating user to simplify");
-    let keyToIndex = Object.fromEntries(keysArray.map((key, i) => [key, i]));
-    let size = keysArray.length;
-    for(let i=0;i<size;i++) {
-        for(let j=i+1;j<size;j++) {
-            if(matrix[i][j] === 0) continue;
-            if(matrix[i][j] > 0) {
-                await updateFriendlyExchangeStatesOnLending({lender_id: keysArray[i],borrowers: [{user_id: keysArray[j],amount: matrix[i][j]}] });
-            } else await updateFriendlyExchangeStatesOnLending({lender_id: keysArray[j],borrowers: [{user_id: keysArray[i],amount: -matrix[i][j]}] });
+    try {
+        console.log("Updating user to simplify");
+        // let keyToIndex = Object.fromEntries(keysArray.map((key, i) => [key, i]));
+
+        if(!matrix || !keysArray) throw new Error(`Unable to simplify group, details missing`);
+
+        let size = keysArray.length;
+        for(let i=0;i<size;i++) {
+            for(let j=i+1;j<size;j++) {
+                if(matrix[i][j] === 0) continue;
+                if(matrix[i][j] > 0) {
+                    await updateFriendlyExchangeStatesOnLending({lender_id: keysArray[i],borrowers: [{user_id: keysArray[j],amount: matrix[i][j]}] });
+                } else await updateFriendlyExchangeStatesOnLending({lender_id: keysArray[j],borrowers: [{user_id: keysArray[i],amount: -matrix[i][j]}] });
+            }
         }
-    }    
-    console.log("User updated");
+
+        console.log("User updated");
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
 }
 
 
 export const simplifyDebtsService = async ({group, memberSize}) => {
-    console.log("Simplifying debts service");
-    //get simplified debts
-    let keysArray = [];
-    let n = memberSize;
-    group.members.forEach((member) => keysArray.push(member.member_id));
-    let transactions = simplifyDebts(group, keysArray);
-    if(!transactions) throw new Error("Error getting simplify debts transactions");
-    if(transactions.length === 0) return;
-    //convert simplified debts into matrix format
-    let simplifyMatrix = transactionsToMatrix(transactions, n, keysArray);
-    if(!simplifyMatrix) throw new Error("Error getting simplify matrix from transactions");
-    if(!keysArray) throw new Error("Error getting keysArray transactions");
-    //convert members to matrix format
-    let { matrix: earlierMatrix } = membersToMatrix(group.members, n, keysArray);
-    if(!earlierMatrix) throw new Error("Error getting members matrix");
-    //update group
-    await updateGroupToSimplify(simplifyMatrix, group, keysArray);
-    //substract (members matrix - simplified matrix)
-    let subtractedMatrix = subtractMatrices(simplifyMatrix, earlierMatrix)
-    await updateUserToSimplify(subtractedMatrix,keysArray);
-    console.log("Debts simplified");
+
+    try {
+        console.log("Simplifying debts service");
+        if(!group || !memberSize) throw new Error(`Unable to run simplify service, details missing`);
+
+        let keysArray = [];
+        let n = memberSize;
+        group.members.forEach((member) => keysArray.push(member.member_id));
+
+        //get simplified debts
+        let transactions = simplifyDebts(group, keysArray);
+        if(!transactions) throw new Error("Error getting simplify debts transactions");
+        if(transactions.length === 0) return;
+
+        //convert simplified debts into matrix format
+        let simplifyMatrix = transactionsToMatrix(transactions, n, keysArray);
+        if(!simplifyMatrix) throw new Error("Error getting simplify matrix from transactions");
+        if(!keysArray) throw new Error("Error getting keysArray transactions");
+
+        //convert members to matrix format
+        let { matrix: earlierMatrix } = membersToMatrix(group.members, n, keysArray);
+        if(!earlierMatrix) throw new Error("Error getting members matrix");
+
+        //update group
+        await updateGroupToSimplify(simplifyMatrix, group, keysArray);
+
+        //substract (members matrix - simplified matrix)
+        let subtractedMatrix = subtractMatrices(simplifyMatrix, earlierMatrix)
+        await updateUserToSimplify(subtractedMatrix,keysArray);
+
+        console.log("Debts simplified");
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
 }
 
 export const sendNewGroupNotifications = async (id,userId) => {
     try{
         console.log("Sending new group notifications");
+        if(!id || !userId) {
+            console.warn(`Unable to send group notification, details missing`);
+            return;
+        }
+
         const currGroup = await findGroupById(id);
-        if(!currGroup) throw new Error("Error finding group");
+        if(!currGroup) {
+            console.log(`No such group exists to send notification for ${id}`);
+            return;
+        }
+
         const members = currGroup.members;
-        if(!members) throw new Error("Error finding group members");
+        
         for (const member of members) {
+
             if (member.member_id.toString() !== userId.toString()) {
+
                 const user = await findUserById(member.member_id);
-                if (!user) throw new Error("Error finding user");
-                const tokens = user.accessTokens;
-                const body = `Welcome to ${currGroup.group_title}!\nShared expenses made easy — you're in!`;
-                for (const token of tokens) {
-                    await sendNotificationService({
-                        token: token,
-                        title: "🔔 You've been added to a group!",
-                        body: body,
-                    });
+                if (!user) {
+                    console.warn(`User not found to send group notification`);
+                    continue;
                 }
                 
+                const tokens = user.accessTokens;
+                if(tokens.length === 0) continue;
+
+                const body = `Welcome to ${currGroup.group_title}!\nShared expenses made easy — you're in!`;
+
+                for (const token of tokens) {
+                    try {
+                        await sendNotificationService({
+                            token: token,
+                            title: "🔔 You've been added to a group!",
+                            body: body,
+                        });
+                    } catch (error) {
+                        console.log(error);
+                    }
+                }
+
             }
-          }
+        }
     }
     catch(err){
         console.log("Error sending new group notifications", err);
