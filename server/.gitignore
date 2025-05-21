@@ -1,7 +1,7 @@
 /node_modules
 /.env
-/production.env
-/devlopment.env
+production.env
+development.env
 /controller/chatbotController.js
 /routes/chatbot.js
 /services/chatbotService.js
