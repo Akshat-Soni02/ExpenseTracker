@@ -1,0 +1,7 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [ 'build', '-t', 'gcr.io/phrasal-bond-460512-s7/expenz-node-backend', '.' ]
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [ 'push', 'gcr.io/phrasal-bond-460512-s7/expenz-node-backend' ]
+images:
+  - 'gcr.io/phrasal-bond-460512-s7/expenz-node-backend'
