@@ -6,6 +6,7 @@ import {sendBorrowerMail} from "../services/userService.js";
 import expense from "../models/expense.js";
 import settlement from "../models/settlement.js"
 import { GroupMemberStatus } from "../enums/groupEnums.js";
+
 // this is how it should look for members in group
 // {
 //     "group_title": "Weekday Trip",
@@ -35,18 +36,25 @@ import { GroupMemberStatus } from "../enums/groupEnums.js";
 export const createGroup = async (req, res, next) => {
   try {
     console.log("Creating Group");
+
     const id = req.user._id;
+
     const {
       group_title,
       memberIds = [],
       initial_budget,
       settle_up_date,
     } = req.body;
+
+    //no need to push, already has user id
     // memberIds.push(id);
+
     const members = formatMembers(memberIds);
+
     if(!members || members.length === 0) {
       return next(new ErrorHandler("Members are required to create a group", 400));
     }
+
     const newGroup = await group.create({
       group_title,
       members,
@@ -75,18 +83,25 @@ export const createGroup = async (req, res, next) => {
 export const updateGroup = async (req, res, next) => {
   try {
     console.log("Updating Group");
+
     const { id } = req.params;
+
+    //we can update these details in group
+    //group_title, initial_budget, settle_up_date
     const updatedDetails = req.body;
+
     const updatedGroup = await group.findByIdAndUpdate(id, updatedDetails, {
       new: true,
       runValidators: true,
     });
-    if (!updatedGroup)
-      return next(new ErrorHandler("No group found with this id to update", 400));
+
+    if (!updatedGroup) return next(new ErrorHandler("No group found with this id to update", 400));
+
     res.status(200).json({
       message: "Group updated successfully",
       data: updatedGroup,
     });
+
     console.log("Updated Group");
   } catch (error) {
     if (error.code === 11000) {
@@ -165,9 +180,12 @@ export const leaveGroup = async (req, res, next) => {
 export const getGroupById = async (req, res, next) => {
   try {
     console.log("Fetching group by id");
+
     const { id } = req.params;
+
     const curGroup = await findGroupById(id);
     if (!curGroup) return next(new ErrorHandler("No group with given id exists", 404));
+
     console.log("Fetched Group");
     res.status(200).json({
       data: curGroup,
@@ -219,15 +237,20 @@ export const getGroupExchangeStateWithOthers = async (req, res, next) => {
 export const remindGroupBorrower = async (req, res, next) => {
   try {
     console.log("Reminding Borrowers");
+
     const id = req.user._id;
     const {group_id} = req.params;
     const {borrower_id, amount} = req.query;
+
     const curGroup = await group.findById(group_id);
     if(!curGroup) return next(new ErrorHandler("Error fetching group details to remaind borrower", 400));
+
     const curUser = await user.findById(id);
     if(!curUser) return next(new ErrorHandler("Error fetching user details to remaind borrower", 400));
+
     const borrowerProfile = await user.findById(borrower_id);
     if(!borrowerProfile) return next(new ErrorHandler("Error remainding borrower", 400));
+
     sendBorrowerMail({lender: curUser, borrowerProfile,amount, group: curGroup});
     console.log("Reminded Borrowers");
     res.status(200).json({
@@ -243,12 +266,17 @@ export const remindGroupBorrower = async (req, res, next) => {
 export const remindAllGroupBorrowers = async (req, res, next) => {
   try {
     console.log("Reminding All Borrowers");
+
     const id = req.user._id;
+
     const {group_id} = req.params;
+
     const curGroup = await group.findById(group_id);
     if(!curGroup) return next(new ErrorHandler("Error fetching group details to remaind borrower", 400));
+
     const curUser = await user.findById(id);
     if(!curUser) return next(new ErrorHandler("Error fetching user details to remaind borrower", 400));
+
     curGroup.members.forEach(async(member) => {
       if(member.member_id.toString() === id.toString()) {
         member.other_members.forEach(async(other_member) => {
@@ -260,6 +288,7 @@ export const remindAllGroupBorrowers = async (req, res, next) => {
         })
       }
     })
+
     console.log("Reminded All Borrowers");
     res.status(200).json({
       message: "all borrowers successfully reminded"
@@ -289,15 +318,27 @@ export const getGroupHistory = async (req, res, next) => {
     const expenses = await expense.find(filter1).lean();
     const settlements = await settlement.find(filter2).lean();
 
-    const formattedExpenses = expenses.map(exp => ({
-      ...exp,
-      type: "expense",
-    }));
+    const formattedExpenses = await Promise.all(
+      expenses.map(async (exp) => {
+        const giver = await user.findById(exp.lenders[0].user_id).select("name");
+        return {
+          ...exp,
+          type: "expense",
+          giver: giver.name,
+        };
+      })
+    );
 
-    const formattedSettlements = settlements.map(set => ({
-      ...set,
-      type: "settlement",
-    }));
+    const formattedSettlements = await Promise.all(
+      settlements.map(async (set) => {
+        const giver = await user.findById(set.payer_id).select("name");
+        return {
+          ...set,
+          type: "settlement",
+          giver: giver.name,
+        };
+      })
+    );
 
     const history = [...formattedExpenses, ...formattedSettlements].sort(
       (a, b) => new Date(b.created_at_date_time || b.createdAt) - new Date(a.created_at_date_time || a.createdAt)
@@ -316,11 +357,15 @@ export const getGroupHistory = async (req, res, next) => {
 export const processSimplifyDebts = async (req, res, next) => {
   try {
     console.log("Processing simplify debts");
+
     const {group_id} = req.params;
+
     const curGroup = await group.findById(group_id);
     if(!curGroup) return next(new ErrorHandler("Error fetching group for simplify debts", 400));
+
     let members = curGroup.members.length;
     await simplifyDebtsService({group: curGroup, memberSize: members});
+    
     console.log("Processed simplify debts");
     return res.status(200).json({message: "successfully applied simplify debt"});
   } catch (error) {
@@ -333,10 +378,12 @@ export const processSimplifyDebts = async (req, res, next) => {
 export const addToGroup = async (req, res, next) => {
   try {
     console.log("Adding new members to group");
+
     const { group_id } = req.params;
     const { newMemberIds = [] } = req.body;
 
     if(newMemberIds.length === 0) return;
+
     const curGroup = await findGroupById(group_id);
     if (!curGroup) {
       return res.status(404).json({ message: "Group not found" });

@@ -1,5 +1,7 @@
 import ErrorHandler from "../middlewares/error.js";
 import wallet from "../models/wallet.js";
+import { findCustomExpenses } from "../services/expenseService.js";
+import { findPersonalTransactionByQuery } from "../services/personalTransactionService.js";
 import { findWalletById, transferWalletAmounts } from "../services/walletService.js";
 
 export const createWallet = async (req, res, next) => {
@@ -43,7 +45,15 @@ export const updateWallet = async (req, res, next) => {
     console.log("Updating wallet");
     const { id } = req.params;
     let updatedDetails = req.body;
-    updatedDetails.amount = Number(updatedDetails.amount);
+    
+    if (updatedDetails.amount){
+      updatedDetails.amount = Number(updatedDetails.amount);
+    }
+    
+    if (updatedDetails.lower_limit) {
+      updatedDetails.lower_limit = Number(updatedDetails.lower_limit);
+    }
+
     const updatedWallet = await wallet.findByIdAndUpdate(id, updatedDetails, {
       new: true,
       runValidators: true,
@@ -52,11 +62,14 @@ export const updateWallet = async (req, res, next) => {
     if (!updatedWallet) {
       return next(new ErrorHandler("Wallet not found", 404));
     }
+
     console.log("Updated wallet");
+    
     res.status(200).json({
       message: "Wallet updated Successfully",
       data: updateWallet,
     });
+  
   } catch (error) {
     if (error.code === 11000) {
       // Duplicate key error (E11000)
@@ -135,3 +148,27 @@ export const walletsAmountTransfer = async (req, res, next) => {
     next(error);
   }
 };
+
+export const walletTransactions = async (req, res, next) => {
+  try {
+    const { wallet_id } = req.params;
+    const id = req.user._id;
+
+    const expensesWithWallet = await findCustomExpenses({wallet_id, lender_id: id});
+    if(!expensesWithWallet) return next(new ErrorHandler("Cannot get wallet transactions", 400));
+
+    const personalsWithWallet = await findPersonalTransactionByQuery({wallet_id, user_id: id});
+    if(!personalsWithWallet) return next(new ErrorHandler("Cannot get wallet transactions", 400));
+
+    res.status(200).json({
+      message:"Successfully retreived wallet transactions",
+      data: {
+        expenses: expensesWithWallet,
+        personals: personalsWithWallet
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+}

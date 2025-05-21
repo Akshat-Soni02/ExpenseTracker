@@ -9,6 +9,17 @@ import {
   getUserExpenses,
   getCustomExpenses,
 } from "../controller/expenseController.js";
+import { validate } from "../middlewares/validateRequest.js";
+import { 
+  createExpenseSchema, 
+  updateExpenseSchema,
+  deleteExpenseSchema,
+  getExpenseSchema,
+  getUserPeriodExpensesSchema,
+  getUserExpensesSchema,
+  getCustomExpensesSchema,
+
+} from "../validators/expense.schema.js";
 import multer from "multer";
 
 const router = express.Router();
@@ -17,19 +28,25 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 //* POST APIs *//
-router.post("/new", isAuthenticated, upload.single("media"), createExpense);
+router.post(
+  "/new",
+  isAuthenticated,
+  upload.single("media"),          // ✅ handles optional file + fields
+  validate(createExpenseSchema),   // ✅ Zod will receive fields correctly
+  createExpense
+);
 
 //* GET APIs *//
 
-router.get("/user/period", isAuthenticated, getUserPeriodExpenses);
-router.get("/user", isAuthenticated, getUserExpenses);
-router.get("/custom", isAuthenticated, getCustomExpenses); // Uses query parameters for custom filtering
-router.get("/:id", isAuthenticated, getExpenseById);
+router.get("/user/period", isAuthenticated,validate(getUserPeriodExpensesSchema), getUserPeriodExpenses);
+router.get("/user", isAuthenticated,validate(getUserExpensesSchema), getUserExpenses);
+router.get("/custom", isAuthenticated,validate(getCustomExpensesSchema), getCustomExpenses); // Uses query parameters for custom filtering
+router.get("/:id", isAuthenticated,validate(getExpenseSchema), getExpenseById);
 
 //* PUT APIs *//
-router.put("/:expense_id", isAuthenticated, upload.single("media"), updateExpense);
+router.put("/:expense_id", isAuthenticated,validate(updateExpenseSchema), upload.single("media"), updateExpense);
 
 //* DELETE APIs *//
-router.delete("/:expense_id", isAuthenticated, deleteExpense);
+router.delete("/:expense_id", isAuthenticated,validate(deleteExpenseSchema), deleteExpense);
 
 export default router;

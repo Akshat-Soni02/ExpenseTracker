@@ -7,6 +7,7 @@ import bodyParser from "body-parser";
 import { errorMiddleware } from "./middlewares/error.js";
 import { v2 as cloudinary } from "cloudinary";
 import admin from "firebase-admin";
+import path from "path";
 
 import userRouter from "./routes/user.js";
 import walletRouter from "./routes/wallet.js";
@@ -24,8 +25,21 @@ import detectedTransactionRouter from "./routes/detectedTransaction.js";
 
 import { scheduleCronJobs } from "./services/schedulerService.js";
 import { sendEmail } from "./services/notificationService.js";
+import { requestCounterMiddleware } from "./middlewares/requests.js";
 
-dotenv.config();
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+console.log(process.env.NODE_ENV);
+
+
+dotenv.config({
+  path: path.resolve(__dirname, `${process.env.NODE_ENV}.env`)
+});
+
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -64,6 +78,7 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.json({ limit: "30mb", extended: true }));
+app.use(requestCounterMiddleware);
 
 
 app.listen(PORT, () => {
