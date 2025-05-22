@@ -1,6 +1,11 @@
+/**
+ * zod handles most of the type conversions,
+ * specifically for amounts to convert to number from string
+ */
+
+import config from "./config/config.js";
 import express from "express";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
@@ -27,18 +32,6 @@ import { scheduleCronJobs } from "./services/schedulerService.js";
 import { sendEmail } from "./services/notificationService.js";
 import { requestCounterMiddleware } from "./middlewares/requests.js";
 
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-console.log(process.env.NODE_ENV);
-
-
-dotenv.config({
-  path: path.resolve(__dirname, `${process.env.NODE_ENV}.env`)
-});
-
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -47,8 +40,9 @@ cloudinary.config({
 });
 
 const app = express();
-const PORT = process.env.PORT || 3002;
-const URI = process.env.MONGO_URI;
+const PORT = config.port || 3002;
+const URI = config.mongoUri;
+console.log(URI);
 
 const firebaseKey = process.env.FIREBASE_SERVICE_ACCOUNT;
 
@@ -86,7 +80,7 @@ app.listen(PORT, () => {
 });
 
 mongoose
-  .connect(URI,{tlsAllowInvalidCertificates: true})
+  .connect(URI,{})
   .then(() => console.log("Connected to Database"))
   .catch((err) => console.log(err));
 
