@@ -23,7 +23,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 //* POST APIs *//
-router.post("/new", isAuthenticated,validate(createPersonalTransactionSchema),upload.single("media"), createPersonalTransaction);
+router.post("/new", isAuthenticated, upload.single("media") ,validate(createPersonalTransactionSchema), createPersonalTransaction);
 
 //* GET APIs *//
 router.get("/userPeriod",isAuthenticated,validate(getUserPeriodTypeTransactionsSchema),getUserPeriodTypeTransactions)

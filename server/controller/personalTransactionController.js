@@ -94,9 +94,9 @@ export const updatePersonalTransaction = async (req, res, next) => {
         const { personalTransaction_id } = req.params;
         const { transaction_type, wallet_id,transaction_category } = req.body;
         console.log("transaction update details",req.body);
-        const amount = Number(req.body.amount);
+        const amount = req.body.amount ? Number(req.body.amount) : null;
         let updatedDetails = req.body;
-        updatedDetails.amount = Number(updatedDetails.amount);
+        if(updatedDetails.amount) updatedDetails.amount = Number(updatedDetails.amount);
         const user_id = req.user._id; 
     
         const existingPersonalTransaction = await findPersonalTransactionById(personalTransaction_id);
@@ -127,12 +127,22 @@ export const updatePersonalTransaction = async (req, res, next) => {
             }
             
         }
+
+        const newAmount = updatedDetails.amount ? updatedDetails.amount : existingPersonalTransaction.amount;
+        const newType = updatedDetails.transaction_type ? updatedDetails.transaction_type : existingPersonalTransaction.transaction_type;
+
         if (transaction_type){
             await updatePersonalTransactionType(personalTransaction_id,transaction_type,existingPersonalTransaction.amount);
         }
         
         if (wallet_id){
-            await updatePersonalTransactionWallet(personalTransaction_id,existingPersonalTransaction.wallet_id,wallet_id,existingPersonalTransaction.amount);
+            if(existingPersonalTransaction.wallet_id) {
+                await updatePersonalTransactionWallet(personalTransaction_id,existingPersonalTransaction.wallet_id,wallet_id,existingPersonalTransaction.amount);
+            } else await modifyWalletBalance({id: wallet_id, amount: newType === "expense" ? -newAmount : -1 * existingPersonalTransaction.amount, zeroTrue})
+        } else {
+            if(existingPersonalTransaction.wallet_id) {
+                await modifyWalletBalance({id: existingPersonalTransaction.wallet_id, amount: existingPersonalTransaction.transaction_type === "expense" ? existingPersonalTransaction.amount : -1 * existingPersonalTransaction.amount, zeroTrue})
+            }
         }
 
         if (amount) {

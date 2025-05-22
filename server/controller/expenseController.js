@@ -26,26 +26,16 @@ export const createExpense = async (req, res, next) => {
       group_id,
       created_at_date_time,
     } = req.body;
-    let lenders = JSON.parse(req.body.lenders);  //Not typecasted
-    let borrowers = JSON.parse(req.body.borrowers); //Not typecasted
+    let lenders = JSON.parse(req.body.lenders); 
+    let borrowers = JSON.parse(req.body.borrowers);
     total_amount = Number(total_amount);
+
     const file = req.file;
     const user_id = req.user._id;
 
 
     if (!description || !total_amount) {
       return next(new ErrorHandler("Missing required fields", 404));
-    }
-
-    let mediaData = {};
-    if (req.file) {
-      const result = await uploadMedia(req.file.path, "expenseReceipts", next);
-      if (result) {
-        mediaData = {
-          url: result.secure_url,
-          public_id: result.public_id,
-        };
-      }
     }
 
     // we will create new expense
@@ -116,7 +106,6 @@ export const updateExpense = async (req, res, next) => {
     console.log("Updating Expense");
     const { expense_id } = req.params;
     let updatedDetails = req.body;
-    updatedDetails.total_amount = Number(updatedDetails.total_amount);
     if(!updatedDetails) {
       return res.status(200).json({
         message: "No details to update expense"
@@ -125,6 +114,7 @@ export const updateExpense = async (req, res, next) => {
     if(updatedDetails.lenders) updatedDetails.lenders = JSON.parse(updatedDetails.lenders);
     if(updatedDetails.borrowers) updatedDetails.borrowers = JSON.parse(updatedDetails.borrowers);
     if(updatedDetails.total_amount) updatedDetails.total_amount = Number(updatedDetails.total_amount);
+    console.log("here is the updated amount", updatedDetails.total_amount);
     // the updated details might contain
     // description,
     // lenders,
@@ -150,7 +140,7 @@ export const updateExpense = async (req, res, next) => {
       return next(new ErrorHandler("Expense not found with the given id", 404));
     }
 
-    existingExpense.total_amount = Number(existingExpense.total_amount);
+    // existingExpense.total_amount = Number(existingExpense.total_amount);
     //cases with wallet - 
     //earlier there was a wallet and now wallet is removed
     //earlier there was no wallet and now wallet is added
@@ -172,13 +162,16 @@ export const updateExpense = async (req, res, next) => {
         updatedDetails,
         { new: true, runValidators: true }
       );
+
       if (!updatedExpense)
-        return next(
-          new ErrorHandler(
-            `Cannot update expense with id: ${existingExpense._id}`,
-            400
-          )
-        );
+      return next(
+        new ErrorHandler(
+          `Cannot update expense with id: ${existingExpense._id}`,
+          400
+        )
+      );
+
+        console.log("here is the updated expense to compare", updateExpense);
 
        await handleExpenseRelations({
         lender_id: updatedExpense.lenders[0].user_id.toString(),

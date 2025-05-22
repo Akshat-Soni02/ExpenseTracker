@@ -31,8 +31,8 @@ const upload = multer({ storage });
 router.post(
   "/new",
   isAuthenticated,
-  upload.single("media"),          // ✅ handles optional file + fields
-  validate(createExpenseSchema),   // ✅ Zod will receive fields correctly
+  upload.single("media"),          //handles optional file + fields
+  validate(createExpenseSchema),   //Zod will receive fields correctly
   createExpense
 );
 

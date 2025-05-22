@@ -12,7 +12,7 @@ export const handleExpenseRelations = async ({
 }) => {
   try{
     console.log("Handling expense relations");
-    if(!total_amount || !lender_id || borrowers.length === 0){
+    if(!lender_id || borrowers.length === 0){
       console.log("Lender ID, borrowers, or total amount is undefined");
       throw new Error("Lender id, borrowers, or total amount is undefined");
     }
@@ -85,6 +85,7 @@ export const revertExpenseEffects = async (curExpense) => {
           lender_id: borrower.user_id.toString(),
           borrowers: [{ user_id: curExpense.lenders[0].user_id.toString(), amount: borrower.amount }],
           group_id: curExpense?.group_id?.toString(),
+          total_amount: curExpense.total_amount
         });
       }
       catch (err) {

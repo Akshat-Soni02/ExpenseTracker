@@ -66,8 +66,8 @@ export const createExpenseSchema = z.object({
     // lenders: z.array(lenderBorrowerSchema).min(1, "At least one lender is required"),
     // borrowers: z.array(lenderBorrowerSchema).min(1, "At least one borrower is required"),
   }),
-  params: z.object({}).optional(), // Add fields if you want to validate params
-  query: z.object({}).optional(),  // Add fields if you want to validate query
+  params: z.object({}).optional(),
+  query: z.object({}).optional(),
   file: z.any().optional(), 
 });
 
@@ -121,7 +121,7 @@ export const updateExpenseSchema = z.object({
 
 export const deleteExpenseSchema = z.object({
     params: z.object({
-      id: z.string({
+      expense_id: z.string({
         required_error: "Expense id is required",
       })
       .trim()
