@@ -10,8 +10,6 @@ export const validate = (schema) => (req, res, next) => {
       console.log("Request validated successfully");
       next();
     } catch (error) {
-      return res.status(400).json({
-        error: error.errors?.[0]?.message || "Validation error",
-      });
+      next(error);
     }
 };

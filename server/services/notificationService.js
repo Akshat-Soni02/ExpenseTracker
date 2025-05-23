@@ -2,9 +2,10 @@ import nodemailer from "nodemailer";
 import admin from "firebase-admin";
 import { google } from "googleapis";
 import axios from "axios";
+import logger from "../logger/index.js";
 
 
-export const sendEmail = ({toMail, subject, text}) => {
+export const sendEmail = async ({toMail, subject, text}) => {
 
   try {
     console.log("Sending Email Notification");
@@ -25,14 +26,13 @@ export const sendEmail = ({toMail, subject, text}) => {
         text
     };
     
-    transporter.sendMail(mailOptions, function(error, info){
-        if (error) {
-        console.log('Error:', error);
-        } else {
-        console.log('Email sent:', info.response);
-        console.log("email sent to: ", toMail);
-        }
-    });
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log("Email sent:", info.response);
+      console.log("Email sent to:", toMail);
+    } catch (error) {
+      console.error("Error:", error);
+    }
 
     console.log("email sent");
   } catch (error) {
@@ -108,8 +108,20 @@ export const sendNotificationService = async ({token, title, body}) => {
     console.log("Notification sent successfully:");
     return {response, accessToken, notificationResponse};
   } catch (error) {
-    console.error("Error sending notification:", error);
-    throw error;
+    /**
+     * @todo for certain reasons tokens expire,
+     * hence need to remove expired tokens else
+     * redis will explode with corrupted tokens in queue
+     */
+    if (
+      error.code === "messaging/registration-token-not-registered" ||
+      error.errorInfo?.code === "messaging/registration-token-not-registered"
+    ) {
+      logger.info("Invalid FCM token:", token);
+    } else {
+      logger.error("Error sending notification:", error);
+      throw error;
+    }
   }
 
 }

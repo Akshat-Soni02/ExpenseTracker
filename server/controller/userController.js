@@ -294,7 +294,7 @@ export const sendOtp = async (req, res, next) => {
       curUser.otpExpiry = otpExpiry;
       await curUser.save();
 
-      sendEmail({toMail: curUser.email, subject: "ExpenseEase password reset", text: `Your OTP for resetting your password is ${otp}. It is valid for 5 minutes.`})
+      await sendEmail({toMail: curUser.email, subject: "ExpenseEase password reset", text: `Your OTP for resetting your password is ${otp}. It is valid for 5 minutes.`})
       console.log("Sent OTP");
       res.status(200).json({message: "OTP sent successfully" });
   } catch (error) {
@@ -635,7 +635,7 @@ export const remindBorrower = async (req, res, next) => {
     const borrowerProfile = await user.findById(borrower_id);
     const borrowerDetails = curUser.lended.find((borrower) => borrower.borrower_id.toString() === borrower_id.toString());
     if(!borrowerProfile) return next(new ErrorHandler("Error reminding borrower", 400));
-    sendBorrowerMail({lender: curUser, borrowerProfile,amount: borrowerDetails.amount});
+    await sendBorrowerMail({lender: curUser, borrowerProfile,amount: borrowerDetails.amount});
     console.log("Reminding borrower");
     res.status(200).json({
       message: "successfully reminded"
@@ -732,7 +732,7 @@ export const addUserFriends = async (req, res, next) => {
         curUser.futureFriends = curUser.futureFriends || [];
         curUser.futureFriends.push({ email: curMail });
 
-        sendInviteMail({ inviter: curUser, invitee });
+        await sendInviteMail({ inviter: curUser, invitee });
         await curUser.save();
       } else {
         await addUserFriend({ invitee: curInv, inviter: curUser });

@@ -1,97 +1,50 @@
 import ErrorHandler from "../middlewares/error.js";
 import bill from "../models/bill.js"
-import { BillStatus ,BillMemberStatus} from "../enums/billEnums.js";
-import { sendNewBillNotifications } from "../services/billService.js";
+import logger from "../logger/index.js";
+import { BillStatus, BillMemberStatus} from "../enums/billEnums.js";
+import { createBillService, updateUserBillStatus } from "../services/billService.js";
+import { STATUS_CODES, MESSAGES } from "../config/constants.js";
 
-
+/**
+ * 
+ * @function createBill
+ * To clarify how error are handled in each file, each db operation fail,
+ * business logic fail etc, should have an specific
+ * message thrown to be able to log and know the error while
+ * we should send a generic message to client not exposing
+ * technical details and irrelevant info to client
+ * @returns response to with new bill creation
+ */
 export const createBill = async (req, res, next) => {
     try {
-        console.log("creating Bill");
-
-        const id = req.user._id;
-        const {bill_title, bill_category, due_date_time, recurring, members, amount} = req.body;  
-
-        //below transformation is not required due to middleware      
-        // const amount  = Number(req.body.amount);
-
-        const newBill = await bill.create({
-            bill_title,
-            bill_number: 1,
-            amount,
-            bill_category,
-            due_date_time,
-            recurring,
-            members, 
-            status: BillStatus.PENDING,
-            creator_id:id
-        });
-
-        if(!newBill) return next(new ErrorHandler("Error creating new bill",404));
-
-        console.log("Bill Created");
-        await sendNewBillNotifications(newBill._id.toString(),id);
-
-        res.status(201).json({
-            message: "Successfully created new bill",
-            // data: newBill
-        });
-    } catch (error) {   
-        if (error.code === 11000) {
-            // Duplicate key error (E11000)
-            return res.status(400).json({
-                error:
-                "A bill with this title already exists. Please choose a different name.",
-            });
-        }
-        console.log("Error creating bill", error);
+        const user_id = req.user._id;
+        const bill = await createBillService({...req.body, creator_id: user_id});
+        res.status(STATUS_CODES.CREATED).json({message: MESSAGES.RESOURCE_CREATED("Bill"), data: bill});
+    } catch (error) {
         next(error);
     }
 }
 
+
+/**
+ * 
+ * @method handleBillUserStatusUpdate updates user's status
+ * in bill
+ * @returns response with updated bill
+ */
 export const handleBillUserStatusUpdate = async (req, res, next) => {
     try {
-        console.log("updating Bill Status");
-
-        const id = req.user.id;
-        const { status } = req.body;
-        const { billId } = req.params;
-
-        const curBill = await bill.findById(billId).select("members status due_date_time");
-
-        if (!curBill) {
-            return res.status(404).json({ success: false, message: "Bill not found to update the user status" });
-        }
-
-        let memberFound = false;
-        curBill.members = curBill.members.map((member) => {
-            if (member.user_id.toString() === id) {
-                memberFound = true;
-                return { ...member, status };
-            }
-            return member;
+        const updatedBill = await updateUserBillStatus({
+            user_id: req.user.id,
+            bill_id: req.params.billId,
+            status: req.body.status
         });
 
-        if (!memberFound) {
-            return res.status(403).json({ success: false, message: "User not a member of this bill to update the status" });
-        }
-
-        const areAllStatusPaid = curBill.members.every(member => member.status === BillMemberStatus.PAID);
-
-        const now = new Date();
-        if (!areAllStatusPaid) {
-            curBill.status = curBill.due_date_time < now ? BillStatus.MISSED : BillStatus.PENDING;
-        } else {
-            curBill.status = BillStatus.PAID;
-        }
-
-        await curBill.save();
-        console.log("Bill status updates");
-        res.status(200).json({
-            message: "User state updated in bill",
-            data: curBill
+        res.status(STATUS_CODES.OK).json({
+            message: MESSAGES.RESOURCE_UPDATED("Bill"),
+            data: updatedBill
         });
     } catch (error) {
-        console.error("Error updating bill status:", error);
         next(error);
     }
 };

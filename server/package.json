@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development node index.js",
+    "dev": "cross-env NODE_ENV=development NODE_TLS_REJECT_UNAUTHORIZED=0 node index.js",
     "prod": "cross-env NODE_ENV=production node index.js"
   },
   "author": "Akshat Soni & Atharva Lonhari",
@@ -15,6 +15,7 @@
     "axios": "^1.8.4",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
+    "bullmq": "^5.53.0",
     "callgraph": "^1.0.9",
     "cloc": "^2.4.0-cloc",
     "cloudinary": "^2.5.1",
@@ -37,6 +38,7 @@
     "nodemailer": "^6.10.0",
     "nodemon": "^3.1.9",
     "server": "file:",
+    "winston": "^3.17.0",
     "zod": "^3.24.4"
   },
   "devDependencies": {

@@ -251,7 +251,7 @@ export const remindGroupBorrower = async (req, res, next) => {
     const borrowerProfile = await user.findById(borrower_id);
     if(!borrowerProfile) return next(new ErrorHandler("Error remainding borrower", 400));
 
-    sendBorrowerMail({lender: curUser, borrowerProfile,amount, group: curGroup});
+    await sendBorrowerMail({lender: curUser, borrowerProfile,amount, group: curGroup});
     console.log("Reminded Borrowers");
     res.status(200).json({
       message: "successfully reminded"
@@ -283,7 +283,7 @@ export const remindAllGroupBorrowers = async (req, res, next) => {
           if(other_member.exchange_status === GroupMemberStatus.LENDED) {
             const borrowerProfile = await user.findById(other_member.other_member_id);
             if(!borrowerProfile) return next(new ErrorHandler("Error remainding borrower", 400));
-            sendBorrowerMail({lender: curUser, borrowerProfile,amount: other_member.amount, group: curGroup});
+            await sendBorrowerMail({lender: curUser, borrowerProfile,amount: other_member.amount, group: curGroup});
           }
         })
       }

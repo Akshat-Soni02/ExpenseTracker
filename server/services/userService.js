@@ -94,7 +94,7 @@ export const extractTempName = (email) => {
   }
 }
 
-export const sendBorrowerMail = ({borrowerProfile, lender, amount, group}) => {
+export const sendBorrowerMail = async ({borrowerProfile, lender, amount, group}) => {
   try{  
     console.log("Sending Borrower Mail");
 
@@ -104,9 +104,9 @@ export const sendBorrowerMail = ({borrowerProfile, lender, amount, group}) => {
     }
 
     if(group) {
-      sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount} in group ${group.group_title}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Ease Team`});
+      await sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount} in group ${group.group_title}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Ease Team`});
     } else {
-      sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Ease Team`});
+      await sendEmail({toMail: borrowerProfile.email, subject: "Settle your Dues", text: `Hey ${borrowerProfile.name},\n\n${lender.name} has requested you to clear their dues of ${amount}.\n\nPlease make the payment at your earliest convenience.\n\nLet us know if you need any assistance.\n\nBest,\nExpense Ease Team`});
     }
 
   }
@@ -117,7 +117,7 @@ export const sendBorrowerMail = ({borrowerProfile, lender, amount, group}) => {
 }
 
 
-export const sendInviteMail = ({inviter, invitee}) => {
+export const sendInviteMail = async ({inviter, invitee}) => {
   try{  
     console.log("Sending Invite Mail");
 
@@ -126,7 +126,7 @@ export const sendInviteMail = ({inviter, invitee}) => {
       throw new Error(`Inviter or invitee is undefined: ${inviter}, ${invitee}`);
     }
 
-    sendEmail({toMail: invitee.email, subject: "Invitation to join ExpenseEase", text: `Hey,\n\n${inviter.name} has invited you to join ExpenseEase!\n\nClick the link below to download the app:\n\nhttps://expo.dev/artifacts/eas/jcvy7AAZgCBa5Z4V7X8FXF.apk\n\nYou will be added as friend to ${inviter.name} as you create account.\n\nBest,\nExpenseEase Team`});
+    await sendEmail({toMail: invitee.email, subject: "Invitation to join ExpenseEase", text: `Hey,\n\n${inviter.name} has invited you to join ExpenseEase!\n\nClick the link below to download the app:\n\nhttps://expo.dev/artifacts/eas/jcvy7AAZgCBa5Z4V7X8FXF.apk\n\nYou will be added as friend to ${inviter.name} as you create account.\n\nBest,\nExpenseEase Team`});
   }
   catch (error) {
     console.log("Error sending invite mail", error);
@@ -149,7 +149,7 @@ export const findBorrowersAndRemind = async(id) => {
 
     curUser.lended.forEach(async (borrower) => {
       const borrowerProfile = await user.findById(borrower.borrower_id);
-      sendBorrowerMail({borrowerProfile, lender:curUser, amount: borrower.amount});
+      await sendBorrowerMail({borrowerProfile, lender:curUser, amount: borrower.amount});
     });
 
   }

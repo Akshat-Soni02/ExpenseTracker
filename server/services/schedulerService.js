@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { handleBillRecurrence, getRecurringBills, handleBillRemind } from "./billService.js";
+import { handleBillRecurrence, getRecurringBills, sendBillRemindPushNotification } from "./billService.js";
 import bill from "../models/bill.js";
 import { BillStatus } from "../enums/billEnums.js";
 import billRecurFail from "../models/billRecurFail.js";
@@ -65,7 +65,7 @@ export const billRecurScheduler = () => {
 
             for (const bill of billToBeExpired) {
                 try {
-                    await handleBillRemind(bill._id);
+                    await sendBillRemindPushNotification({bill_id: bill._id});
                 } catch (err) {
                     console.error(`Error processing bill ${bill._id}:`, err);
                 }
