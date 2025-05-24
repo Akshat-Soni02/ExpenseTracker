@@ -10,7 +10,7 @@ import { sendEmail } from "../../services/notificationService.js";
  * and sends - invite, password reset and 
  * borrower remainder mails
  */
-export const emailWorker = new Worker("emails", async (job) => {
+export const emailWorker = new Worker("email", async (job) => {
     const { name, data } = job;
 
     try {

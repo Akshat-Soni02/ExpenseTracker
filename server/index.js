@@ -1,3 +1,24 @@
+/** 
+ * To clarify how error are handled in each file, each db operation fail,
+ * business logic fail etc, should have an specific
+ * message thrown to be able to log and know the error while
+ * we should send a generic message to client not exposing
+ * technical details and irrelevant info to client
+ * 
+ * by default exposeToClient is false
+*/
+
+/**
+ * Params are not rechecked in every service
+ * layer because eveything is mostly validated by zod,
+ * hence service only throw intentional errors if operations
+ * are failed.
+ * 
+ * But if services are called internally (through schedulers
+ * or something else) then its necessary to implement one
+ * level checks for safety while calling a particular service
+ */
+
 /**
  * zod handles most of the type conversions,
  * specifically for amounts to convert to number from string
@@ -84,7 +105,7 @@ mongoose
  * @todo schedule cron jobs,
  * later use cloud functions
  */
-// scheduleCronJobs();
+scheduleCronJobs();
 
 /**
  * @todo init the queue workers

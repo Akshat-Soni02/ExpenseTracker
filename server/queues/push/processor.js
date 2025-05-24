@@ -8,7 +8,7 @@ import { pushQueue } from "./queue.js";
  * for bill
  * New bill notification to every other member,
  * @todo Bill update notification - not sending for now,
- * @todo Bill delete notification,
+ * Bill delete notification,
  * Mark as paid notification to others in bill,
  * Missed bill date notification,
  * Bill paid notification when finally bill is paid,

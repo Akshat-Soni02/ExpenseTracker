@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development NODE_TLS_REJECT_UNAUTHORIZED=0 node index.js",
+    "dev": "cross-env NODE_ENV=development NODE_TLS_REJECT_UNAUTHORIZED=0 nodemon index.js",
     "prod": "cross-env NODE_ENV=production node index.js"
   },
   "author": "Akshat Soni & Atharva Lonhari",

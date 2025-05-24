@@ -1,19 +1,12 @@
 import ErrorHandler from "../middlewares/error.js";
-import bill from "../models/bill.js"
 import logger from "../logger/index.js";
-import { BillStatus, BillMemberStatus} from "../enums/billEnums.js";
-import { createBillService, updateUserBillStatus } from "../services/billService.js";
+import { createBillService, updateUserBillStatus, updateBillService, deleteBillService, fetchBillDetails } from "../services/billService.js";
 import { STATUS_CODES, MESSAGES } from "../config/constants.js";
 
 /**
  * 
  * @function createBill
- * To clarify how error are handled in each file, each db operation fail,
- * business logic fail etc, should have an specific
- * message thrown to be able to log and know the error while
- * we should send a generic message to client not exposing
- * technical details and irrelevant info to client
- * @returns response to with new bill creation
+ * @returns response with new bill creation
  */
 export const createBill = async (req, res, next) => {
     try {
@@ -50,85 +43,70 @@ export const handleBillUserStatusUpdate = async (req, res, next) => {
 };
 
 
-
+/**
+ * 
+ * The fields currently we allow to update
+ * are bill_title, bill_category, due_date_time,
+ * recurring, members, amount
+ * @returns response with updated bill
+ */
 export const updateBill = async (req, res, next) => {
     try {
-        // only these fields are updated
-        // "bill_title": "rent",
-        // "bill_category" : "rent",
-        // "due_date_time" : "24-2-2025",
-        // "recurring" : true
-        // members
-        // amount
-        console.log("Updating Bill");
 
-        const {id} = req.params;
-        let updatedDetails = req.body;
-
-        //below code is not temporarily not neccessary due to validation middlewares for now
-        // if(updatedDetails.amount) updatedDetails.amount = Number(updatedDetails.amount);
-
-        const updatedBill = await bill.findByIdAndUpdate(id, updatedDetails, {
-            new: true,
-            runValidators: true
+        const updatedBill = await updateBillService({
+            bill_id: req.params.id,
+            data: req.body
         });
-
-        if(!updatedBill) return next(new ErrorHandler("Error updating bill", 400));
-
-        console.log("Bill updating successfully");
-        res.status(200).json({
-            message: "Successfully updated bill",
+        
+        res.status(STATUS_CODES.OK).json({
+            message: MESSAGES.RESOURCE_UPDATED("Bill"),
             data: updatedBill
         });
     } catch (error) {
-        if (error.code === 11000) {
-            // Duplicate key error (E11000)
-            return res.status(400).json({
-                error:
-                "A bill with this title already exists. Please choose a different name.",
-            });
-        }
-        console.log("Error updating bill", error);
         next(error);
     }
 }
 
+
+/**
+ * 
+ * Simply deletes a bill
+ * @returns only message no data
+ */
 export const deleteBill = async (req, res, next) => {
     try {
-        console.log("Deleting Bill");
-
-        const {id} = req.params;
-
-        await bill.findByIdAndDelete(id);
-
-        console.log("Bill deleted successfully");
-        res.status(200).json({
-            message: "Successfully deleted bill"
+        await deleteBillService({
+            bill_id: req.params.id,
+            user_id: req.user.id
+        });
+        
+        res.status(STATUS_CODES.OK).json({
+            message: MESSAGES.DELETED
         });
     } catch (error) {
-        console.log("Error deleting bill", error);
         next(error);
     }
 }
 
 
+/**
+ * 
+ * Fetches bill for client
+ * @returns response with fetched bill
+ */
 export const getBillById = async (req, res, next) => {
     try {
-        console.log("Getting Bill by ID");
-
-        const {id} = req.params;
-
-        const curBill = await bill.findById(id);
+        const bill = await fetchBillDetails(req.params.id);
         
-        if(!curBill) return next(new ErrorHandler("Bill not found",404));
+        if(!bill) throw new ErrorHandler(`Client get operation failed on bill: ${req.params.id}`, STATUS_CODES.SERVER_ERROR);
+        logger.debug(bill);
 
-        console.log("Bill fetched successfully");
-        res.status(200).json({
-            message: "bill fetched successfully",
-            data: curBill
+        logger.info(`Bill ${req.params.id} fetched for ${req.user.id}`);
+        res.status(STATUS_CODES.OK).json({
+            message: MESSAGES.FETCHED("Bill"),
+            data: bill
         });
     } catch (error) {
-        console.log("Error fetching bill by id", error);
         next(error);
     }
 }

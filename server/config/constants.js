@@ -3,6 +3,7 @@ export const MESSAGES = {
     RESOURCE_UPDATED: (resource) => `${resource} updated successfully.`,
     DELETED: "Deleted successfully",
     ERROR: "Something went wrong",
+    FETCHED: (resource) => `${resource} fetched.`,
     NOT_FOUND: (resource) => `${resource} not found`,
     INVALID_INPUT: "Invalid input provided",
     UNAUTHORIZED: "Unauthorized access",

@@ -1,36 +1,55 @@
 import cron from "node-cron";
-import { handleBillRecurrence, getRecurringBills, sendBillRemindPushNotification } from "./billService.js";
-import bill from "../models/bill.js";
+import { getFilteredBills, sendBillRemindPushNotification } from "./billService.js";
 import { BillStatus } from "../enums/billEnums.js";
 import billRecurFail from "../models/billRecurFail.js";
+import { addBillRecurJob } from "../queues/bill/processor.js";
+import logger from "../logger/index.js";
 
-//This cron based update is delayed and consumes extra compute, instead we can utilize redis based queing
-//When we create or update a bill, we enqueue a job with a delay until its due_date_time.
+/**
+ * the scheduler picks all the bills whole
+ */
 export const billRecurScheduler = () => {
-    console.log("scheduler started");
+    logger.debug(`bill recur scheduler all set`);
 
+    /**
+     * runs every midnight
+     */
     cron.schedule("0 0 * * *", async () => {
-        console.log("cron job started for every midnight");
+        logger.info(`bill recur cron job started - every midnight job`);
 
         try {
-            //Handling those bills whoose due date has been passed
+            const N_DAYS_BACK = 3;
             const now = new Date();
 
-            const startOfYesterday = new Date(now);
-            startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-            startOfYesterday.setHours(0, 0, 0, 0);
+            /**
+             * explicitly setting to midnight,
+             * (if for some reason this job gets delayed)
+             */
+            now.setHours(0, 0, 0, 0);
 
-            const endOfYesterday = new Date(startOfYesterday);
-            endOfYesterday.setHours(23, 59, 59, 999);
+            /**
+             * N days window's collection of bill
+             * to not miss previously missed bills
+             */
+            const startOfWindow = new Date(now);
+            startOfWindow.setDate(startOfWindow.getDate() - N_DAYS_BACK);
 
-            const bills = await bill.find({
+            const endOfWindow = new Date(now);
+            /**
+             * setting -1 gives 23:59:59:999
+             * of previous day
+             */
+            endOfWindow.setMilliseconds(-1);
+
+            const bills = await getFilteredBills({
+                recurring: true,
                 due_date_time: {
-                    $gte: startOfYesterday,
-                    $lte: endOfYesterday
-                }
+                    $gte: startOfWindow,
+                    $lte: endOfWindow
+                }, 
             });
               
-            console.log(`Found ${bills.length} recurring bills`);
+            logger.debug(`Found ${bills.length} recurring bills`);
 
             for (const bill of bills) {
                 try {
@@ -39,24 +58,26 @@ export const billRecurScheduler = () => {
                         await bill.save();
                     }
 
-                    if(bill.recurring) {
-                        await handleBillRecurrence(bill._id);
-                    }
+                    await addBillRecurJob(bill._id);
+
                 } catch (err) {
-                    console.error(`Error processing bill ${bill._id}:`, err);
+                    logger.warn(`Error processing bill recurrance ${bill._id}:`, err);
                     await billRecurFail.create({ bill_id: bill._id, error: err.message });
                 }
             }
 
-            //Handling remind for upcoming bills [due on next day]
+            /**
+             * Reminding people about their due bill
+             * for next day
+             */
             const startOfTomorrow = new Date(now);
-            startOfYesterday.setDate(startOfYesterday.getDate() + 1);
-            startOfYesterday.setHours(0, 0, 0, 0);
+            startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+            startOfTomorrow.setHours(0, 0, 0, 0);
 
-            const endOfTomorrow = new Date(startOfYesterday);
-            endOfYesterday.setHours(23, 59, 59, 999);
+            const endOfTomorrow = new Date(startOfTomorrow);
+            endOfTomorrow.setHours(23, 59, 59, 999);
 
-            const billToBeExpired = await bill.find({
+            const billToBeExpired = await getFilteredBills({
                 due_date_time: {
                     $gte: startOfTomorrow,
                     $lte: endOfTomorrow
@@ -67,16 +88,16 @@ export const billRecurScheduler = () => {
                 try {
                     await sendBillRemindPushNotification({bill_id: bill._id});
                 } catch (err) {
-                    console.error(`Error processing bill ${bill._id}:`, err);
+                    logger.warn(`Error processing bill remind notification for ${bill._id}:`, err);
                 }
             }
 
         } catch (err) {
-            console.error("Error during cron job execution:", err);
+            console.error("Error during bill cron job execution:", err);
         }
     });
 
-    console.log("bill scheduler ended");
+    logger.info(`bill cron ended`);
 };
 
 

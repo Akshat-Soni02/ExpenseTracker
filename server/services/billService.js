@@ -19,6 +19,7 @@ import { addPushJob } from "../queues/push/processor.js";
  * sends notification to others about the new bill
  * @param {object} data new bill data
  * @returns newly created bill
+ * @throws Errorhandler
  */
 export const createBillService = async (data) => {
     const newBill = await bill.create({...data, bill_number: 1, status: BillStatus.PENDING});
@@ -27,12 +28,12 @@ export const createBillService = async (data) => {
      * Although we are not sending this message to client but
      * still passing message here to see in error log
      */
-    if(!newBill) return next(new ErrorHandler(`mongo operation failed to create bill`, STATUS_CODES.SERVER_ERROR));
+    if(!newBill) throw new ErrorHandler(`mongo operation failed to create bill`, STATUS_CODES.SERVER_ERROR);
 
     try {
         await sendNewBillPushNotifications({bill: newBill, creator_id: data.creator_id.toString()});
     } catch (error) {
-        logger.warn(err);
+        logger.warn(error);
     }
 
     logger.info(`bill ${newBill._id} created by user ${data.creator_id}`);
@@ -53,10 +54,7 @@ export const createBillService = async (data) => {
 export const updateUserBillStatus = async ({ user_id, bill_id, status }) => {
     const curBill = await bill.findById(bill_id).select("members status due_date_time bill_title");
 
-    if (!curBill) {
-        logger.warn(`Bill not found when updating user status: ${bill_id}`);
-        throw new ErrorHandler("Bill not found", STATUS_CODES.NOT_FOUND, { errorType: "NotFound" });
-    }
+    if (!curBill) throw new ErrorHandler(`Bill not found when updating user status: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: "NotFound" });
 
     let memberFound = false;
     curBill.members = curBill.members.map((member) => {
@@ -84,44 +82,139 @@ export const updateUserBillStatus = async ({ user_id, bill_id, status }) => {
     try {
         if(areAllPaid) await sendBillPaidPushNotification({bill: curBill, active_user_id: user_id.toString()});
         else if(status === BillMemberStatus.PAID) await sendMarkAsPaidPushNotifications({bill: curBill, active_user_id: user_id.toString()});
-        logger.info(`Notifications sent for bill ${bill_id}`);
+        logger.debug(`Notifications sent for bill ${bill_id}`);
     } catch (error) {
-        logger.warn(err);
+        logger.warn(error);
     }
 
-    logger.debug(`User ${user_id} updated status to ${status} for bill ${bill_id}. New bill status: ${curBill.status}`);
+    logger.info(`User ${user_id} updated status to ${status} for bill ${bill_id}. New bill status: ${curBill.status}`);
     return curBill;
 };
 
+/**
+ * 
+ * @param {{bill_id: string, data: object}} param0 object with bill's id and new details to update
+ * @returns updated bill
+ * @throws when no bill is found to update
+ */
+export const updateBillService = async ({bill_id, data}) => {
+    const updatedBill = await bill.findByIdAndUpdate(bill_id, data, {
+        new: true,
+        runValidators: true
+    });
 
-export const findBillById = async (id) => {
-    console.log("Finding bill by id");
-    
-    if(!id) {
-        console.log(`undefined id to get bill ${id}`);
-        throw new Error(`Bill with this id doesn't exist ${id}`);
-    }
+    if(!updatedBill) throw new ErrorHandler(`Bill not found to update data: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: "NotFound" });
 
-    const curBill = await bill.findById(id);
-    if (!curBill) {
-        console.log(`Bill with this id doesn't exist ${id}`);
-        return null;
-    }
-    return curBill;
-};
+    logger.info(`Bill ${bill_id} 's details updated`);
+    return updatedBill;
+}
 
-export const handleBillRecurrence = async (id) => {
+
+/**
+ * 
+ * @param {{bill_id: string}} param0 bill's id
+ * @returns deleted bill
+ * @throws ErrorHandler if bill not found
+ */
+export const deleteBillService = async ({bill_id, user_id}) => {
+    const deletedBill = await bill.findByIdAndDelete(bill_id);
+
+    if(!deletedBill) throw new ErrorHandler(`Bill not found to delete: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: "NotFound" });
 
     try {
-        console.log(`Recurring bill ${id}`);
+        await sendBillDeletedPushNotification({bill: deletedBill, active_user_id: user_id});
+    } catch (error) {
+        logger.warn(error);
+    }
 
-        const curBill = await findBillById(id);
-        if(!curBill) {
-            console.log(`Bill with this id doesn't exist ${id}`);
-            throw new Error(`Bill with this id doesn't exist ${id}`);
+    logger.info(`Bill ${bill_id} deleted by user ${user_id}`);
+    return deletedBill;
+}
+
+
+/**
+ * 
+ * @param {string} bill_id
+ * @returns bill with member names included
+ * @throws Errorhandler if bill not found
+ */
+export const fetchBillDetails = async (bill_id) => {
+    const billObj = await findBillById(bill_id);
+
+    if (!billObj) {
+        throw new ErrorHandler(`Bill not found: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: "NotFound" });
+    }
+
+    /**
+     * mongoose document based object can't be manipulated,
+     * unless changed to plain object
+     */
+    const curBill = billObj.toObject();
+
+    const members = await Promise.all(curBill.members.map(async (member) => {
+
+        try {
+            const user = await findUserById(member.user_id);
+            if (!user) {
+                logger.warn(`User not found: ${member.user_id}, included in bill ${bill_id}`);
+            }
+
+            return {
+                ...member,
+                member_name: user?.name || "unknown"
+            };
+        } catch (error) {
+            logger.warn(error);
+            return {
+                ...member,
+                member_name: "unknown"
+            };
         }
+    }));
+
+    curBill.members = members;
+
+    return curBill;
+};
+
+
+
+/**
+ * 
+ * @param {string} bill_id
+ * @returns bill if found else null
+ * 
+ * doesn't throw error
+ */
+export const findBillById = async (bill_id) => {
+    const curBill = await bill.findById(bill_id);
+    
+    if (!curBill) {
+        logger.warn(`Bill not found: ${bill_id}`);
+        return null;
+    }
+
+    return curBill;
+};
+
+
+/**
+ * 
+ * @param {string} id
+ * changes bills status to missed if pending,
+ * reset status of members, increment bill number etc
+ * @throws errorhandler if resources not found
+ */
+export const handleBillRecurrence = async (bill_id) => {
+
+    try {
+        logger.debug(`Starting bill recur operation for ${bill_id}`);
+
+        const curBill = await findBillById(bill_id);
+        if(!curBill) throw new ErrorHandler(`Bill ${bill_id} not found`);
 
         curBill.recurring = false;
+
         if(curBill.status === BillStatus.PENDING) {
             curBill.status = BillStatus.MISSED;
         }
@@ -146,34 +239,32 @@ export const handleBillRecurrence = async (id) => {
         await curBill.save();
         await bill.create(filterBill);
 
-        console.log(`Recured bill with ${id}`);
+        logger.info(`Recured bill ${bill_id}`);
     } catch (error) {
-        console.log("Error recurring bill", error);
-        const errorMessage = error?.message || String(error);
-        throw new Error(`Error recurring bill with id : ${id}, ${errorMessage}`);
+        throw new ErrorHandler(`Error recurring bill: ${bill_id}`, error);
     }
 }
 
-export const getRecurringBills = async () => {
-    try {
-        console.log("Fetching recurring bills");
-        const bills = await bill.find({ recurring: true }).select("_id due_date_time");
-        return bills;
-    } catch (error) {
-        console.error("Error fetching recurring bills:", error?.message || String(error));
-        throw error;
-    }
+/**
+ * 
+ * @param {object} filter custom filter to get bills
+ * @returns array of bill
+ * @throws Errorhandler if operation fails or invalid filter
+ */
+export const getFilteredBills = async (filter) => {
+    const bills = await bill.find(filter);
+    return bills;
 };
 
 
+/**
+ * 
+ * @param {{userId: string, status: string}} param0 user'id and status (optional)
+ * @returns array of bills
+ * @throws Errorhandler if operation fails
+ */
 export const getUserBills = async ({ userId, status }) => {
     try {
-        console.log("Fetching user bills");
-        if(!userId) {
-            console.log(`Not valid userId: ${userId} to fetch user bills`);
-            return [];
-        }
-
         const query = {
             $or: [
                 { "members.user_id": userId },
@@ -181,13 +272,10 @@ export const getUserBills = async ({ userId, status }) => {
         };
 
         if (status) query["status"] = status;
-
         const curBills = await bill.find(query);
-        console.log("User bills fetched");
         return curBills;
     } catch (error) {
-        console.log(`Error fetching user bills`,error);
-        throw error;
+        throw new ErrorHandler(error);
     }
 };
 
@@ -388,14 +476,14 @@ export const sendBillRemindPushNotification = async ({bill_id}) => {
 
         const body = `Hey, ${bill.bill_title} is approaching its deadline, Due by ${formattedDueDate}.`;
         const title = "🧾 Bill Remainder";
-        await allBillMemberPushNotificationService({bill, active_user_id, notification_body: body, notification_title: title, ignorePaidMember});
+        await allBillMemberPushNotificationService({bill, notification_body: body, notification_title: title, ignorePaidMember: true});
 
     } catch (err) {
         logger.error("Error in sendBillRemindPushNotification", {
             bill_id,
             error: err.message,
         });
-        throw new ErrorHandler("Error sending bill remind notifications", STATUS_CODES.SERVER_ERROR, {errorType: "notificationError"});
+        throw new ErrorHandler("Error sending bill remind notifications", err);
     }
 }
 
