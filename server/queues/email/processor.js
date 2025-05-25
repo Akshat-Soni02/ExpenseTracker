@@ -24,7 +24,7 @@ export const addPassResetMailJob = async (data) => {
 
 /**
  * 
- * @param {{lender: {name: string}, borrowerProfile: object,amount: number | string}} data 
+ * @param {{lender: {name: string}, borrowerProfile: object,amount: number | string, group: object}} data 
  * @function addBorrowMailJob Enqueue remainder mail for borrower
  */
 export const addBorrowMailJob = async (data) => {

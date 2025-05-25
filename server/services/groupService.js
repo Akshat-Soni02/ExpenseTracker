@@ -2,11 +2,12 @@ import ErrorHandler from "../middlewares/error.js";
 import group from "../models/group.js";
 import { updateFriendlyExchangeStatesOnLending, findUserById } from "./userService.js";
 import { GroupMemberStatus } from "../enums/groupEnums.js";
-import { sendNotificationService } from "./notificationService.js";
 import mongoose from "mongoose";
 import { ERROR_TYPES, STATUS_CODES } from "../config/constants.js";
 import logger from "../logger/index.js";
 import { addPushJob } from "../queues/push/processor.js";
+import user from "../models/user.js";
+import { addBorrowMailJob } from "../queues/email/processor.js";
 
 
 /**
@@ -127,6 +128,149 @@ export const leaveGroupService = async ({group_id, user_id}) => {
     logger.info(`${user_id} left group ${group_id}`);
 }
 
+
+/**
+ * 
+ * @param {string} group_id 
+ * fetches group details and associate 
+ * member names with it
+ * 
+ * @returns group with user names
+ * @throws Errorhandler if operations fails
+ */
+export const fetchGroupDetails = async(group_id) => {
+
+    const groupObj = await findGroupById(group_id);
+    if (!groupObj) throw new ErrorHandler(`Group not found: ${group_id}`);
+
+    const curGroup = groupObj.toObject();
+
+    const members = await Promise.all(curGroup.members.map(async (member) => {
+        try {
+            const user = await findUserById(member.member_id);
+            if (!user) {
+                logger.warn(`User not found: ${member.member_id}, included in group ${group_id}`);
+            }
+
+            return {
+                ...member,
+                member_name: user?.name || "unknown"
+            };
+        } catch (error) {
+            logger.warn(error);
+            return {
+                ...member,
+                member_name: "unknown"
+            };
+        }
+    }));
+
+    curGroup.members = members;
+    return curGroup;
+}
+
+
+/**
+ * fetches group details, uses parallel 
+ * promises to get user details and then sends
+ * @param {{group_id: string, user_id: string}} param0
+ */
+export const fetchExchangeDetails = async({group_id, user_id}) => {
+
+    const curGroup = await findGroupById(group_id);
+    if (!curGroup) throw new ErrorHandler(`Group not found: ${group_id}`);
+
+    const member = curGroup.members.find((member) => member.member_id.toString() === user_id.toString());
+    if (!member) {
+        logger.warn(`Invalid group ${group_id} access by user ${user_id}`);
+        throw new ErrorHandler(`Invalid group access`, STATUS_CODES.FORBIDDEN, {exposeToClient: true, errorType: ERROR_TYPES.UNAUTHORIZED});
+    }
+
+    let exchangeDetails = [];
+
+    exchangeDetails = await Promise.all(
+      member.other_members.map(async (other_member) => {
+        const curUser = await user.findById(other_member.other_member_id).select("name profile_photo");
+        return {
+          other_member_name: curUser?.name || "Unknown",
+          other_member_profile_photo: curUser?.profile_photo?.url || "",
+          amount: other_member.amount,
+          exchange_status: other_member.exchange_status,
+          other_member_id:other_member.other_member_id,
+        };
+      })
+    );
+
+    logger.debug(`fetched group ${group_id} exchange details by user ${user_id}`);
+
+    return exchangeDetails;
+}
+
+
+/**
+ * 
+ * @param {object} param0
+ * sends reminder email to borrower in a group
+ * 
+ * @returns nothing
+ */
+export const remindAGroupMember = async ({group_id, user_id, borrower_id, amount}) => {
+
+    const curGroup = await findGroupById(group_id);
+    if(!curGroup) throw new ErrorHandler(`Group not found ${group_id}, terminating reminder email to a borrower`);
+
+    const curUser = await findUserById(user_id);
+    if(!curUser) throw new ErrorHandler(`User ${user_id} not found, terminating reminder email to their borrower`);
+
+    const borrowerProfile = await findUserById(borrower_id);
+    if(!borrowerProfile) throw new ErrorHandler(`Borrower ${borrower_id} profile not found`);
+
+    try {
+        await addBorrowMailJob({lender: curUser, borrowerProfile, amount, group: curGroup});
+    } catch (notifErr) {
+        logger.error(notifErr);
+        throw new ErrorHandler(notifErr);
+    }
+
+    logger.info(`Reminder sent by ${user_id} to ${borrower_id} in group ${group_id}`);
+}
+
+
+/**
+ * 
+ * @param {{group_id: string, user_id: string}} param0
+ * sents parallel requests to all borrowers in group
+ */
+export const remindAllGroupMembers = async({group_id, user_id}) => {
+
+    const curGroup = await findGroupById(group_id);
+    if(!curGroup) throw new ErrorHandler(`Group not found ${group_id}, terminating reminder email to all borrowers`);
+
+    const curUser = await findUserById(user_id);
+    if(!curUser) throw new ErrorHandler(`User ${user_id} not found, terminating reminder email to all their borrowers`);
+
+    const sendPromises = curGroup.members
+    .filter(member => member.member_id.toString() === user_id.toString())
+    .flatMap(member =>
+        member.other_members
+        .filter(other_member => other_member.exchange_status === GroupMemberStatus.LENDED)
+        .map(async (other_member) => {
+            const borrowerProfile = await findUserById(other_member.other_member_id);
+            if (!borrowerProfile) return;
+            
+            try {
+                await addBorrowMailJob({lender: curUser, borrowerProfile, amount: other_member.amount, group: curGroup});
+            } catch (notifErr) {
+                logger.error(notifErr);
+            }
+            
+        })
+    );
+
+    await Promise.all(sendPromises);
+
+    logger.info(`Reminders sent by ${user_id} to all borrowers in group ${group_id}`);
+}
 
 
 export const findGroupById = async (id) => {

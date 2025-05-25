@@ -3,19 +3,24 @@ import admin from "firebase-admin";
 import { google } from "googleapis";
 import axios from "axios";
 import logger from "../logger/index.js";
+import ErrorHandler from "../middlewares/error.js";
+
+const FCM_API_URL = process.env.FCM_API_URL;
 
 
+/**
+ * utilizes email and pass to send mail
+ * @param {{toMail: email, subject: string, text: string}} param0
+ * 
+ */
 export const sendEmail = async ({toMail, subject, text}) => {
-
   try {
-    console.log("Sending Email Notification");
-
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
       auth: {
-        user: 'expensetracker414@gmail.com',
-        pass: 'buygfdapgkgjofol',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
     
@@ -26,35 +31,25 @@ export const sendEmail = async ({toMail, subject, text}) => {
         text
     };
     
-    try {
-      const info = await transporter.sendMail(mailOptions);
-      console.log("Email sent:", info.response);
-      console.log("Email sent to:", toMail);
-    } catch (error) {
-      console.error("Error:", error);
-    }
-
-    console.log("email sent");
+    const info = await transporter.sendMail(mailOptions);
+    logger.info(`email sent to ${toMail} with response: ${info.response}`);
   } catch (error) {
-    console.log(`Error sending email notification`, error);
+    throw error;
   }
 }
 
 
-const FCM_API_URL = process.env.FCM_API_URL;
-
+/**
+ * 
+ * @param {{token: string, title: string, body: string}} param0 
+ * @returns response object if sent successfully
+ */
 export const sendNotificationService = async ({token, title, body}) => {
 
-  if(!token) {
-    console.log(`Bad notification request, No token provided`);
-    return;
-  }
-
-  if(!title || !body) {
-    console.log(`Bad notification request, No title/body provided`);
-    return;
-  }
-
+  /**
+   * message body for notification, works 
+   * for android and ios both
+   */
   const message = {
     notification: {
       title,
@@ -76,10 +71,10 @@ export const sendNotificationService = async ({token, title, body}) => {
   };
 
   try {
-    console.log("Sending push notification");
 
     const response = await admin.messaging().send(message);
     const accessToken =  await getAccessToken();
+
     const notificationBody = {
       message: {
         token: token,
@@ -92,6 +87,9 @@ export const sendNotificationService = async ({token, title, body}) => {
 
     let notificationResponse={};
 
+    /**
+     * request to google api with access token
+     */
     axios.post(FCM_API_URL, notificationBody, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -102,14 +100,15 @@ export const sendNotificationService = async ({token, title, body}) => {
       notificationResponse=res.data;
     })
     .catch(err => {
-      console.error('Error sending notification:', err.response?.data || err.message);
+      logger.debug(`push notification not sent`);
+      logger.warn(err.response?.data || err.message);
     });
 
-    console.log("Notification sent successfully:");
+    logger.debug(`notification sent`);
     return {response, accessToken, notificationResponse};
   } catch (error) {
     /**
-     * @todo for certain reasons tokens expire,
+     * @todo for multiple reasons tokens expire,
      * hence need to remove expired tokens else
      * redis will explode with corrupted tokens in queue
      */
@@ -118,41 +117,53 @@ export const sendNotificationService = async ({token, title, body}) => {
       error.errorInfo?.code === "messaging/registration-token-not-registered"
     ) {
       logger.info("Invalid FCM token:", token);
-      throw error;
     } else {
-      logger.error("Error sending notification:", error);
+      logger.warn(`error sending notification:`, error);
       throw error;
     }
   }
-
 }
 
+
+/**
+ * access token cached in-memory,
+ * for an hour
+ */
+let cachedToken = null;
+let tokenExpiry = 0;
+
+
+/**
+ * 
+ * @returns access token
+ */
 export const getAccessToken = async () => {
-  console.log("Getting access token");
+  const now = Date.now();
+
+  /**
+   * reuses cachedToken if it's not expired
+   */
+  if (cachedToken && tokenExpiry > now) {
+    return cachedToken;
+  }
+
   const firebaseKey = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!firebaseKey) throw new ErrorHandler(`env not set, missing firebase service account`);
 
-  if (!firebaseKey) {
-    throw new Error('Missing FIREBASE_SERVICE_ACCOUNT env var');
-  }
-
-  let parsedKey;
-  try {
-    parsedKey = JSON.parse(Buffer.from(firebaseKey, 'base64').toString('utf-8'));
-  } catch (err) {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT is not valid JSON');
-  }
+  const parsedKey = JSON.parse(Buffer.from(firebaseKey, "base64").toString("utf-8"));
 
   const auth = new google.auth.GoogleAuth({
     credentials: parsedKey,
     scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
   });
 
-  try {
-    const accessToken = await auth.getAccessToken();
-    return accessToken;
-  } catch (error) {
-    console.error("Error fetching access token:", error);
-    throw error;
-  }
-  
-}
+  const tokenResponse = await auth.getAccessToken();
+
+  /**
+   * caching token with a minute as buffer
+   */
+  cachedToken = tokenResponse.token;
+  tokenExpiry = now + (tokenResponse.res?.data?.expires_in ?? 3600) * 1000 - 60000;
+
+  return cachedToken;
+};
