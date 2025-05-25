@@ -20,3 +20,13 @@ export const STATUS_CODES = {
     SERVER_ERROR: 500,
 };
 
+export const ERROR_TYPES = {
+    GENERIC_ERROR: "GenericError",
+    SERVER_ERROR: "ServerError",
+    DUPLICATE_RESOURCE: "DuplicateResource",
+    NOT_FOUND: "NotFound",
+    UNAUTHORIZED: "UnauthorizedAction",
+    NOTIFICATION_ERROR: "NotificationError",
+    INVALID_OPERATION: "InvalidOperation"
+}
+

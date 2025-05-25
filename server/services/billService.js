@@ -3,7 +3,7 @@ import { BillStatus ,BillMemberStatus} from "../enums/billEnums.js";
 import { findUserById } from "./userService.js";
 import ErrorHandler from "../middlewares/error.js";
 import logger from "../logger/index.js";
-import { STATUS_CODES } from "../config/constants.js";
+import { STATUS_CODES, ERROR_TYPES } from "../config/constants.js";
 import { addPushJob } from "../queues/push/processor.js";
 
 /**
@@ -28,7 +28,7 @@ export const createBillService = async (data) => {
      * Although we are not sending this message to client but
      * still passing message here to see in error log
      */
-    if(!newBill) throw new ErrorHandler(`mongo operation failed to create bill`, STATUS_CODES.SERVER_ERROR);
+    if(!newBill) throw new ErrorHandler(`db operation failed to create bill`, STATUS_CODES.SERVER_ERROR);
 
     try {
         await sendNewBillPushNotifications({bill: newBill, creator_id: data.creator_id.toString()});
@@ -54,7 +54,7 @@ export const createBillService = async (data) => {
 export const updateUserBillStatus = async ({ user_id, bill_id, status }) => {
     const curBill = await bill.findById(bill_id).select("members status due_date_time bill_title");
 
-    if (!curBill) throw new ErrorHandler(`Bill not found when updating user status: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: "NotFound" });
+    if (!curBill) throw new ErrorHandler(`Bill not found when updating user status: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: ERROR_TYPES.NOT_FOUND });
 
     let memberFound = false;
     curBill.members = curBill.members.map((member) => {
@@ -67,7 +67,7 @@ export const updateUserBillStatus = async ({ user_id, bill_id, status }) => {
 
     if (!memberFound) {
         logger.warn(`User ${user_id} attempted to update status in a bill they are not a member of: ${bill_id}`)
-        throw new ErrorHandler("You are not a member of this bill", STATUS_CODES.FORBIDDEN, { exposeToClient: true, errorType: "UnauthorizedAction" });
+        throw new ErrorHandler("You are not a member of this bill", STATUS_CODES.FORBIDDEN, { exposeToClient: true, errorType: ERROR_TYPES.UNAUTHORIZED });
     }
 
     const areAllPaid = curBill.members.every(m => m.status === BillMemberStatus.PAID);
@@ -103,7 +103,7 @@ export const updateBillService = async ({bill_id, data}) => {
         runValidators: true
     });
 
-    if(!updatedBill) throw new ErrorHandler(`Bill not found to update data: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: "NotFound" });
+    if(!updatedBill) throw new ErrorHandler(`Bill not found to update data: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: ERROR_TYPES.NOT_FOUND });
 
     logger.info(`Bill ${bill_id} 's details updated`);
     return updatedBill;
@@ -119,7 +119,7 @@ export const updateBillService = async ({bill_id, data}) => {
 export const deleteBillService = async ({bill_id, user_id}) => {
     const deletedBill = await bill.findByIdAndDelete(bill_id);
 
-    if(!deletedBill) throw new ErrorHandler(`Bill not found to delete: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: "NotFound" });
+    if(!deletedBill) throw new ErrorHandler(`Bill not found to delete: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: ERROR_TYPES.NOT_FOUND });
 
     try {
         await sendBillDeletedPushNotification({bill: deletedBill, active_user_id: user_id});
@@ -142,7 +142,7 @@ export const fetchBillDetails = async (bill_id) => {
     const billObj = await findBillById(bill_id);
 
     if (!billObj) {
-        throw new ErrorHandler(`Bill not found: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: "NotFound" });
+        throw new ErrorHandler(`Bill not found: ${bill_id}`, STATUS_CODES.NOT_FOUND, { errorType: ERROR_TYPES.NOT_FOUND });
     }
 
     /**
@@ -241,7 +241,7 @@ export const handleBillRecurrence = async (bill_id) => {
 
         logger.info(`Recured bill ${bill_id}`);
     } catch (error) {
-        throw new ErrorHandler(`Error recurring bill: ${bill_id}`, error);
+        throw new ErrorHandler(`Error recurring bill: ${bill_id}`, STATUS_CODES.SERVER_ERROR, {details: {stack: error.stack}});
     }
 }
 
@@ -275,7 +275,7 @@ export const getUserBills = async ({ userId, status }) => {
         const curBills = await bill.find(query);
         return curBills;
     } catch (error) {
-        throw new ErrorHandler(error);
+        throw error;
     }
 };
 
@@ -334,12 +334,8 @@ export const allBillMemberPushNotificationService = async ({bill, active_user_id
         }
     }
     catch(err){
-        logger.error("Error in processing bill notification", {
-            bill_id,
-            creator_id,
-            error: err.message,
-        });
-        throw new ErrorHandler("Error sending bill notifications", STATUS_CODES.SERVER_ERROR, {errorType: "notificationError"});
+        logger.error(`Error in processing bill notification ${bill_id}`);
+        throw new ErrorHandler("Error sending bill notifications", STATUS_CODES.SERVER_ERROR, {errorType: ERROR_TYPES.NOTIFICATION_ERROR, details: {stack: err.stack}});
     }
 }
 
@@ -361,7 +357,7 @@ export const sendNewBillPushNotifications = async ({bill, creator_id}) => {
             creator_id,
             error: err.message,
         });
-        throw new ErrorHandler("Error sending new bill notifications", STATUS_CODES.SERVER_ERROR, {errorType: "notificationError"});
+        throw new ErrorHandler("Error sending new bill notifications", STATUS_CODES.SERVER_ERROR, {errorType: ERROR_TYPES.NOTIFICATION_ERROR});
     }
 }
 
@@ -389,7 +385,7 @@ export const sendMarkAsPaidPushNotifications = async({bill, active_user_id}) => 
             active_user_id,
             error: err.message,
         });
-        throw new ErrorHandler("Error sending mark as paid bill notifications", STATUS_CODES.SERVER_ERROR, {errorType: "notificationError"});
+        throw new ErrorHandler("Error sending mark as paid bill notifications", STATUS_CODES.SERVER_ERROR, {errorType: ERROR_TYPES.NOTIFICATION_ERROR});
     }
 }
 
@@ -419,7 +415,7 @@ export const sendMissedBillPushNotificaton = async({bill_id}) => {
             bill_id,
             error: err.message,
         });
-        throw new ErrorHandler("Error sending missed bill notifications", STATUS_CODES.SERVER_ERROR, {errorType: "notificationError"});
+        throw new ErrorHandler("Error sending missed bill notifications", STATUS_CODES.SERVER_ERROR, {errorType: ERROR_TYPES.NOTIFICATION_ERROR});
     }
 }
 
@@ -446,7 +442,7 @@ export const sendBillPaidPushNotification = async({bill, active_user_id}) => {
             active_user_id,
             error: err.message,
         });
-        throw new ErrorHandler("Error sending bill paid notifications", STATUS_CODES.SERVER_ERROR, {errorType: "notificationError"});
+        throw new ErrorHandler("Error sending bill paid notifications", STATUS_CODES.SERVER_ERROR, {errorType: ERROR_TYPES.NOTIFICATION_ERROR});
     }
 }
 
@@ -510,6 +506,6 @@ export const sendBillDeletedPushNotification = async({bill, active_user_id}) => 
             active_user_id,
             error: err.message,
         });
-        throw new ErrorHandler("Error sending bill deleted notifications", STATUS_CODES.SERVER_ERROR, {errorType: "notificationError"});
+        throw new ErrorHandler("Error sending bill deleted notifications", STATUS_CODES.SERVER_ERROR, {errorType: ERROR_TYPES.NOTIFICATION_ERROR});
     }
 }

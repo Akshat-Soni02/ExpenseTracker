@@ -16,7 +16,7 @@ export const createBill = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
-}
+};
 
 
 /**
@@ -99,7 +99,6 @@ export const getBillById = async (req, res, next) => {
         const bill = await fetchBillDetails(req.params.id);
         
         if(!bill) throw new ErrorHandler(`Client get operation failed on bill: ${req.params.id}`, STATUS_CODES.SERVER_ERROR);
-        logger.debug(bill);
 
         logger.info(`Bill ${req.params.id} fetched for ${req.user.id}`);
         res.status(STATUS_CODES.OK).json({

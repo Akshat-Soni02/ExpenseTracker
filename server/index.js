@@ -105,7 +105,7 @@ mongoose
  * @todo schedule cron jobs,
  * later use cloud functions
  */
-scheduleCronJobs();
+// scheduleCronJobs();
 
 /**
  * @todo init the queue workers

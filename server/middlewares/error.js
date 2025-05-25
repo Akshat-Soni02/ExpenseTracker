@@ -1,4 +1,4 @@
-import {STATUS_CODES, MESSAGES} from "../config/constants.js"
+import {STATUS_CODES, MESSAGES, ERROR_TYPES} from "../config/constants.js"
 import logger from "../logger/index.js"
 import { ZodError } from "zod";
 
@@ -25,7 +25,7 @@ class ErrorHandler extends Error {
         super(message);
         this.statusCode = statusCode;
         this.exposeToClient = options.exposeToClient ?? false;
-        this.errorType = options.errorType || "GenericError";
+        this.errorType = options.errorType || ERROR_TYPES.GENERIC_ERROR;
         this.details = options.details || null;
 
         Error.captureStackTrace(this, this.constructor);
@@ -61,12 +61,12 @@ export const errorMiddleware = (err,req,res,next) => {
 
     if (err.code === 11000) {
         logger.warn("Duplicate resource creation");
-        return res.status(STATUS_CODES.BAD_REQUEST).json({message: "Resource with this name already exists.", errorType: "DuplicateResource"});
+        return res.status(STATUS_CODES.BAD_REQUEST).json({message: "Resource with this name already exists.", errorType: ERROR_TYPES.DUPLICATE_RESOURCE});
     }
 
     const response = {
         message: showClient ? err.message : MESSAGES.ERROR,
-        errorType: showClient ? err.errorType : "ServerError",
+        errorType: showClient ? err.errorType : ERROR_TYPES.SERVER_ERROR,
     };
 
     if (showClient && err.details) {
