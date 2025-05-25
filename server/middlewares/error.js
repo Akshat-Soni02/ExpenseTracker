@@ -39,11 +39,13 @@ class ErrorHandler extends Error {
  */
 export const errorMiddleware = (err,req,res,next) => {
     if (err instanceof ZodError) {
-        logger.warn("Zod validation", {
+        logger.warn(err, {
+            message: "Zod validation",
             issues: err.issues,
             path: req.originalUrl,
             method: req.method,
         });
+          
     
         const hasNCERR = err.issues.some(issue =>
             issue.message.startsWith("NCERR:")

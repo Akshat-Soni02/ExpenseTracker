@@ -4,11 +4,20 @@ import { updateFriendlyExchangeStatesOnLending, findUserById } from "./userServi
 import { GroupMemberStatus } from "../enums/groupEnums.js";
 import { sendNotificationService } from "./notificationService.js";
 import mongoose from "mongoose";
+import { ERROR_TYPES, STATUS_CODES } from "../config/constants.js";
+import logger from "../logger/index.js";
+import { addPushJob } from "../queues/push/processor.js";
 
+
+/**
+ * takes the array of ids and convert to 
+ * members schema as required by the group
+ * 
+ * @param {Array<string>} memberIds array of member's ids
+ * @returns array of formatted data
+ */
 export const formatMembers = (memberIds) => {
     try{
-        console.log("Formatting members");
-
         return memberIds.map((memberId, index) => ({
             member_id: memberId,
             other_members: memberIds
@@ -19,13 +28,106 @@ export const formatMembers = (memberIds) => {
                 exchange_status: GroupMemberStatus.SETTLED,
             })),
         }));
-
     }
     catch(err){
-        console.log("Error formatting members", err);
-        throw new Error("Error formatting members");
+        logger.warn('Group members format error');
+        throw err;
     }
 };
+
+
+/**
+ * 
+ * @param {object} data contains new group data along with creator's id
+ * @returns new group
+ * @throws if operation fails
+ */
+export const createGroupService = async (data) => {
+
+    const {memberIds, ...rest} = data;
+    const members = formatMembers(memberIds);
+
+    const newGroup = await group.create({...rest, members});
+    if(!newGroup) throw new ErrorHandler(`db operation failed to create group`, STATUS_CODES.SERVER_ERROR);
+
+    try {
+        await sendNewGroupPushNotifications({group: newGroup, creator_id: data.creator_id});
+    } catch (error) {
+        logger.warn(error);
+    }
+
+    logger.info(`group ${newGroup._id} created by user ${data.creator_id}`);
+    return newGroup;
+}
+
+/**
+ * updates basic group details
+ * 
+ * @param {{group_id: string, data}} param0 
+ * @returns updated group
+ */
+export const updateGroupService = async ({group_id, data}) => {
+
+    const updatedGroup = await group.findByIdAndUpdate(group_id, data, {
+        new: true,
+        runValidators: true
+    });
+
+    if(!updatedGroup) throw new ErrorHandler(`Group not found to update data: ${group_id}`, STATUS_CODES.NOT_FOUND, { errorType: ERROR_TYPES.NOT_FOUND });
+
+    logger.info(`Group ${group_id} 's details updated`);
+    return updatedGroup;
+}
+
+/**
+ * 
+ * @param {{group_id: string, user_id: string}} param0
+ * @returns nothing
+ * @throws if operation fails
+ */
+export const leaveGroupService = async ({group_id, user_id}) => {
+
+    const curGroup = await findGroupById(group_id);
+
+    if (!curGroup) throw new ErrorHandler(`Group not found: ${group_id}`, STATUS_CODES.NOT_FOUND, { errorType: ERROR_TYPES.NOT_FOUND });
+
+
+    let hasPendingDues = false;
+
+    curGroup.members.forEach((member) => {
+      if (member.member_id.toString() === user_id) {
+        member.other_members.forEach((other_member) => {
+          if (other_member.exchange_status !== GroupMemberStatus.SETTLED) {
+            hasPendingDues = true;
+          }
+        });
+      }
+    });
+
+    if (hasPendingDues) throw new ErrorHandler(`Please clear you pending dues to leave group`, STATUS_CODES.BAD_REQUEST, { errorType: ERROR_TYPES.INVALID_OPERATION, exposeToClient: true });
+
+    curGroup.members = curGroup.members.filter(
+      (member) => member.member_id.toString() !== user_id
+    );
+
+    curGroup.members.forEach((member) => {
+      member.other_members = member.other_members.filter(
+        (otherMember) => otherMember.other_member_id.toString() !== user_id
+      );
+    });
+
+    await curGroup.save();
+
+    try {
+        await sendLeaveGroupPushNotifications({group: curGroup, active_user_id: user_id});
+    } catch (error) {
+        logger.warn(error);
+    }
+
+    logger.info(`${user_id} left group ${group_id}`);
+}
+
+
 
 export const findGroupById = async (id) => {
     try{
@@ -548,54 +650,94 @@ export const simplifyDebtsService = async ({group, memberSize}) => {
     }
 }
 
-export const sendNewGroupNotifications = async (id,userId) => {
+/**
+ * @function allGroupMemberPushNotificationService is a dummy
+ * structure service to send push notification to all group
+ * members except the active user who performed the action
+ * 
+ * @param {{group: object, active_user_id: string, notification_body: string, notification_title: string}} param0
+ * @returns nothing if success, else throws error
+ */
+export const allGroupMemberPushNotificationService = async ({group, active_user_id, notification_body, notification_title}) => {
+
     try{
-        console.log("Sending new group notifications");
-        if(!id || !userId) {
-            console.warn(`Unable to send group notification, details missing`);
-            return;
-        }
-
-        const currGroup = await findGroupById(id);
-        if(!currGroup) {
-            console.log(`No such group exists to send notification for ${id}`);
-            return;
-        }
-
-        const members = currGroup.members;
+        const members = group.members || [];
         
         for (const member of members) {
+            if(active_user_id && member.member_id.toString() === active_user_id.toString()) {
+                logger.debug(`Skipping active user notification ${active_user_id}`);
+                continue;
+            }
 
-            if (member.member_id.toString() !== userId.toString()) {
-
+            try {
                 const user = await findUserById(member.member_id);
                 if (!user) {
-                    console.warn(`User not found to send group notification`);
+                    logger.warn(`User not found: ${member.member_id}`);
                     continue;
                 }
-                
-                const tokens = user.accessTokens;
+
+                const tokens = user.accessTokens || [];
                 if(tokens.length === 0) continue;
 
-                const body = `Welcome to ${currGroup.group_title}!\nShared expenses made easy — you're in!`;
-
                 for (const token of tokens) {
-                    try {
-                        await sendNotificationService({
-                            token: token,
-                            title: "🔔 You've been added to a group!",
-                            body: body,
-                        });
-                    } catch (error) {
-                        console.log(error);
-                    }
-                }
 
+                    try {
+                        await addPushJob({token, title: notification_title, body: notification_body});
+                    } catch (tokenErr) {
+                        logger.error(`Failed to ${notification_title} group push notification`, {
+                            userId: member.member_id,
+                            token,
+                            error: tokenErr.message,
+                        });
+                    }
+
+                }
+            } catch (userErr) {
+                logger.error("Error processing group member for notification", {
+                    userId: member.member_id,
+                    error: userErr.message,
+                });
+                continue;
             }
+
         }
     }
     catch(err){
-        console.log("Error sending new group notifications", err);
-        throw new ErrorHandler("Error sending new group notifications", 500);
+        throw err;
+    }
+}
+
+/**
+ * 
+ * @param {{group_id, creator_id}} param0 
+ */
+export const sendNewGroupPushNotifications = async ({group, creator_id}) => {
+    try{
+        const body = `You've been added to ${group.group_title}.`;
+        const title = "👤 New Group";
+        await allGroupMemberPushNotificationService({group, active_user_id: creator_id, notification_body: body, notification_title: title});
+    }
+    catch(err){
+        throw new ErrorHandler("Error sending new group notifications", STATUS_CODES.SERVER_ERROR, {errorType: ERROR_TYPES.NOTIFICATION_ERROR, details: {stack: err.stack}});
+    }
+
+}
+
+
+/**
+ * 
+ * @param {{group: object, active_user: object}} param0
+ */
+export const sendLeaveGroupPushNotifications = async ({group, active_user_id}) => {
+    try{
+        const active_user = await findUserById(active_user_id);
+        if(!active_user) throw new ErrorHandler(`User not found: ${active_user_id}, terminating leave group notification...`);
+
+        const body = `${active_user.name} has left ${group.group_title}.`;
+        const title = "👤 Group left";
+        await allGroupMemberPushNotificationService({group, active_user_id: active_user._id.toString(), notification_body: body, notification_title: title});
+    }
+    catch(err){
+        throw new ErrorHandler("Error sending group left push notifications", STATUS_CODES.SERVER_ERROR, {errorType: ERROR_TYPES.NOTIFICATION_ERROR, details: {stack: err.stack}});
     }
 }

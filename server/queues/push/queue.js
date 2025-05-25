@@ -8,7 +8,7 @@ import { RedisConnection } from "../../config/config.js"
  */
 export const pushQueue = new Queue("push", {
     defaultJobOptions: {
-        attempts: 2,
+        attempts: 1,
         backoff: {
             type: 'exponential',
             delay: 2000,

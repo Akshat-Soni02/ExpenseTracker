@@ -118,6 +118,7 @@ export const sendNotificationService = async ({token, title, body}) => {
       error.errorInfo?.code === "messaging/registration-token-not-registered"
     ) {
       logger.info("Invalid FCM token:", token);
+      throw error;
     } else {
       logger.error("Error sending notification:", error);
       throw error;

@@ -1,181 +1,94 @@
 import group from "../models/group.js";
 import user from "../models/user.js";
 import ErrorHandler from "../middlewares/error.js";
-import { findGroupById, formatMembers, simplifyDebtsService, sendNewGroupNotifications } from "../services/groupService.js";
+import { findGroupById, simplifyDebtsService, createGroupService, updateGroupService, leaveGroupService } from "../services/groupService.js";
 import {sendBorrowerMail} from "../services/userService.js";
 import expense from "../models/expense.js";
 import settlement from "../models/settlement.js"
 import { GroupMemberStatus } from "../enums/groupEnums.js";
-
-// this is how it should look for members in group
-// {
-//     "group_title": "Weekday Trip",
-//     "initial_budget": 1000,
-//     "settle_up_date": "2025-03-01",
-//     "members": [
-//       {
-//           "member_id" : "67b96de864e68788e56bc872",
-//           "other_members" : [
-//               {
-//                   "other_member_id" : "67b98380061b73e293691775",
-//                   "amount": 50,
-//                   "exchange_status": "lended"
-//               },
-//               {
-//                   "other_member_id" : "67b9840167edecea2be0e236",
-//                   "amount": 100,
-//                   "exchange_status": "borrowed"
-//               }
-//           ]
-//       }
-//     ]
-//   }
+import { MESSAGES, STATUS_CODES } from "../config/constants.js";
 
 
 
+/**
+ * creates new group, the memberIds array already
+ * has all ids including creator's
+ * 
+ * @returns response with new group
+ */
 export const createGroup = async (req, res, next) => {
   try {
-    console.log("Creating Group");
-
     const id = req.user._id;
+    const newGroup = await createGroupService({...req.body, creator_id: id});
 
-    const {
-      group_title,
-      memberIds = [],
-      initial_budget,
-      settle_up_date,
-    } = req.body;
-
-    //no need to push, already has user id
-    // memberIds.push(id);
-
-    const members = formatMembers(memberIds);
-
-    if(!members || members.length === 0) {
-      return next(new ErrorHandler("Members are required to create a group", 400));
-    }
-
-    const newGroup = await group.create({
-      group_title,
-      members,
-      initial_budget,
-      settle_up_date,
-      creator_id: id,
-    });
-
-    if(!newGroup) return next(new ErrorHandler("Error creating new Group"));
-    console.log("Created Group");
-    await sendNewGroupNotifications(newGroup._id.toString(),id);
-
-    res.status(201).json({
+    res.status(STATUS_CODES.CREATED).json({
+      message: MESSAGES.RESOURCE_CREATED("Group"),
       data: newGroup,
     });
   } catch (error) {
-    if (error.code === 11000) {
-      // Duplicate key error (E11000)
-      return next(new ErrorHandler("A group with this title already exists. Please choose a different name.", 400));
-    }
-    console.log("Error creating group", error);
     next(error);
   }
 };
 
+
+/**
+ * 
+ * updates group details,
+ * we allow group title, initial_budget & settle_up date
+ * to update
+ * @returns response with updated group
+ */
 export const updateGroup = async (req, res, next) => {
   try {
-    console.log("Updating Group");
+    const updatedGroup = await updateGroupService({group_id: req.params.id, data: req.body});
 
-    const { id } = req.params;
-
-    //we can update these details in group
-    //group_title, initial_budget, settle_up_date
-    const updatedDetails = req.body;
-
-    const updatedGroup = await group.findByIdAndUpdate(id, updatedDetails, {
-      new: true,
-      runValidators: true,
-    });
-
-    if (!updatedGroup) return next(new ErrorHandler("No group found with this id to update", 400));
-
-    res.status(200).json({
-      message: "Group updated successfully",
+    res.status(STATUS_CODES.OK).json({
+      message: MESSAGES.RESOURCE_UPDATED("Group"),
       data: updatedGroup,
     });
-
-    console.log("Updated Group");
   } catch (error) {
-    if (error.code === 11000) {
-      // Duplicate key error (E11000)
-      return res.status(400).json({
-        error:
-          "A group with this title already exists. Please choose a different name.",
-      });
-    }
-    console.log("Error updating group", error);
     next(error);
   }
 };
 
-// deleting the group will also delete all the expenses recorded in the group and revert back all the money transfers in wallets
+
+
+/**
+ * 
+ * @todo implement delete group
+ * deleting the group will also delete all 
+ * the expenses recorded in the group 
+ * and revert back all the money transfers in wallets
+ * 
+ */
 export const deleteGroup = async (req, res, next) => {
   try {
     //revert all the wallet states according to expense+settlement records
     //delete all the group expenses and settlements
     //delete the group
     const { id } = req.params;
-    
-
   } catch (error) {}
 };
 
+
+/**
+ * 
+ * @returns response with no data
+ */
 export const leaveGroup = async (req, res, next) => {
   try {
-    console.log("Leaving Group");
     const id = req.user._id.toString();
     const { groupId } = req.params;
 
-    const curGroup = await group.findById(groupId).select("members");
-
-    if (!curGroup) {
-      return next(new ErrorHandler("Group not found", 404));
-    }
-
-    let hasPendingDues = false;
-
-    curGroup.members.forEach((member) => {
-      if (member.member_id.toString() === id) {
-        member.other_members.forEach((other_member) => {
-          if (other_member.exchange_status !== GroupMemberStatus.SETTLED) {
-            hasPendingDues = true;
-          }
-        });
-      }
-    });
-
-    if (hasPendingDues) {
-      return next(new ErrorHandler("You have pending dues to clear", 400));
-    }
-
-    curGroup.members = curGroup.members.filter(
-      (member) => member.member_id.toString() !== id
-    );
-
-    curGroup.members.forEach((member) => {
-      member.other_members = member.other_members.filter(
-        (otherMember) => otherMember.other_member_id.toString() !== id
-      );
-    });
-
-    await curGroup.save();
-    console.log("Left group");
-    res.status(200).json({
-      message: "User successfully left the group.",
+    await leaveGroupService({group_id: groupId, user_id: id});
+    res.status(STATUS_CODES.OK).json({
+      message: "Left successfully",
     });
   } catch (error) {
-    console.error("Error leaving group:", error);
     next(error);
   }
 };
+
 
 export const getGroupById = async (req, res, next) => {
   try {
