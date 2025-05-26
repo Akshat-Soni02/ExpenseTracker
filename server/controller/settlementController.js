@@ -1,150 +1,91 @@
-import settlement from "../models/settlement.js";
-import ErrorHandler from "../middlewares/error.js";
-import { modifyWalletBalance, transferWalletAmounts } from "../services/walletService.js";
-import { findSettlementById, findUserSettlements, handleSettlementRelations, revertSettlementEffects } from "../services/settlementService.js";
-import { settleAllGroups } from "../services/groupService.js";
+import { createSettleService, deleteSettleService, fetchSettlementDetails, updateSettleService } from "../services/settlementService.js";
+import { MESSAGES, STATUS_CODES } from "../config/constants.js";
+import { withTransaction } from "../utils/transaction.js";
 
-//settlement can be created in a group, or personally 
-//creating a settlement means changing group states, also changing personal states with other people
+/**
+ * 
+ * group_id is optional since the 
+ * settlement can be outside the group in which 
+ * case all groups will be settled
+ * 
+ * @returns response with new settlement
+ */
 export const createSettlement = async (req, res, next) => {
-
-  //first we will try to create settlement
-  //if successfull we will first change wallet state then group then personal
   try {
-    console.log("Creating settlement");
     const id = req.user._id;
-    let {
-      settlement_description,
-      payer_wallet_id,
-      payer_id,
-      receiver_wallet_id,
-      receiver_id,
-      group_id,
-      status,
-      amount
-    } = req.body;
-    //create settlement
-    //wallet changes
-    //if its group then group changes
-    //then personal changes
-    // let amount = Number(req.body.amount);
-    if (status === "sent") {
-      payer_id = id;
-      if (typeof payer_wallet_id !== "undefined") {
-        await modifyWalletBalance({id: payer_wallet_id, amount: amount*-1});
-      }
-      await handleSettlementRelations({payer_id, receiver_id, amount, group_id});
-    } else if (status === "receiver") {
-      receiver_id = id;
-      if (typeof receiver_wallet_id !== "undefined") {
-        await modifyWalletBalance({id: receiver_wallet_id, amount});
-      }
-      await handleSettlementRelations({payer_id, receiver_id, amount, group_id});
-    }
-
-    await settleAllGroups(payer_id.toString(), receiver_id.toString());
-
-    const newSettlement = await settlement.create({
-      settlement_description,
-      payer_wallet_id,
-      payer_id,
-      receiver_wallet_id,
-      receiver_id,
-      amount,
-      group_id,
+    
+    const newSettlement = await withTransaction(async (session) => {
+        return await createSettleService({ user_id: id, data: req.body }, session);
     });
-
-    if(!newSettlement) return next(new ErrorHandler("Error creating new settlement", 400));
-    console.log("Created settlement");
-    res.status(201).json({
-      message : "Settlement created successfully",
+    
+    res.status(STATUS_CODES.CREATED).json({
+      message : MESSAGES.RESOURCE_CREATED("Settlement"),
       data : newSettlement,
     });
   } catch (error) {
-    console.log("Error creating settlement:",error);
     next(error);
   }
 };
 
+
+/**
+ * 
+ * @todo the functionality is incomplete,
+ * for now user can only update their settlement description
+ * @returns response with updated settlement
+ */
 export const updateSettlement = async (req, res, next) => {
-  //inorder to update settlement, first we will find the settlement
-  // then if members is not in updates then its alright
-  // else we need to revert the earlier settlement and add the new changes in it
   try {
-    console.log("Updating settlement");
-
-    // we can update these many things
-    // settlement_description, media,
-    const userId = req.user.id;
     const { id } = req.params;
-    let updatedDetails = req.body;
-    updatedDetails.amount = Number(updatedDetails.amount);
-    let existingSettle = await settlement.findById(id);
-    existingSettle.amount = Number(existingSettle.amount);
-    if (!existingSettle) {
-      return next(new ErrorHandler("Settlement not found with the given id", 404));
-    }
+    const updatedSettle = await updateSettleService({ settlement_id: id, data: req.body});
 
-    const updatedSettle = await settlement.findByIdAndUpdate(
-      id,
-      updatedDetails,
-      { new: true, runValidators: true }
-    );
-    if (!updatedSettle)
-      return next(
-        new ErrorHandler(
-          `Cannot update settlement with id: ${existingSettle._id}`,
-          400
-        )
-      );
-    console.log("Updating settlement");
-    res.status(200).json({
-      message : "Settlement updated successfully",
+    res.status(STATUS_CODES.OK).json({
+      message : MESSAGES.RESOURCE_UPDATED("Settlement"),
       data : updatedSettle,
     });
   } catch (error) {
-    console.log("Error updating settlement");
+    next(error)
   }
 };
 
+
+/**
+ * 
+ * 
+ * @returns response with no data
+ */
 export const deleteSettlement = async (req, res, next) => {
   try {
-    // find the settle
-    // revert all changes
-    // delete settle
-    console.log("Deleting settlement");
-    const { id: settlement_id } = req.params;
-    let curSettlement = await settlement.findById(settlement_id);
-    curSettlement.amount = Number(curSettlement.amount);
-    if (!curSettlement)
-      return next(
-        new ErrorHandler(`Cannot delete settlement with id: ${settlement_id}`, 400)
-      );
+    const { id } = req.params;
+    
+    await withTransaction(async (session) => {
+      return await deleteSettleService(id, session);
+    })
 
-    await revertSettlementEffects(curSettlement);
-    const deletedSettlement = await settlement.findByIdAndDelete(settlement_id);
-    console.log("Deleted settlement");
-    res.status(200).json({
-      message: "Settlement deleted successfully",
+    res.status(STATUS_CODES.OK).json({
+      message: MESSAGES.DELETED,
     });
+
   } catch (error) {
-    console.error("Error deleting settlement:", error);
     next(error);
   }
 };
 
+
+/**
+ * 
+ * @returns response with detailed settlement
+ */
 export const getSettlementById = async (req, res, next) => {
   try {
-    console.log("Fetching settlement by id");
-    const { id } = req.params;
-    const curSettlement = await findSettlementById(id);
-    console.log("Fetched settlement by id");
-    res.status(200).json({
-      message: "Settlement fetched successfully",
+    const curSettlement = await fetchSettlementDetails(req.params.id);
+
+    res.status(STATUS_CODES.OK).json({
+      message: MESSAGES.FETCHED("Settlement"),
       data : curSettlement,
     });
+
   } catch (error) {
-    console.error(`Error getting settlement by Id: ${id}`, error);
     next(error);
   }
 };

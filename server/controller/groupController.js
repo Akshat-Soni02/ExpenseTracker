@@ -1,11 +1,6 @@
-import group from "../models/group.js";
-import user from "../models/user.js";
-import ErrorHandler from "../middlewares/error.js";
-import { findGroupById, simplifyDebtsService, createGroupService, updateGroupService, leaveGroupService, fetchGroupDetails, fetchExchangeDetails, remindAGroupMember, remindAllGroupMembers } from "../services/groupService.js";
-import expense from "../models/expense.js";
-import settlement from "../models/settlement.js"
-import { GroupMemberStatus } from "../enums/groupEnums.js";
+import { simplifyDebtsService, createGroupService, updateGroupService, leaveGroupService, fetchGroupDetails, fetchExchangeDetails, remindAGroupMember, remindAllGroupMembers, fetchGroupHistory, addPeopleToGroup } from "../services/groupService.js";
 import { MESSAGES, STATUS_CODES } from "../config/constants.js";
+import { withTransaction } from "../utils/transaction.js";
 
 
 
@@ -177,134 +172,65 @@ export const remindAllGroupBorrowers = async (req, res, next) => {
 }
 
 
-
+/**
+ * 
+ * @returns response with group's whole history,
+ * including settlements and expenses
+ */
 export const getGroupHistory = async (req, res, next) => {
   try {
-    console.log("Fetching group history");
     const { group_id } = req.params;
     const since = req.query.since;
 
-    const filter1 = { group_id };
-    if (since) {
-      filter1.created_at_date_time = { $gte: new Date(since) };
-    }
+    const history = await fetchGroupHistory({ group_id, since});
 
-    const filter2 = { group_id };
-    if (since) {
-      filter2.createdAt = { $gte: new Date(since) };
-    }
-
-    const expenses = await expense.find(filter1).lean();
-    const settlements = await settlement.find(filter2).lean();
-
-    const formattedExpenses = await Promise.all(
-      expenses.map(async (exp) => {
-        const giver = await user.findById(exp.lenders[0].user_id).select("name");
-        return {
-          ...exp,
-          type: "expense",
-          giver: giver.name,
-        };
-      })
-    );
-
-    const formattedSettlements = await Promise.all(
-      settlements.map(async (set) => {
-        const giver = await user.findById(set.payer_id).select("name");
-        return {
-          ...set,
-          type: "settlement",
-          giver: giver.name,
-        };
-      })
-    );
-
-    const history = [...formattedExpenses, ...formattedSettlements].sort(
-      (a, b) => new Date(b.created_at_date_time || b.createdAt) - new Date(a.created_at_date_time || a.createdAt)
-    );
-    console.log("Fetched group history");
-    res.status(200).json({
+    res.status(STATUS_CODES.OK).json({
       message: "Successfully fetched group history",
       data: history,
     });
+
   } catch (error) {
-    console.log("Error fetching group history:", error);
     next(error);
   }
 };
 
+
+/**
+ * 
+ * @returns response with no data
+ */
 export const processSimplifyDebts = async (req, res, next) => {
   try {
-    console.log("Processing simplify debts");
+    const { group_id } = req.params;
 
-    const {group_id} = req.params;
-
-    const curGroup = await group.findById(group_id);
-    if(!curGroup) return next(new ErrorHandler("Error fetching group for simplify debts", 400));
-
-    let members = curGroup.members.length;
-    await simplifyDebtsService({group: curGroup, memberSize: members});
+    await withTransaction(async (session) => {
+      return await simplifyDebtsService( group_id, session );
+    })
     
-    console.log("Processed simplify debts");
-    return res.status(200).json({message: "successfully applied simplify debt"});
+    return res.status(STATUS_CODES.OK).json({message: "Simplified successfully"});
   } catch (error) {
-    console.log("error processing simplify debt",error);
     next(error);
   }
 }
 
 
+/**
+ * 
+ * @returns response with updated group
+ */
 export const addToGroup = async (req, res, next) => {
   try {
     console.log("Adding new members to group");
 
     const { group_id } = req.params;
-    const { newMemberIds = [] } = req.body;
+    const { newMemberIds } = req.body;
 
-    if(newMemberIds.length === 0) return;
+    const curGroup = await addPeopleToGroup({ group_id, newMemberIds});
 
-    const curGroup = await findGroupById(group_id);
-    if (!curGroup) {
-      return res.status(404).json({ message: "Group not found" });
-    }
-
-    let newMembers = newMemberIds.map(newMemId => ({
-      member_id: newMemId,
-      other_members: [
-        ...curGroup.members.map(member => ({
-          other_member_id: member.member_id,
-          amount: 0,
-          exchange_status: GroupMemberStatus.SETTLED
-        })),
-        ...newMemberIds
-          .filter(id => id !== newMemId)
-          .map(otherNewId => ({
-            other_member_id: otherNewId,
-            amount: 0,
-            exchange_status: GroupMemberStatus.SETTLED
-          }))
-      ]
-    }));
-
-    curGroup.members.forEach(member => {
-      newMemberIds.forEach(newMemId => {
-        member.other_members.push({
-          other_member_id: newMemId,
-          amount: 0,
-          exchange_status: GroupMemberStatus.SETTLED
-        });
-      });
-    });
-
-    curGroup.members.push(...newMembers);
-
-    await curGroup.save();
-
-    return res.status(200).json({ message: "Members added successfully", group: curGroup });
+    return res.status(STATUS_CODES.OK).json({ message: "Added Successfully", group: curGroup });
 
   } catch (error) {
-    console.error("Error adding members to group:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 };
 
