@@ -39,7 +39,7 @@ export const uploadMedia = async (mediaPath, folderName, public_id) => {
 export const deleteMedia = async (public_id) => {
 
   if(!public_id) {
-    throw new Error(`Cannot delete media, public id missing`);
+    throw new ErrorHandler(`Cannot delete media, public id missing`);
   }
 
   const result = await cloudinary.uploader.destroy(public_id);

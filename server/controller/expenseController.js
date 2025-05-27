@@ -1,10 +1,4 @@
-import expense from "../models/expense.js";
-import ErrorHandler from "../middlewares/error.js";
 import {
-  findExpenseById,
-  findPeriodicExpenses,
-  handleExpenseRelations,
-  revertExpenseEffects,
   findUserExpenses,
   findCustomExpenses,
   createExpenseService,
@@ -13,7 +7,6 @@ import {
   fetchExpenseDetails,
   fetchPeriodExpenses
 } from "../services/expenseService.js";
-import { sufficientBalance } from "../services/walletService.js";
 import { withTransaction } from "../utils/transaction.js";
 import { MESSAGES, STATUS_CODES } from "../config/constants.js";
 

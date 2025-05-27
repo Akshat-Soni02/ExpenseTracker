@@ -1,12 +1,15 @@
 import expense from "../models/expense.js";
 import { modifyWalletBalance } from "./walletService.js";
-import { distributeAmount } from "./groupService.js";
+import { distributeAmount, findGroupById } from "./groupService.js";
 import { updateFriendlyExchangeStatesOnLending } from "./userService.js";
 import ErrorHandler from "../middlewares/error.js";
 import logger from "../logger/index.js";
 import { withSession } from "../utils/transaction.js";
 import { ERROR_TYPES, STATUS_CODES } from "../config/constants.js";
 import { findUserById } from "./userService.js";
+import { addPushJob } from "../queues/push/processor.js";
+import { uploadMedia } from "./cloudinaryService.js";
+import { v4 as uuidv4 } from 'uuid';
 
 
 /**
@@ -46,9 +49,15 @@ export const createExpenseService = async ({file, data}, session) => {
     borrowers,
   }, session);
 
-  const doc = await expense.create([data], {session});
+  const doc = await expense.create([{...data, media}], {session});
   const newExpense = doc[0];
   if (!newExpense) throw new ErrorHandler(`Create operation failed for expense`);
+
+  try {
+    await sendNewExpensePushNotification({expense: newExpense, active_user_id: data.creator.creator_id.toString()});
+  } catch (error) {
+    logger.warn(error);
+  }
 
   logger.info(`Expense ${newExpense._id} created by ${data.creator.creator_id}`);
   return newExpense
@@ -75,7 +84,7 @@ export const updateExpenseService = async ({expense_id, data}, session) => {
      * c-1 earlier there was a wallet and now wallet is removed
      * c-2 earlier there was no wallet and now wallet is added
      * c-3 earlier there was a wallet and now wallet is updated
-     * c-3 no wallet update (1. there is a wallet earlier, 2. there is no wallet earlier)
+     * c-4 no wallet update (1. there is a wallet earlier, 2. there is no wallet earlier)
      */
     let newAmount = updatedDetails.total_amount !== undefined ? updatedDetails.total_amount : existingExpense.total_amount;
 
@@ -104,7 +113,7 @@ export const updateExpenseService = async ({expense_id, data}, session) => {
       await modifyWalletBalance({id: updatedDetails.wallet_id, amount: -1*newAmount}, session);
 
       /**
-       * this handles c-3 (there is a wallet earlier)
+       * this handles c-4 (there is a wallet earlier)
        * (here another case c-1 could be possible in which case we need to
        * redeposit money in wallet but @todo need to update this function later 
        * according to frontend response)
@@ -144,7 +153,7 @@ export const updateExpenseService = async ({expense_id, data}, session) => {
       return updatedExpense;
     }
 
-    await revertExpenseEffects(existingExpense, session);
+    await revertExpenseEffects({curExpense: existingExpense}, session);
 
     const updatedExpense = await updateQuery;
 
@@ -175,7 +184,7 @@ export const deleteExpenseService = async (expense_id, session) => {
 
   if (!curExpense) throw new ErrorHandler(`Expense not found: ${expense_id}, cannot delete...`);
 
-  await revertExpenseEffects(curExpense, session);
+  await revertExpenseEffects({ curExpense, zeroTrue: true }, session);
 
   let deleteQuery = withSession ( expense.findByIdAndDelete(expense_id), session);
   const deletedExpense = await deleteQuery;
@@ -308,15 +317,16 @@ export const handleExpenseRelations = async ({
 /**
  * reverts the effect of earlier expense
  * 
- * @param {object} curExpense 
+ * @param {{curExpense: object, zeroTrue: boolean}} curExpense 
  * @param {session} session 
  */
-export const revertExpenseEffects = async (curExpense, session) => {
+export const revertExpenseEffects = async ({ curExpense, zeroTrue }, session) => {
 
   if (curExpense.wallet_id) {
     await modifyWalletBalance({
       id: curExpense.wallet_id,
       amount: curExpense.total_amount,
+      zeroTrue
     }, session);
   }
 
@@ -453,4 +463,87 @@ export const findCustomExpenses = async ({
       .sort({ created_at_date_time: -1 });
 
     return expenses;
+}
+
+
+/**
+ * 
+ * merges all the borrowers and lenders in a single 
+ * array and sends notification to them
+ * 
+ * @param {{expense: object, active_user_id: string, notification_body: string, notification_title: string}} param0 
+ */
+export const allExpenseMemberPushNotificationService = async ({expense, active_user_id, notification_body, notification_title}) => {
+
+  const members = [...expense.lenders, ...expense.borrowers];
+      
+  for (const member of members) {
+      if(active_user_id && member.user_id.toString() === active_user_id.toString()) {
+          logger.debug(`Skipping active user notification ${active_user_id}`);
+          continue;
+      }
+
+      try {
+          const user = await findUserById(member.user_id);
+          if (!user) {
+              logger.warn(`User not found: ${member.user_id}`);
+              continue;
+          }
+
+          const tokens = user.accessTokens || [];
+          if(tokens.length === 0) continue;
+
+          for (const token of tokens) {
+
+              try {
+                  await addPushJob({token, title: notification_title, body: notification_body});
+              } catch (tokenErr) {
+                  logger.error(`Failed to ${notification_title} bill push notification`, {
+                      userId: member.user_id,
+                      token,
+                      error: tokenErr.message,
+                  });
+              }
+
+          }
+      } catch (userErr) {
+          logger.error(userErr);
+          continue;
+      }
+  }
+}
+
+
+/**
+ * Sends push notification for showing a user created settlement
+ * 
+ * @param {{expense: object, active_user_id: string}} param0
+ * @returns nothing if success else throws error
+ */
+export const sendNewExpensePushNotification = async({expense, active_user_id}) => {
+  try{
+      const active_user = await findUserById(active_user_id);
+      if(!active_user) {
+          logger.warn(`user not found ${active_user_id}, terminating push notification for expense creation`);
+          return;
+      }
+
+      const title = "🔀 New Split";
+      let body = `${active_user.name} just added a new split of ₹ ${expense.total_amount}`;
+
+      if(expense.group_id) {
+        const active_group = await findGroupById(expense.group_id);
+        if(!active_group) {
+            logger.warn(`group not found ${expense.group_id}, terminating push notification for expense creation`);
+            return;
+        }
+
+        body = `${active_user.name} added a new split of ₹ ${expense.total_amount} in ${active_group.group_title}`;
+      }
+
+      await allExpenseMemberPushNotificationService({expense, active_user_id, notification_title: title, notification_body: body});
+  }
+  catch(err){
+      throw err;
+  }
 }

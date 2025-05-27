@@ -8,14 +8,12 @@ import {
   getFriendlyUsers,
   getCurrentExhanges,
   getMyWallets,
-  updateProfilePhoto,
   sendOtp,
   verifyOtp,
   resetPassword,
   getMyGroups,
   getMyExpenses,
   getMySettlements,
-  getMyBudgets,
   getMyPersonalTransactions,
   getMyDetectedTransactions,
   remindBorrowers,
@@ -77,7 +75,6 @@ router.get("/groups", isAuthenticated, getMyGroups);
 router.get("/expenses", isAuthenticated, getMyExpenses);
 router.get("/settlements", isAuthenticated,validate(GetSettlementsQuerySchema), getMySettlements);
 router.get("/wallets", isAuthenticated, getMyWallets);
-router.get("/budgets", isAuthenticated, getMyBudgets);
 router.get("/bills", isAuthenticated,validate(GetBillsQuerySchema), getMyBills);
 router.get("/personal-transactions", isAuthenticated, getMyPersonalTransactions);
 router.get("/detected-transactions", isAuthenticated, getMyDetectedTransactions);
@@ -89,7 +86,6 @@ router.get("/:id", isAuthenticated,validate(GetUserByIdParamsSchema), getUserByI
 
 //* PUT APIs *//
 router.put("/profile-details", isAuthenticated,validate(UpdateUserSchema),upload.single("media"), updateUser);
-router.put("/profile-photo", isAuthenticated, updateProfilePhoto);
 router.put("/update-access-token", isAuthenticated,validate(NotificationTokenSchema), updateUserNotificationToken);
 
 export default router;

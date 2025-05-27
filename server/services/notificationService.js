@@ -10,10 +10,10 @@ const FCM_API_URL = process.env.FCM_API_URL;
 
 /**
  * utilizes email and pass to send mail
- * @param {{toMail: email, subject: string, text: string}} param0
+ * @param {{toMail: email, subject: string, text: string, html: html}} param0
  * 
  */
-export const sendEmail = async ({toMail, subject, text}) => {
+export const sendEmail = async ({toMail, subject, text, html}) => {
   try {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
@@ -25,10 +25,11 @@ export const sendEmail = async ({toMail, subject, text}) => {
     });
     
     const mailOptions = {
-        from: 'expensetraker414@gmail.com',
+        from: '"ExpenZ" <expensetraker414@gmail.com>',
         to: toMail,
         subject,
-        text
+        text,
+        html
     };
     
     const info = await transporter.sendMail(mailOptions);

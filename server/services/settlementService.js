@@ -307,9 +307,9 @@ export const settlementPushNotificationService = async ({user_id, notification_t
 
 
 /**
- * Sends push notification for showing a user deleted bill
+ * Sends push notification for showing a user created settlement
  * 
- * @param {{bill: object, active_user_id: string}} param0
+ * @param {{settlement: object, active_user_id: string, isPayer: boolean, inGroup: boolean}} param0
  * @returns nothing if success else throws error
  */
 export const sendNewSettlementPushNotification = async({settlement, active_user_id, isPayer, inGroup}) => {

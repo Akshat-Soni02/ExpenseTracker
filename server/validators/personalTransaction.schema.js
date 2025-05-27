@@ -63,8 +63,6 @@ export const updatePersonalTransactionSchema = z.object({
         .min(1,'Wallet id cannot be empty')
         .optional(),
         transaction_category: z.string()
-        .trim()
-        .min(1,'Transaction category cannot be empty')
         .optional(),
         notes: z.string()
         .trim()

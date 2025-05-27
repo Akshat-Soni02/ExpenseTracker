@@ -1,184 +1,227 @@
 import personalTransaction from "../models/personalTransaction.js";
-import { findBudgetByCategory,findBudgetById } from "./budgetService.js";
-import { transferWalletAmounts,modifyWalletBalance } from "./walletService.js";
+import { modifyWalletBalance } from "./walletService.js";
+import logger from "../logger/index.js";
+import { uploadMedia } from "./cloudinaryService.js";
+import { v4 as uuidv4 } from 'uuid';
+import { withSession } from "../utils/transaction.js";
+import ErrorHandler from "../middlewares/error.js";
 
 
-export const findPersonalTransactionById = async (id) => {
-    try{    
-        console.log("finding personal transaction by id");
+/**
+ * @todo Budget service has been 
+ * removed from all the function, they 
+ * required re-architecturing to configure again
+ * 
+ * if referce is needed from previous code, take 
+ * a look at some older branches on git
+ */
 
-        if(!id) {
-            console.log(`Personal transaction id is undefined: ${id}`);
-            throw new Error(`Personal transaction id is undefined: ${id}`);
-        }
 
-        const currPersonalTransaction = await personalTransaction.findById(id);
-        return currPersonalTransaction;
+/**
+ * 
+ * @param {{file: string, data: object}} param0 
+ * @param {session} session 
+ * @returns newly created personal transaction
+ */
+export const createPersonalService = async ({file, data}, session) => {
+
+    let media = null;
+
+    if(file) {
+        const today = new Date().toISOString().split('T')[0];
+
+        const mediaPath = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+        const publicId = `personalTransaction/${uuidv4()}/${today}`;
+
+        const result = await uploadMedia(mediaPath, "personalTransactionMedia", publicId);
+
+        media = {
+            url: result.secure_url,
+            public_id: result.public_id,
+        };
     }
-    catch (error) {
-        console.log("Error finding personal transaction by id", error);
-        throw new Error("Error finding personal transaction by id");
-    }
-};
 
-export const findUserPersonalTransactions = async (id) => {
-    try{
-        console.log("finding personal transactions for user");
+    const { transaction_type, wallet_id, amount } = data;
 
-        if(!id) {
-            console.log(`User id is undefined: ${id}`);
-            throw new Error(`User id is undefined: ${id}`);
-        }
+    if(wallet_id) {
+        await modifyWalletBalance({id: wallet_id, amount: transaction_type === "expense" ? -1*amount : amount}, session);
+    }
 
-        const transactions = await personalTransaction.find({user_id: id});
-        return transactions;
-    }
-    catch (error) {
-        console.log("Error finding personal transactions for user", error);
-        throw new Error("Error finding personal transactions for user");
-    }
+    const doc = await personalTransaction.create([{...data, media}], {session});
+    const newPersonal = doc[0];
+    if (!newPersonal) throw new ErrorHandler(`create operation failed for personal transaction`);
+
+    logger.info(`personal transaction ${newPersonal._id} created by user ${data.user_id}`);
+    return newPersonal;
 }
 
+/**
+ * 
+ * @todo right now its not checking if the wallets have 
+ * sufficient balance or not, we are relying on post 
+ * changes check (while reverting or making changes) 
+ * which increases number of steps
+ * 
+ * @param {{personalTransaction_id: string, data: object}} param0 
+ * @param {session} session 
+ * @returns updated transaction
+ */
+export const updatePersonalService = async ({personalTransaction_id, data}, session) => {
+
+    const updatedDetails = data;
+
+    const existingPersonalTransaction = await findPersonalTransactionById(personalTransaction_id, session);
+
+    if (!existingPersonalTransaction) throw new ErrorHandler(`personal transaction not found: ${personalTransaction_id}, terminating update...`);
+
+    /**
+    * cases with wallet - 
+    * c-1 earlier there was a wallet and now wallet is removed
+    * c-2 earlier there was no wallet and now wallet is added
+    * c-3 earlier there was a wallet and now wallet is updated
+    * c-4 no wallet update (1. there is a wallet earlier, 2. there is no wallet earlier)
+    */
+
+    const newType = updatedDetails.transaction_type ? updatedDetails.transaction_type : existingPersonalTransaction.transaction_type;
+    const newAmount = updatedDetails.amount ? updatedDetails.amount : existingPersonalTransaction.amount;
+
+    /**
+     * c-2, c-3
+     */
+    if(updatedDetails.wallet_id) {
+        await modifyWalletBalance({id: updatedDetails.wallet_id, amount: newType === "expense" ? -1*newAmount : newAmount}, session);
+
+        /**
+         * c-4 (there is a wallet earlier)
+         */
+    } else if(existingPersonalTransaction.wallet_id) {
+        await modifyWalletBalance({id: existingPersonalTransaction.wallet_id, amount: newType === "expense" ? -1*newAmount : newAmount}, session);
+    }
+
+    await revertPersonalTransaction({ personalTransaction: existingPersonalTransaction }, session);
+    
+    let updateQuery = withSession(personalTransaction.findByIdAndUpdate(personalTransaction_id, updatedDetails, {
+        new: true,
+        runValidators: true,
+    }), session);
+
+    const updatedPersonalTransaction = await updateQuery;
+    if(!updatedPersonalTransaction) throw new ErrorHandler(`personal transaction ${personalTransaction_id} failed to update`);
+
+    return updatedPersonalTransaction;
+}
+
+
+
+/**
+ * 
+ * @param {string} personalTransaction_id 
+ * @param {session} session 
+ */
+export const deletePersonalService = async ( personalTransaction_id, session ) => {
+
+    const personalTransaction = await findPersonalTransactionById(personalTransaction_id, session);
+    if(!personalTransaction) throw new ErrorHandler(`personal transactio not found: ${personalTransaction_id}, not deleting it...`);
+
+    await revertPersonalTransaction({ personalTransaction }, session);
+    
+    const deletedPersonalTransaction = await personalTransaction.deleteOne({session});
+    if(!deletedPersonalTransaction) throw new ErrorHandler(`delete operation failed for transaction ${personalTransaction_id}`);
+
+    logger.info(`personal transaction ${personalTransaction_id} deleted`);
+}
+
+
+
+/**
+ * 
+ * although right now there i only wallet 
+ * to revert but its for seperate concerns
+ * 
+ * @param {{personalTransaction: object, zeroTrue: boolean}} personalTransaction 
+ * @param {session} session 
+ */
+export const revertPersonalTransaction = async ({ personalTransaction, zeroTrue}, session ) => {
+
+    if(personalTransaction.wallet_id) {
+        await modifyWalletBalance({
+            id: personalTransaction.wallet_id,
+            amount: personalTransaction.transaction_type === "expense" ? personalTransaction.amount : -1*personalTransaction.amount,
+            zeroTrue
+        }, session);
+    }
+
+}
+
+
+/**
+ * 
+ * @param {string} personal_id 
+ * @param {session} session 
+ * @returns personal transaction if found
+ */
+export const findPersonalTransactionById = async (personal_id, session) => {
+
+    let query = withSession( personalTransaction.findById(personal_id), session);
+    const currPersonalTransaction = await query;
+    if(!currPersonalTransaction) {
+        logger.error(`personal transaction ${personal_id} not found`);
+        return;
+    }
+
+    return currPersonalTransaction;
+};
+
+
+/**
+ * 
+ * @param {{start_date: date, end_date: date, transaction_type: string}} param0 
+ * @returns array of transactions
+ */
+export const fetchPeriodTransactions = async ({start_date, end_date, transaction_type, user_id}) => {
+
+    const query = {
+        user_id: new mongoose.Types.ObjectId(user_id),
+        created_at_date_time: {
+            $gte: new Date(start_date),
+            $lte: new Date(end_date)
+        }
+    };
+
+    if (transaction_type) {
+        query.transaction_type = transaction_type;
+    }
+
+    const transactions = await findPersonalTransactionByQuery(query);
+    
+    logger.info(`fetched ${transaction_type} transactions for ${start_date} to ${end_date}`);
+    return transactions;
+}
+
+
+/**
+ * 
+ * @param {string} user_id 
+ * @returns array of user's transactions
+ */
+export const findUserPersonalTransactions = async (user_id) => {
+    const transactions = await personalTransaction.find({user_id});
+    return transactions;
+}
+
+
+
+/**
+ * 
+ * @param {object} query 
+ * @returns array of personal transaction
+ */
 export const findPersonalTransactionByQuery = async (query) => {
-    try{    
-        console.log("finding personal transaction by query");
 
-        if(!query) {
-            console.log(`Query is undefined: ${query}`);
-            throw new Error(`Query is undefined: ${query}`);
-        }
+    if(!query) throw new ErrorHandler(`undefined query to get personal transactions`);
 
-        const currPersonalTransaction = await personalTransaction.find(query);
-        return currPersonalTransaction;
-    }
-    catch (error) {
-        console.log("Error finding personal transaction by query", error);
-        throw error;
-    }
-};
-
-export const updatePersonalTransactionType = async (id,transaction_type,amount) => {
-    try{    
-        console.log("updating personal transaction type");
-
-        if(!id || !transaction_type || !amount) {
-            console.log(`Id, transaction type or amount is undefined: ${id}, ${transaction_type}, ${amount}`);
-            throw new Error(`Id, transaction type or amount is undefined: ${id}, ${transaction_type}, ${amount}`);
-        }
-
-        const currPersonalTransaction = await findPersonalTransactionById(id);
-        if(!currPersonalTransaction) {
-            console.log(`Unable to find transaction with id ${id} to update`);
-            throw new Error(`Unable to find transaction to update`);
-        }
-
-        if(transaction_type==="expense"){
-
-            await modifyWalletBalance({id: currPersonalTransaction.wallet_id,amount: -2*amount});
-
-            if(currPersonalTransaction.transaction_category){
-                const existingBudget = await findBudgetByCategory(currPersonalTransaction.transaction_category.toString());
-
-                if(existingBudget){
-                    existingBudget.current_spend+=amount;
-                    await existingBudget.save();
-                    currPersonalTransaction.budget_id = existingBudget._id;
-                }
-            }
-            else{
-                const existingBudget = await findBudgetByCategory("general");
-
-                if(existingBudget){
-                    existingBudget.current_spend+=amount;
-                    await existingBudget.save();
-                    currPersonalTransaction.budget_id = existingBudget._id;
-                }
-            }
-
-        }
-
-        else{
-            await modifyWalletBalance(currPersonalTransaction.wallet_id,2*amount);
-
-            if(currPersonalTransaction.budget_id){
-                const existingBudget = await findBudgetById(currPersonalTransaction.budget_id.toString());
-
-                if(existingBudget){
-                    existingBudget.current_spend-=amount;
-                    await existingBudget.save();
-                    currPersonalTransaction.budget_id = null;
-                }
-            }
-        }
-
-        await currPersonalTransaction.save();
-        return true;
-    }
-    catch (error) {
-        console.log("Error updating personal transaction type", error);
-        throw error;
-    }
-};
-
-export const updatePersonalTransactionWallet = async (id,currWallet_id,newWallet_id,amount) => {
-    try{    
-        console.log("updating personal transaction wallet");
-
-        if(!id || !currWallet_id || !newWallet_id || !amount) {
-            console.log(`Id, current wallet id, new wallet id or amount is undefined: ${id}, ${currWallet_id}, ${newWallet_id}, ${amount}`);
-            throw new Error(`Id, current wallet id, new wallet id or amount is undefined: ${id}, ${currWallet_id}, ${newWallet_id}, ${amount}`);
-        }
-
-        const currPersonalTransaction = await findPersonalTransactionById(id);
-        if(!currPersonalTransaction) throw new Error(`No transaction found to update with id ${id}`);
-
-        if(currPersonalTransaction.transaction_type==="expense"){
-            await transferWalletAmounts({toWallet: currWallet_id,fromWallet: newWallet_id,amount});
-        }
-        else{
-            await transferWalletAmounts({toWallet:newWallet_id,fromWallet: currWallet_id,amount});
-        }
-
-        return true;
-    }
-    catch (error) {
-        console.log("Error updating personal transaction wallet", error);
-        throw error;
-    }
-};
-
-export const updatePersonalTransactionAmount = async (id,wallet_id,currAmount,newAmount) => {
-    try{    
-        console.log("updating personal transaction amount");
-
-        if(!id || !wallet_id || !currAmount || !newAmount) {
-            console.log(`Id, wallet id, current amount or new amount is undefined: ${id}, ${wallet_id}, ${currAmount}, ${newAmount}`);
-            throw new Error(`Id, wallet id, current amount or new amount is undefined: ${id}, ${wallet_id}, ${currAmount}, ${newAmount}`);
-        }
-
-        const currPersonalTransaction = await findPersonalTransactionById(id);
-        if(!currPersonalTransaction) throw new Error(`No transaction found to update with id ${id}`);
-
-        if(currPersonalTransaction.transaction_type==="expense"){
-            await modifyWalletBalance({id:wallet_id, amount: currAmount - newAmount});
-            if(currPersonalTransaction.budget_id){
-                const existingBudget = await findBudgetById(currPersonalTransaction.budget_id.toString());
-                if(existingBudget){
-                    existingBudget.current_spend-=currAmount - newAmount;
-                    await existingBudget.save();
-                }
-            }
-        }
-        else{
-            await modifyWalletBalance({id: wallet_id, amount: newAmount - currAmount});
-        }
-
-        return true;
-    }
-    catch (error) {
-        console.log("Error updating personal transaction amount", error);
-        throw error;
-    }
+    const currPersonalTransaction = await personalTransaction.find(query);
+    return currPersonalTransaction;
 };
 
 
