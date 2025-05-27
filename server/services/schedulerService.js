@@ -93,7 +93,7 @@ export const billRecurScheduler = () => {
             }
 
         } catch (err) {
-            console.error("Error during bill cron job execution:", err);
+            logger.error("Error during bill cron job execution:", err);
         }
     });
 

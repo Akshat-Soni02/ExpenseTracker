@@ -220,8 +220,6 @@ export const processSimplifyDebts = async (req, res, next) => {
  */
 export const addToGroup = async (req, res, next) => {
   try {
-    console.log("Adding new members to group");
-
     const { group_id } = req.params;
     const { newMemberIds } = req.body;
 
