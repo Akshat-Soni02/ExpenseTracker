@@ -5,6 +5,7 @@ import ErrorHandler from "../middlewares/error.js";
 import logger from "../logger/index.js";
 import { STATUS_CODES, ERROR_TYPES } from "../config/constants.js";
 import { addPushJob } from "../queues/push/processor.js";
+import { addMonths, parseISO } from 'date-fns';
 
 /**
  * @description if errors occurs in the bill service file,
@@ -177,6 +178,27 @@ export const fetchBillDetails = async (bill_id) => {
     return curBill;
 };
 
+/**
+ * fetches those bills which has 
+ * current month's due date and 
+ * are pending
+ * 
+ * @param {string} user_id 
+ * @returns array of bills
+ */
+export const fetchMonthPendingBills = async (user_id) => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const bills = bill.find({due_date_time: {
+        $gte: startOfMonth,
+        $lt: startOfNextMonth
+    }, $or: [{ "members.user_id": user_id }], status: BillStatus.PENDING}).select("amount bill_title due_date_time").sort({due_date_time: 1});
+
+    return bills;
+}
+
 
 
 /**
@@ -224,12 +246,25 @@ export const handleBillRecurrence = async (bill_id) => {
             status: BillMemberStatus.PENDING,
         }));
 
+        /**
+         * since while recurring we need to set the due date
+         * as next month's same date we use this utility
+         * 
+         * it handles the edge cases like feb 28, 29 etc
+         */
+        const nextDueDate = addMonths(
+            typeof curBill.due_date_time === 'string'
+            ? parseISO(curBill.due_date_time)
+            : curBill.due_date_time,
+            1
+        );
+
         const filterBill = {
             bill_title: curBill.bill_title,
             bill_number: curBill.bill_number + 1,
             amount: curBill.amount,
             bill_category: curBill.bill_category,
-            due_date_time: curBill.due_date_time,
+            due_date_time: nextDueDate,
             recurring: true,
             status: BillStatus.PENDING,
             creator_id: curBill.creator_id,
@@ -272,7 +307,7 @@ export const getUserBills = async ({ userId, status }) => {
         };
 
         if (status) query["status"] = status;
-        const curBills = await bill.find(query);
+        const curBills = await bill.find(query).sort({createdAt: -1});
         return curBills;
     } catch (error) {
         throw error;

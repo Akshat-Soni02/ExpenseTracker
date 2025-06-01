@@ -18,6 +18,9 @@ import { sendEmail } from "./notificationService.js";
 import { deleteMedia, uploadMedia } from "../services/cloudinaryService.js";
 import { addBorrowMailJob, addInviteMailJob, addPassResetMailJob } from "../queues/email/processor.js";
 import { addPushJob } from "../queues/push/processor.js";
+import { findUserExpenses } from "./expenseService.js";
+import { findUserPersonalTransactions } from "./personalTransactionService.js";
+import { findUserSettlements } from "./settlementService.js";
 
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -374,6 +377,20 @@ export const getFriends = async (user_id) => {
   return friendsWithAmounts;
 }
 
+/**
+ * 
+ * @param {string} user_id 
+ * @returns unified array of expense, transaction and settlement
+ */
+export const unifyUserSpendsHistory = async (user_id) => {
+
+  const expenses = (await findUserExpenses({ userId: user_id })).map((expense) => { return {...expense, type: "expense"}});
+  const personals = (await findUserPersonalTransactions(user_id)).map((personal) => { return {...personal.toObject(), type: "personalTransaction"}});
+  const settles = (await findUserSettlements({ userId: user_id })).map((settle) => { return {...settle, type: "settlement"}});
+
+  let unified = [...expenses, ...personals, ...settles].sort((a, b) => b?.created_at_date_time?.getTime() || b?.createdAt?.getTime() - a?.created_at_date_time?.getTime() || a?.createdAt?.getTime());
+  return unified;
+}
 
 /**
  * stored everything in model itself

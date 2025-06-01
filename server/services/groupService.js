@@ -309,14 +309,24 @@ export const fetchGroupHistory = async ({ group_id, since }) => {
       expenses.map(async (exp) => {
         try {
             const giver = await user.findById(exp.lenders[0].user_id).select("name");
+            if(!giver) {
+                logger.error(`user not found ${exp.lenders[0].user_id}, included in expense ${exp._id}`);
+            }
+
+            const giver_name = giver?.name || "unknown";
+
             return {
                 ...exp,
                 type: "expense",
-                giver: giver.name,
+                giver: giver_name,
             };
         } catch (error) {
             logger.warn(`Unable to fetch giver ${exp.lenders[0].user_id} in group ${group_id}'s history`);
-            throw error;
+            return {
+                ...exp,
+                type: "expense",
+                giver: "unknown",
+            };
         }
       })
     );
@@ -326,14 +336,24 @@ export const fetchGroupHistory = async ({ group_id, since }) => {
 
         try {
             const giver = await user.findById(set.payer_id).select("name");
+            if(!giver) {
+                logger.error(`user not found ${set.payer_id}, included in expense ${set._id}`);
+            }
+
+            const giver_name = giver?.name || "unknown";
+
             return {
             ...set,
             type: "settlement",
-            giver: giver.name,
+            giver: giver_name,
             };
         } catch (error) {
             logger.warn(`Unable to fetch payer ${set.payer_id} in group ${group_id}'s history`);
-            throw error;
+            return {
+                ...set,
+                type: "settlement",
+                giver: "unknown",
+            };
         }
       })
     );
@@ -378,8 +398,26 @@ export const findGroupById = async (group_id, session) => {
  * @returns array of groups
  */
 export const findUserGroups = async (user_id) => {
-    const groups = await group.find({"members.member_id": user_id});
-    return groups;
+
+    const groups = await group.find({"members.member_id": user_id}).select("_id group_title members").sort({createdAt: -1});
+    const filteredGroups = [];
+
+    for(const groupObj of groups) {
+        const group = groupObj.toObject();
+        
+        let userState = 0;
+        const matchedMember = group.members.find(member => member.member_id.toString() === user_id.toString());
+
+        matchedMember.other_members.forEach((other_member) => {
+            if(other_member.exchange_status === 'borrowed') userState -= other_member.amount;
+            else userState += other_member.amount;
+        });
+
+        const {members, ...rest} = group;
+        filteredGroups.push({...rest, userState});
+    }
+
+    return filteredGroups;
 }
 
 

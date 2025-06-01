@@ -205,7 +205,7 @@ export const fetchPeriodTransactions = async ({start_date, end_date, transaction
  * @returns array of user's transactions
  */
 export const findUserPersonalTransactions = async (user_id) => {
-    const transactions = await personalTransaction.find({user_id});
+    const transactions = await personalTransaction.find({user_id}).sort({created_at_date_time: -1});
     return transactions;
 }
 

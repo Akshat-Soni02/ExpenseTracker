@@ -136,7 +136,7 @@ export const fetchSettlementDetails = async (settlement_id) => {
   const settleObj = await findSettlementById(settlement_id);
   
   if (!settleObj) {
-      throw new ErrorHandler(`Settlement not found: ${settlement_id}`, STATUS_CODES.NOT_FOUND, { errorType: ERROR_TYPES.NOT_FOUND });
+      throw new ErrorHandler(`Settlement not found: ${settlement_id}`);
   }
 
   const curSettlement = settleObj.toObject();
@@ -258,11 +258,45 @@ export const findUserSettlements = async ({userId, group_id}) => {
     filter.group_id = group_id;
   }
 
-  const settlements = await settlement.find(filter).sort({
-    created_at: -1,
+  const settlements = await settlement.find(filter).select("_id settlement_description payer_id  receiver_id amount createdAt ").sort({
+    createdAt: -1,
   });
 
-  return settlements;
+  const WithDetailsSettlements = await Promise.all(settlements.map(async (settlementObj) => {
+    try {
+        const settlement = settlementObj.toObject();
+        const payer = await findUserById(settlement.payer_id);
+        if (!payer) {
+            logger.warn(`User not found: ${settlement.payer_id}, included in settlement ${settlement._id}`);
+        }
+
+        const payer_name = settlement.payer_id.toString() === userId.toString() ? "You" : payer?.name || "unkown";
+
+        const receiver = await findUserById(settlement.receiver_id);
+        if (!receiver) {
+            logger.warn(`User not found: ${settlement.receiver_id}, included in settlement ${settlement._id}`);
+        }
+
+        const receiver_name = settlement.receiver_id.toString() === userId.toString() ? "you" : receiver?.name || "unkown";
+
+        return {
+            ...settlement,
+            type: "settlement",
+            payer_name,
+            receiver_name
+        };
+    } catch (error) {
+        logger.warn(error);
+        return {
+            ...settlement,
+            type: "settlement",
+            payer_name: "unknown",
+            receiver_name: "unknown"
+        };
+    }
+  }));
+
+  return WithDetailsSettlements;
 }
 
 

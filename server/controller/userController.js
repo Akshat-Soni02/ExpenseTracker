@@ -2,7 +2,7 @@ import ErrorHandler from "../middlewares/error.js";
 import { sendToken } from "../utils/features.js";
 import logger from "../logger/index.js";
 
-import { addFriendsService, addFutureFriendsService, findBorrowersAndRemind, findTodaySpend, findUserById, getFriends, getUserExchangeState, handleGoogleAccessTokenLogin, handleGoogleIdTokenLogin, loginUser, pushNotificationTokenUpdate, registerUser, removeFutureFriend, resetUserPassword, sendBorrowerRemainder, sendOtpMail, updateUserDetails, verifyReceivedOtp } from "../services/userService.js";
+import { addFriendsService, addFutureFriendsService, findBorrowersAndRemind, findTodaySpend, findUserById, getFriends, getUserExchangeState, handleGoogleAccessTokenLogin, handleGoogleIdTokenLogin, loginUser, pushNotificationTokenUpdate, registerUser, removeFutureFriend, resetUserPassword, sendBorrowerRemainder, sendOtpMail, unifyUserSpendsHistory, updateUserDetails, verifyReceivedOtp } from "../services/userService.js";
 import { findUserWallets } from "../services/walletService.js";
 import { findUserGroups } from "../services/groupService.js";
 import { findUserExpenses } from "../services/expenseService.js";
@@ -228,6 +228,23 @@ export const getMyGroups = async (req, res, next) => {
   }
 }
 
+/**
+ * 
+ * @returns resonse with collected transactions, expenses and settlements
+ */
+export const getUnifiedData = async (req, res, next) => {
+  try {
+    const user_id = req.user._id;
+    const unified = await unifyUserSpendsHistory(user_id);
+
+    res.status(STATUS_CODES.OK).json({
+      message: "Fetched data",
+      data: unified
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
 /**
  * 

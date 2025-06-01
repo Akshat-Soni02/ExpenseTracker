@@ -1,7 +1,8 @@
 import ErrorHandler from "../middlewares/error.js";
 import logger from "../logger/index.js";
-import { createBillService, updateUserBillStatus, updateBillService, deleteBillService, fetchBillDetails } from "../services/billService.js";
+import { createBillService, updateUserBillStatus, updateBillService, deleteBillService, fetchBillDetails, fetchMonthPendingBills } from "../services/billService.js";
 import { STATUS_CODES, MESSAGES } from "../config/constants.js";
+import { recurBillsAtMidnight } from "../services/schedulerService.js";
 
 /**
  * 
@@ -105,6 +106,44 @@ export const getBillById = async (req, res, next) => {
             message: MESSAGES.FETCHED("Bill"),
             data: bill
         });
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+/**
+ * 
+ * Fetches bills for client
+ * @returns response with fetched bills array
+ */
+export const getUserCurrentMonthBills = async (req, res, next) => {
+    try {
+        const user_id = req.user._id;
+
+        const bills = await fetchMonthPendingBills(user_id);
+        res.status(STATUS_CODES.OK).json({
+            message: "Bills fetched",
+            data: bills
+        })
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+/**
+ * 
+ * Since server is deployed on cloud run which
+ * again spins down to zero if ideal hence
+ * using cloud scheduler for the jobs
+ */
+export const runBillCronJob = async (req, res, next) => {
+    try {
+        await recurBillsAtMidnight();
+        res.status(STATUS_CODES.OK).json({
+            message: "cron-execute",
+        })
     } catch (error) {
         next(error);
     }

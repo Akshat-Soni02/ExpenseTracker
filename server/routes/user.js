@@ -27,7 +27,8 @@ import {
   getUserTodaySpend,
   getUserFutureFriends,
   googleLoginAccesstoken,
-  removeFriendInvite
+  removeFriendInvite,
+  getUnifiedData
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 import multer from "multer";
@@ -82,6 +83,7 @@ router.get("/friends", isAuthenticated, getFriendlyUsers);
 router.get("/current-exchange-status", isAuthenticated, getCurrentExhanges);
 router.get("/today-spend", isAuthenticated, getUserTodaySpend);
 router.get("/future-friends", isAuthenticated, getUserFutureFriends);
+router.get("/unified-history", isAuthenticated, getUnifiedData);
 router.get("/:id", isAuthenticated,validate(GetUserByIdParamsSchema), getUserById);
 
 //* PUT APIs *//

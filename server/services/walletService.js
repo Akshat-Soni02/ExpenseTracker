@@ -133,7 +133,7 @@ export const transferWalletAmounts = async({toWallet, fromWallet, amount}, sessi
  */
 export const modifyWalletBalance = async ({id, amount, zeroTrue}, session) => {
 
-  let query = withSession(wallet.findById(id).select("amount"), session);
+  let query = withSession(wallet.findById(id).select("wallet_title amount"), session);
 
   const curWallet = await query;
   if(!curWallet) throw new ErrorHandler(`Walled not found: ${id}, terminating modify function...`);

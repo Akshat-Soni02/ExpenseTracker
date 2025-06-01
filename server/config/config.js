@@ -20,6 +20,7 @@ cloudinary.config({
 export const RedisConnection = {
   host: process.env.REDIS_HOST,
   port: process.env.REDIS_PORT,
+  password: process.env.REDIS_PASS
 };
 
 export default {

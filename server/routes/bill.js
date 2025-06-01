@@ -5,7 +5,9 @@ import {
     deleteBill, 
     getBillById, 
     updateBill, 
-    handleBillUserStatusUpdate 
+    handleBillUserStatusUpdate,
+    getUserCurrentMonthBills,
+    runBillCronJob
 } from "../controller/billController.js";
 import {validate} from "../middlewares/validateRequest.js";
 import {
@@ -19,9 +21,11 @@ const router = express.Router();
 
 //* POST APIs *//
 router.post("/new",isAuthenticated,validate(createBillSchema), createBill);
+router.post("/run-bill-cron", runBillCronJob);
 router.post("/bill-status-update/:billId", isAuthenticated,validate(handleBillUserStatusUpdateSchema), handleBillUserStatusUpdate);
 
 //* GET APIs *//
+router.get("/current-month/pending", isAuthenticated, getUserCurrentMonthBills);
 router.get("/:id", isAuthenticated,validate(getBillByIdParamsSchema), getBillById);
 
 //* PUT APIs *//

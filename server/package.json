@@ -1,12 +1,12 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "setting server for ExpenZ",
+  "description": "server for ExpenZ",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_ENV=development NODE_TLS_REJECT_UNAUTHORIZED=0 nodemon index.js",
-    "prod": "cross-env NODE_ENV=production node index.js"
+    "prod": "cross-env NODE_ENV=production NODE_TLS_REJECT_UNAUTHORIZED=0 node index.js"
   },
   "author": "Akshat Soni & Atharva Lonhari",
   "license": "ISC",
@@ -24,6 +24,7 @@
     "cross-env": "^7.0.3",
     "crypto": "^1.0.1",
     "crypto-js": "^4.2.0",
+    "date-fns": "^4.1.0",
     "docker": "^1.0.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",

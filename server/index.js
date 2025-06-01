@@ -110,8 +110,11 @@ mongoose
 /**
  * @todo init the queue workers
  * here later for notifications
+ * 
+ * @todo this won't work if jobs becomes more
+ * since cloud run will scale down to zero
  */
-// initQueueWorkers();
+initQueueWorkers();
 
 app.use(requestCounterMiddleware);
 

@@ -10,6 +10,7 @@ import { findUserById } from "./userService.js";
 import { addPushJob } from "../queues/push/processor.js";
 import { uploadMedia } from "./cloudinaryService.js";
 import { v4 as uuidv4 } from 'uuid';
+import user from "../models/user.js";
 
 
 /**
@@ -401,11 +402,37 @@ export const findUserExpenses = async ({userId, group_id}) => {
     filter.group_id = group_id;
   }
 
-  const expenses = await expense.find(filter).sort({
+  const expenses = await expense.find(filter).select("description lenders total_amount created_at_date_time").sort({
     created_at_date_time: -1,
-  });
+  }).lean();
 
-  return expenses;
+  const formattedExpenses = await Promise.all(
+    expenses.map(async (exp) => {
+      try {
+          const giver = await user.findById(exp.lenders[0].user_id).select("name");
+          if(!giver) {
+            logger.error(`user not found ${exp.lenders[0].user_id}, included in expense ${exp._id}`);
+          }
+          
+          const giver_name = exp.lenders[0].user_id.toString() === userId.toString() ? "you" : giver?.name || "unknown";
+
+          return {
+              ...exp,
+              type: "expense",
+              giver: giver_name,
+          };
+      } catch (error) {
+          logger.warn(`Unable to fetch giver ${exp.lenders[0].user_id} in ${exp._id}`);
+          return {
+            ...exp,
+            type: "expense",
+            giver: "unknown",
+        };
+      }
+    })
+  );
+
+  return formattedExpenses;
 }
 
 /**
