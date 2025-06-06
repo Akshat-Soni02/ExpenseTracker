@@ -1,5 +1,5 @@
 import expense from "../models/expense.js";
-import { modifyWalletBalance } from "./walletService.js";
+import { modifyWalletBalance, sufficientBalance } from "./walletService.js";
 import { distributeAmount, findGroupById } from "./groupService.js";
 import { updateFriendlyExchangeStatesOnLending } from "./userService.js";
 import ErrorHandler from "../middlewares/error.js";
@@ -24,21 +24,7 @@ import { deleteMedia } from "./cloudinaryService.js";
  */
 export const createExpenseService = async ({file, data}, session) => {
 
-  let media = null;
-
-  if(file) {
-    const today = new Date().toISOString().split('T')[0];
-
-    const mediaPath = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
-    const publicId = `expense/${uuidv4()}/${today}`;
-
-    const result = await uploadMedia(mediaPath, "expenseMedia", publicId);
-
-    media = {
-      url: result.secure_url,
-      public_id: result.public_id,
-    };
-  }
+  let media = await updateExpenseMedia(file);
 
   const { lenders, total_amount, wallet_id, group_id, borrowers } = data;
 
@@ -62,6 +48,50 @@ export const createExpenseService = async ({file, data}, session) => {
 
   logger.info(`Expense ${newExpense._id} created by ${data.creator.creator_id}`);
   return newExpense
+}
+
+
+/**
+ * uploads media exclusively for expense
+ * @param {FormData} file 
+ * @returns media obj
+ */
+export const updateExpenseMedia = async (file) => {
+  if(!file) return null;
+
+  let media = null;
+  const today = new Date().toISOString().split('T')[0];
+
+  const mediaPath = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+  const publicId = `expense/${uuidv4()}/${today}`;
+
+  const result = await uploadMedia(mediaPath, "expenseMedia", publicId);
+
+  media = {
+    url: result.secure_url,
+    public_id: result.public_id,
+  };
+
+  return media;
+}
+
+/**
+ * remove expense's wallet
+ * 
+ * @param {string} expense_id 
+ */
+export const detachWallet = async (expense_id) => {
+  const curExpense = await findExpenseById(expense_id);
+  if(!curExpense) {
+    throw new ErrorHandler(`Expense not found ${expense_id}, can't remove wallet`);
+  }
+
+  if(curExpense.wallet_id) {
+    await modifyWalletBalance({ id: curExpense.wallet_id, amount: curExpense.total_amount, zeroTrue: true});
+    curExpense.wallet_id = null;
+  }
+
+  await curExpense.save();
 }
 
 

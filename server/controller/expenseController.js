@@ -6,10 +6,13 @@ import {
   deleteExpenseService,
   fetchExpenseDetails,
   fetchPeriodExpenses,
+  updateExpenseMedia,
+  detachWallet,
   deleteExpenseMedia
 } from "../services/expenseService.js";
 import { withTransaction } from "../utils/transaction.js";
 import { MESSAGES, STATUS_CODES } from "../config/constants.js";
+import logger from "../logger/index.js";
 
 
 /**
@@ -51,6 +54,7 @@ export const updateExpense = async (req, res, next) => {
 
   try {
     const { expense_id } = req.params;
+    const file = req.file;
     let updatedDetails = req.body;
 
     if(updatedDetails.lenders) updatedDetails.lenders = JSON.parse(updatedDetails.lenders);
@@ -64,6 +68,8 @@ export const updateExpense = async (req, res, next) => {
     if ( updatedDetails.borrowers && typeof updatedDetails.borrowers === "string") {
       updatedDetails.borrowers = JSON.parse(updatedDetails.borrowers);
     }
+
+    if(file) updatedDetails.media = await updateExpenseMedia(file);
 
     const updatedExpense = await withTransaction(async (session) => {
       return await await updateExpenseService({ expense_id, data: updatedDetails }, session);
@@ -193,6 +199,24 @@ export const deleteExpensePhoto = async (req, res, next) => {
     await deleteExpenseMedia(expense_id);
     res.status(STATUS_CODES.OK).json({
       message: MESSAGES.DELETED
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+/**
+ * 
+ * @returns response with no data
+ */
+export const removeExpenseWallet = async (req, res, next) => {
+  try {
+    const { expense_id } = req.params;
+    await detachWallet(expense_id);
+
+    res.status(STATUS_CODES.OK).json({
+      message: "wallet removed"
     });
   } catch (error) {
     next(error);
