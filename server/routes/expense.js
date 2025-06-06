@@ -8,7 +8,7 @@ import {
   getUserPeriodExpenses,
   getUserExpenses,
   getCustomExpenses,
-  deleteExpensePhoto
+  deleteExpensePhoto,
   removeExpenseWallet
 } from "../controller/expenseController.js";
 import { validate } from "../middlewares/validateRequest.js";
