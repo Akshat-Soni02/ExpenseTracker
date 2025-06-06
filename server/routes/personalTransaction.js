@@ -5,7 +5,8 @@ import {
     deletePersonalTransaction, 
     updatePersonalTransaction,
     getPersonalTransactionById,
-    getUserPeriodTypeTransactions 
+    getUserPeriodTypeTransactions, 
+    removePersonalTransactionWallet
 } from "../controller/personalTransactionController.js";
 import multer from "multer";
 import {validate} from "../middlewares/validateRequest.js";
@@ -30,6 +31,7 @@ router.get("/userPeriod",isAuthenticated,validate(getUserPeriodTypeTransactionsS
 router.get("/:personalTransaction_id", isAuthenticated,validate(getPersonalTransactionSchema), getPersonalTransactionById);
 
 //* PUT APIs *//
+router.put("/detach-wallet/:personalTransaction_id", isAuthenticated, removePersonalTransactionWallet);
 router.put("/:personalTransaction_id", isAuthenticated,validate(updatePersonalTransactionSchema), updatePersonalTransaction);
 
 //* DELETE APIs *//

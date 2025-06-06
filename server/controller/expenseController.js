@@ -195,7 +195,6 @@ export const getCustomExpenses = async (req, res, next) => {
 export const removeExpenseWallet = async (req, res, next) => {
   try {
     const { expense_id } = req.params;
-    logger.info(expense_id);
     await detachWallet(expense_id);
 
     res.status(STATUS_CODES.OK).json({

@@ -153,6 +153,24 @@ export const revertPersonalTransaction = async ({ personalTransaction, zeroTrue}
 
 }
 
+/**
+ * remove personal transaction's wallet
+ * 
+ * @param {string} personalTransaction_id 
+ */
+export const detachTransactionWallet = async (personalTransaction_id) => {
+    const personalTransaction = await findPersonalTransactionById(personalTransaction_id);
+    if(!personalTransaction) {
+        throw new ErrorHandler(`Personal Transaction not found ${personalTransaction_id}, can't remove wallet`);
+    }
+
+    if(personalTransaction.wallet_id) {
+        await modifyWalletBalance({ id: personalTransaction.wallet_id, amount: personalTransaction.transaction_type === "expense" ? personalTransaction.amount : -1*personalTransaction.amount, zeroTrue: true});
+        personalTransaction.wallet_id = null;
+    }
+
+    await personalTransaction.save();
+}
 
 /**
  * 
