@@ -8,6 +8,7 @@ import {
   getUserPeriodExpenses,
   getUserExpenses,
   getCustomExpenses,
+  deleteExpensePhoto
 } from "../controller/expenseController.js";
 import { validate } from "../middlewares/validateRequest.js";
 import { 
@@ -44,6 +45,7 @@ router.get("/custom", isAuthenticated,validate(getCustomExpensesSchema), getCust
 router.get("/:id", isAuthenticated,validate(getExpenseSchema), getExpenseById);
 
 //* PUT APIs *//
+router.put("/photo/:expense_id", isAuthenticated, upload.single("media"), deleteExpensePhoto);
 router.put("/:expense_id", isAuthenticated,validate(updateExpenseSchema), upload.single("media"), updateExpense);
 
 //* DELETE APIs *//

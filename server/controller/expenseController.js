@@ -5,7 +5,8 @@ import {
   updateExpenseService,
   deleteExpenseService,
   fetchExpenseDetails,
-  fetchPeriodExpenses
+  fetchPeriodExpenses,
+  deleteExpenseMedia
 } from "../services/expenseService.js";
 import { withTransaction } from "../utils/transaction.js";
 import { MESSAGES, STATUS_CODES } from "../config/constants.js";
@@ -175,6 +176,23 @@ export const getCustomExpenses = async (req, res, next) => {
     res.status(STATUS_CODES.OK).json({
       message : "Fetched Successfully",
       data : expenses,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+/**
+ * 
+* @returns response with no data
+*/
+export const deleteExpensePhoto = async (req, res, next) => {
+  try {
+    const { expense_id } = req.params;
+    await deleteExpenseMedia(expense_id);
+    res.status(STATUS_CODES.OK).json({
+      message: MESSAGES.DELETED
     });
   } catch (error) {
     next(error);

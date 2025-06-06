@@ -5,7 +5,8 @@ import {
     deletePersonalTransaction, 
     updatePersonalTransaction,
     getPersonalTransactionById,
-    getUserPeriodTypeTransactions 
+    getUserPeriodTypeTransactions ,
+    deletePersonalTransactionPhoto
 } from "../controller/personalTransactionController.js";
 import multer from "multer";
 import {validate} from "../middlewares/validateRequest.js";
@@ -30,6 +31,7 @@ router.get("/userPeriod",isAuthenticated,validate(getUserPeriodTypeTransactionsS
 router.get("/:personalTransaction_id", isAuthenticated,validate(getPersonalTransactionSchema), getPersonalTransactionById);
 
 //* PUT APIs *//
+router.put("/photo/:personalTransaction_id", isAuthenticated, upload.single("media"), deletePersonalTransactionPhoto);
 router.put("/:personalTransaction_id", isAuthenticated,validate(updatePersonalTransactionSchema), updatePersonalTransaction);
 
 //* DELETE APIs *//

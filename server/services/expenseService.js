@@ -11,7 +11,7 @@ import { addPushJob } from "../queues/push/processor.js";
 import { uploadMedia } from "./cloudinaryService.js";
 import { v4 as uuidv4 } from 'uuid';
 import user from "../models/user.js";
-
+import { deleteMedia } from "./cloudinaryService.js";
 
 /**
  * 
@@ -572,5 +572,29 @@ export const sendNewExpensePushNotification = async({expense, active_user_id}) =
   }
   catch(err){
       throw err;
+  }
+}
+
+/**
+ * 
+ * @param {string} expense_id 
+ * @returns void
+ */
+export const deleteExpenseMedia = async (expense_id) => {
+  const expenseObj = await findExpenseById(expense_id);
+  if (!expenseObj) throw new ErrorHandler(`Expense not found: ${expense_id}, cannot delete media`);
+
+  if (!expenseObj.media || !expenseObj.media.public_id) {
+    logger.warn(`No media found for expense ${expense_id}`);
+    return;
+  }
+
+  try {
+    await deleteMedia(expenseObj.media.public_id);
+    expenseObj.media = null;
+    await expenseObj.save();
+    logger.debug(`Media deleted for expense ${expense_id}`);
+  } catch (error) {
+     throw error;
   }
 }

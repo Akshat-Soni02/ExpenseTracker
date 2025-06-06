@@ -1,7 +1,7 @@
 import personalTransaction from "../models/personalTransaction.js";
 import { modifyWalletBalance } from "./walletService.js";
 import logger from "../logger/index.js";
-import { uploadMedia } from "./cloudinaryService.js";
+import { uploadMedia ,deleteMedia} from "./cloudinaryService.js";
 import { v4 as uuidv4 } from 'uuid';
 import { withSession } from "../utils/transaction.js";
 import ErrorHandler from "../middlewares/error.js";
@@ -224,4 +224,26 @@ export const findPersonalTransactionByQuery = async (query) => {
     return currPersonalTransaction;
 };
 
+/**
+ * 
+ * @param {string} personalTransaction_id 
+ * @returns void
+ */
+export const deletePersonalTransactionMedia = async (personalTransaction_id) => {
+  const personalTransactionObj = await findPersonalTransactionById(personalTransaction_id);
+  if (!personalTransactionObj) throw new ErrorHandler(`Personal Transaction not found: ${expense_id}, cannot delete media`);
 
+  if (!personalTransactionObj.media || !personalTransactionObj.media.public_id) {
+    logger.warn(`No media found for personal transaction ${personalTransaction_id}`);
+    return;
+  }
+
+  try {
+    await deleteMedia(personalTransactionObj.media.public_id);
+    personalTransactionObj.media = null;
+    await personalTransactionObj.save();
+    logger.debug(`Media deleted for personal transaction ${personalTransaction_id}`);
+  } catch (error) {
+     throw error;
+  }
+}

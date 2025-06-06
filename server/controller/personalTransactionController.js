@@ -1,5 +1,5 @@
 import ErrorHandler from "../middlewares/error.js";
-import { findPersonalTransactionById, createPersonalService, updatePersonalService, deletePersonalService, fetchPeriodTransactions} from "../services/personalTransactionService.js"
+import { findPersonalTransactionById, createPersonalService, updatePersonalService, deletePersonalService, fetchPeriodTransactions,deletePersonalTransactionMedia} from "../services/personalTransactionService.js"
 import { withTransaction } from "../utils/transaction.js";
 import { MESSAGES, STATUS_CODES } from "../config/constants.js";
 
@@ -122,4 +122,19 @@ export const getUserPeriodTypeTransactions = async (req, res, next) => {
         next(error);
     }
 };
-    
+
+/**
+ * 
+ *  @returns response with no data 
+ */
+export const deletePersonalTransactionPhoto = async (req, res, next) => {
+  try {
+    const { personalTransaction_id } = req.params;
+    await deletePersonalTransactionMedia(personalTransaction_id);
+    res.status(STATUS_CODES.OK).json({
+      message: MESSAGES.DELETED
+    });
+  } catch (error) {
+    next(error);
+  }
+};
