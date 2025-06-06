@@ -102,10 +102,12 @@ export const sendNotificationService = async ({token, title, body}) => {
     })
     .catch(err => {
       logger.debug(`push notification not sent`);
+      logger.error(err?.response?.data);
+      logger.error(err?.message);
       logger.warn(err.response?.data || err.message);
     });
 
-    logger.debug(`notification sent`);
+    logger.debug(`notification sent ${title}`);
     return {response, accessToken, notificationResponse};
   } catch (error) {
     /**
@@ -163,7 +165,7 @@ export const getAccessToken = async () => {
   /**
    * caching token with a minute as buffer
    */
-  cachedToken = tokenResponse.token;
+  cachedToken = tokenResponse;
   tokenExpiry = now + (tokenResponse.res?.data?.expires_in ?? 3600) * 1000 - 60000;
 
   return cachedToken;

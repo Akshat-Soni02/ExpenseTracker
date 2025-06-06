@@ -548,6 +548,7 @@ export const allExpenseMemberPushNotificationService = async ({expense, active_u
           }
 
           const tokens = user.accessTokens || [];
+          logger.debug(`Tokens ${tokens?.length}`);
           if(tokens.length === 0) continue;
 
           for (const token of tokens) {
