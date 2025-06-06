@@ -8,6 +8,7 @@ import {
   getUserPeriodExpenses,
   getUserExpenses,
   getCustomExpenses,
+  removeExpenseWallet
 } from "../controller/expenseController.js";
 import { validate } from "../middlewares/validateRequest.js";
 import { 
@@ -44,7 +45,8 @@ router.get("/custom", isAuthenticated,validate(getCustomExpensesSchema), getCust
 router.get("/:id", isAuthenticated,validate(getExpenseSchema), getExpenseById);
 
 //* PUT APIs *//
-router.put("/:expense_id", isAuthenticated,validate(updateExpenseSchema), upload.single("media"), updateExpense);
+router.put("/detach-wallet/:expense_id", isAuthenticated, removeExpenseWallet);
+router.put("/:expense_id", isAuthenticated, upload.single("media"), validate(updateExpenseSchema), updateExpense);
 
 //* DELETE APIs *//
 router.delete("/:expense_id", isAuthenticated,validate(deleteExpenseSchema), deleteExpense);
