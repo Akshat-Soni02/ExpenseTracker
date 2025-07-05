@@ -31,7 +31,7 @@ export const googleLoginAccesstoken = async (req, res, next) => {
   
     const newUser = await handleGoogleAccessTokenLogin( userData );
 
-    sendToken(newUser, res, "Welcome to ExpenZ", STATUS_CODES.CREATED);
+    sendToken(newUser, res, "Welcome to Expenzz", STATUS_CODES.CREATED);
   } catch (error) {
     next(error);
   }
@@ -52,7 +52,7 @@ export const googleLogin = async (req, res, next) => {
     }
 
     const existingUser = await handleGoogleIdTokenLogin(idToken);
-    sendToken(existingUser, res, "Welcome to ExpenZ", STATUS_CODES.CREATED);
+    sendToken(existingUser, res, "Welcome to Expenzz", STATUS_CODES.CREATED);
   } catch (error) {
     next(error);
   }
@@ -67,7 +67,7 @@ export const register = async (req, res, next) => {
   try {
     const newUser = await registerUser(req.body);
     
-    sendToken(newUser, res, "Welcome to ExpenZ", STATUS_CODES.CREATED);
+    sendToken(newUser, res, "Welcome to Expenzz", STATUS_CODES.CREATED);
   } catch (error) {
     next(error);
   }

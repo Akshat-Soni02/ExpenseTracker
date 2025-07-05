@@ -264,7 +264,7 @@ export const sendOtpMail = async ( email ) => {
   curUser.otpExpiry = otpExpiry;
 
   try {
-    await addPassResetMailJob({toMail: email, subject: "ExpenZ password reset", text: `Your OTP is ${otp} for password reset. It is valid for 5 minutes.`, html: `
+    await addPassResetMailJob({toMail: email, subject: "Expenzz password reset", text: `Your OTP is ${otp} for password reset. It is valid for 5 minutes.`, html: `
       <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
         <p>Your <strong>OTP</strong> for password reset is:</p>
         <p style="font-size: 24px; font-weight: bold; color: #2B61D4;">${otp}</p>
@@ -505,7 +505,7 @@ export const extractTempName = (email) => {
  */
 export const sendBorrowerMail = async ({borrowerProfile, lender, amount, group}) => {
   if(group) {
-    await sendEmail({toMail: borrowerProfile.email, subject: "Dues pending", text: `Hi ${borrowerProfile.name},\n\nThis is a reminder from ${lender.name} regarding an outstanding amount of ₹${amount} in the group "${group.group_title}".\n\nPlease make the settlement soon.\n\nBest,\nExpenZ Team`, html: `<div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
+    await sendEmail({toMail: borrowerProfile.email, subject: "Dues pending", text: `Hi ${borrowerProfile.name},\n\nThis is a reminder from ${lender.name} regarding an outstanding amount of ₹${amount} in the group "${group.group_title}".\n\nPlease make the settlement soon.\n\nBest,\nExpenzz Team`, html: `<div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
     <p>Hi <strong>${borrowerProfile.name}</strong>,</p>
 
     <p>
@@ -515,11 +515,11 @@ export const sendBorrowerMail = async ({borrowerProfile, lender, amount, group})
 
     <p>Please make the settlement soon.</p>
 
-    <p style="margin-top: 20px;">Best,<br/>ExpenZ Team</p>
+    <p style="margin-top: 20px;">Best,<br/>Expenzz Team</p>
   </div>
   `});
   } else {
-    await sendEmail({toMail: borrowerProfile.email, subject: "Dues pending", text: `Hi ${borrowerProfile.name},\n\nThis is a reminder from ${lender.name} regarding an outstanding amount of ₹${amount}.\n\nPlease make the settlement soon.\n\nBest,\nExpenZ Team`, html: `<div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
+    await sendEmail({toMail: borrowerProfile.email, subject: "Dues pending", text: `Hi ${borrowerProfile.name},\n\nThis is a reminder from ${lender.name} regarding an outstanding amount of ₹${amount}.\n\nPlease make the settlement soon.\n\nBest,\nExpenzz Team`, html: `<div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
     <p>Hi <strong>${borrowerProfile.name}</strong>,</p>
 
     <p>
@@ -529,7 +529,7 @@ export const sendBorrowerMail = async ({borrowerProfile, lender, amount, group})
 
     <p>Please make the settlement soon.</p>
 
-    <p style="margin-top: 20px;">Best,<br/>ExpenZ Team</p>
+    <p style="margin-top: 20px;">Best,<br/>Expenzz Team</p>
   </div>
   `});
   }
@@ -542,10 +542,10 @@ export const sendBorrowerMail = async ({borrowerProfile, lender, amount, group})
  */
 export const sendInviteMail = async ({inviter, invitee}) => {
   if(!inviter || !invitee) throw new ErrorHandler(`Inviter or invitee is undefined: ${inviter}, ${invitee}`);
-  await sendEmail({ toMail: invitee.email, subject: "Invitation to join ExpenZ", text: `Hi,\n\n${inviter.name} has invited you to join ExpenZ!\n\nYou can download the app using the link below:\n\n${process.env.APP_LINK}\n\nOnce you sign up, you will be automatically added as a friend to ${inviter.name}.\n\nBest regards,\nExpenZ Team`, html: `<div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
+  await sendEmail({ toMail: invitee.email, subject: "Invitation to join Expenzz", text: `Hi,\n\n${inviter.name} has invited you to join Expenzz!\n\nYou can download the app using the link below:\n\n${process.env.APP_LINK}\n\nOnce you sign up, you will be automatically added as a friend to ${inviter.name}.\n\nBest regards,\nExpenzz Team`, html: `<div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
     <p>Hi,</p>
 
-    <p><strong>${inviter.name}</strong> has invited you to join <strong>ExpenZ</strong>!</p>
+    <p><strong>${inviter.name}</strong> has invited you to join <strong>Expenzz</strong>!</p>
 
     <p>
       You can download the app using the link below:<br/>
@@ -558,7 +558,7 @@ export const sendInviteMail = async ({inviter, invitee}) => {
       After signing up, you’ll automatically be added as a friend to <strong>${inviter.name}</strong>.
     </p>
 
-    <p style="margin-top: 20px;">Best regards,<br/>ExpenZ Team</p>
+    <p style="margin-top: 20px;">Best regards,<br/>Expenzz Team</p>
   </div>
   `});
 }

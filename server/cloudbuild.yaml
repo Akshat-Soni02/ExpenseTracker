@@ -8,16 +8,16 @@ steps:
     args: [ 'push', 'gcr.io/phrasal-bond-460512-s7/expenz-node-backend' ]
 
   # Deploy to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
-    args:
-      [
-        'run', 'deploy', 'expenz-node-backend',
-        '--image', 'gcr.io/phrasal-bond-460512-s7/expenz-node-backend',
-        '--region', 'asia-south1',
-        '--platform', 'managed',
-        '--allow-unauthenticated'
-      ]
+  # - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  #   entrypoint: gcloud
+  #   args:
+  #     [
+  #       'run', 'deploy', 'expenz-node-backend',
+  #       '--image', 'gcr.io/phrasal-bond-460512-s7/expenz-node-backend',
+  #       '--region', 'asia-south1',
+  #       '--platform', 'managed',
+  #       '--allow-unauthenticated'
+  #     ]
 
 images:
   - 'gcr.io/phrasal-bond-460512-s7/expenz-node-backend'
