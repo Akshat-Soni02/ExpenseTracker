@@ -1,5 +1,6 @@
 import  jwt  from "jsonwebtoken";
 import user from "../models/user.js";
+import logger from "../logger/index.js";
 
 export const isAuthenticated = async (req, res, next) => {
     try {
@@ -15,12 +16,12 @@ export const isAuthenticated = async (req, res, next) => {
       req.user = await user.findById(decoded._id);
 
       if (!req.user) {
-        return res.status(404).json({ success: false, message: "User not found" });
+        return res.status(404).json({ message: "User not found" });
       }
   
       return next();
     } catch (error) {
-      console.error("Authentication Error:", error);
+      logger.error("Authentication Error");
       return res.status(401).json({ message: "Invalid Token" });
     }
   };

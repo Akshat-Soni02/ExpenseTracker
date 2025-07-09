@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BUDGETPREDICTION_API_URL = 'http://localhost:5000/predict';
+const BUDGETPREDICTION_API_URL = process.env.BUDGETPREDICTION_API_URL;
 
 export const getBudgetPredictionResponse = async (data) => {
     try {

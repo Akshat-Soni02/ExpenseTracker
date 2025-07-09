@@ -1,137 +1,142 @@
+import { MESSAGES, STATUS_CODES } from "../config/constants.js";
 import ErrorHandler from "../middlewares/error.js";
-import wallet from "../models/wallet.js";
-import { findWalletById, transferWalletAmounts } from "../services/walletService.js";
+import { findCustomExpenses } from "../services/expenseService.js";
+import { findPersonalTransactionByQuery } from "../services/personalTransactionService.js";
+import { createWalletService, deleteWalletService, findWalletById, transferWalletAmounts, updateWalletService } from "../services/walletService.js";
+import { withTransaction } from "../utils/transaction.js"
 
+
+/**
+ * 
+ * creates new wallet
+ * @returns response with wallet
+ */
 export const createWallet = async (req, res, next) => {
   try {
-    console.log("Creating wallet");
-    // wherever we are sending the array of members to the backend, the members array contains only other ids not the creater one, we will push creator id explicitly in the backend
-    const id = req.user._id;
-    const { wallet_title, lower_limit, members = [] } = req.body;
-    // members.push({ user_id: id });
-    const amount = Number(req.body.amount);
-    const newWallet = await wallet.create({
-      amount,
-      wallet_title,
-      lower_limit: lower_limit || 0,
-      creator_id: id,
-      // members: members,
-    });
+    const user_id = req.user._id;
+    const newWallet = await createWalletService({...req.body, creator_id: user_id});
 
-
-    if(!newWallet) return next(new ErrorHandler("Error creating new wallet", 400));
-    console.log("Created wallet");
-    res.status(201).json({
-      message: "Successfully created new wallet",
+    res.status(STATUS_CODES.CREATED).json({
+      message: MESSAGES.RESOURCE_CREATED("Wallet"),
       data: newWallet,
     });
   } catch (error) {
-    if (error.code === 11000) {
-      // Duplicate key error (E11000)
-      return res.status(400).json({
-        error:
-          "A wallet with this title already exists. Please choose a different name.",
-      });
-    }
-    console.log("Error creating wallet", error);
     next(error);
   }
 };
 
+/**
+ * 
+ * everything is editable here
+ * @returns response with updated wallet
+ */
 export const updateWallet = async (req, res, next) => {
   try {
-    console.log("Updating wallet");
-    const { id } = req.params;
-    let updatedDetails = req.body;
-    updatedDetails.amount = Number(updatedDetails.amount);
-    const updatedWallet = await wallet.findByIdAndUpdate(id, updatedDetails, {
-      new: true,
-      runValidators: true,
+    const updatedWallet = await updateWalletService({wallet_id: req.params.id, data: req.body});
+    
+    res.status(STATUS_CODES.OK).json({
+      message: MESSAGES.RESOURCE_UPDATED("Wallet"),
+      data: updatedWallet,
     });
-
-    if (!updatedWallet) {
-      return next(new ErrorHandler("Wallet not found", 404));
-    }
-    console.log("Updated wallet");
-    res.status(200).json({
-      message: "Wallet updated Successfully",
-      data: updateWallet,
-    });
+  
   } catch (error) {
-    if (error.code === 11000) {
-      // Duplicate key error (E11000)
-      return res.status(400).json({
-        error:
-          "A wallet with this title already exists. Please choose a different name.",
-      });
-    }
-    console.log("Error updaing wallet", error.message);
     next(error);
   }
 };
 
+
+/**
+ * 
+ * Soft delete wallet method
+ * @returns reponse with no data
+ */
 export const deleteWallet = async (req, res, next) => {
-  // we are simply making deleted true to avoid deleting transactions related to this wallet, don't fetch these wallets in get request
   try {
-    console.log("Deleting wallet");
     const { id } = req.params;
-    const deletedWallet = await wallet.findByIdAndUpdate(
-      id,
-      { deleted: true },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
 
-    if (!deletedWallet)
-      return next(new ErrorHandler("Invalid id to delete wallet", 404));
-    console.log("Deleted wallet");
-    res.status(200).json({
-      message: "wallet deleted successfully",
-      data: deleteWallet,
+    /**
+     * although the service give updated (softly deleted) wallet,
+     * we don't need it for now
+     */
+    await deleteWalletService({wallet_id: id, user_id: req.user.id});
+  
+    res.status(STATUS_CODES.OK).json({
+      message: MESSAGES.DELETED,
     });
   } catch (error) {
-    console.log("Error deleting wallet", error);
     next(error);
   }
 };
 
+
+/**
+ * 
+ * fetches wallet details
+ * @returns response with wallet
+ */
 export const getWalletById = async (req, res, next) => {
   try {
-    console.log("Get wallet by id");
     const { id } = req.params;
     const curWallet = await findWalletById(id);
     
-    if (!curWallet) return next(new ErrorHandler("Invalid id to get wallet details", 404));
-    console.log("Fetched wallet by id");
-    res.status(200).json({
-      message: "Wallet fetched successfully",
+    if(!curWallet) throw new ErrorHandler(`Client get operation failed on wallet: ${id}`, STATUS_CODES.SERVER_ERROR);
+
+    res.status(STATUS_CODES.OK).json({
+      message: MESSAGES.FETCHED("Wallet"),
       data: curWallet,
     });
   } catch (error) {
-    console.log("Error getting wallet by id", error);
     next(error);
   }
 };
 
+
+/**
+ * Transfer amount from one wallet to another,
+ * fails on transfer amount being larger then wallet's present amount
+ * @returns response with no data
+ */
 export const walletsAmountTransfer = async (req, res, next) => {
-  // checks
-  // amount should be less than amount present in from_account
-  // both to and from account should belong to signed user - ignoring this for now
   try {
-    console.log("Wallet transfer");
     const { fromWallet, toWallet } = req.query;
-    let  amount = Number(req.body.amount);
-    const transfer = await transferWalletAmounts({toWallet, fromWallet, amount});
-    if(!transfer) return next(new ErrorHandler("Transfer amount is greater than wallet amount", 400))
+    const { amount } = req.body;
+
+    await withTransaction(async (session) => {
+      return await transferWalletAmounts({toWallet, fromWallet, amount}, session);
+    });
     
-    res.status(200).json({
-      message:"Successfully transfered amount",
-      data: transfer,
+    res.status(STATUS_CODES.OK).json({
+      message: "Successfully transfered",
     });
   } catch (error) {
-    console.log("Error transferring amount from one account to another", error);
     next(error);
   }
 };
+
+
+/**
+ * 
+ * Collects all transactions (personal + expenses)
+ * happened with a wallet
+ * @returns data contains expenses and personal keys
+ */
+export const walletTransactions = async (req, res, next) => {
+  try {
+    const { wallet_id } = req.params;
+    const id = req.user._id;
+
+    const expensesWithWallet = await findCustomExpenses({wallet_id, lender_id: id});
+
+    const personalsWithWallet = await findPersonalTransactionByQuery({wallet_id, user_id: id});
+
+    res.status(STATUS_CODES.OK).json({
+      message: "Retreived wallet transactions",
+      data: {
+        expenses: expensesWithWallet,
+        personals: personalsWithWallet
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}

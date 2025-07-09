@@ -1,35 +1,201 @@
 import { modifyWalletBalance } from "./walletService.js";
-import { distributeAmount } from "./groupService.js";
+import { distributeAmount, findGroupById, settleAllGroups } from "./groupService.js";
 import { updateFriendlyExchangeStatesOnLending } from "./userService.js";
 import settlement from "../models/settlement.js";
+import ErrorHandler from "../middlewares/error.js";
+import { withSession } from "../utils/transaction.js";
+import { findUserById } from "./userService.js";
+import { addPushJob } from "../queues/push/processor.js";
+import logger from "../logger/index.js";
 
-export const handleSettlementRelations = async ({payer_id, receiver_id, amount, group_id}) => {
-      console.log("handling settlement relations");
-      //Update Group
-      if (group_id){
-        await distributeAmount({
-          groupId: group_id,
-          giverId: payer_id,
-          borrowers: [{user_id: receiver_id, amount}],
-        });}
-    
-    
-      //Update Users friendly state
-      await updateFriendlyExchangeStatesOnLending({
-        lender_id: payer_id,
-        borrowers: [{user_id: receiver_id, amount}],
-      });
-      console.log("settlement relations handled");
+
+/**
+ * the service first tries to modify wallet states, 
+ * then it changes user's personal states with each
+ * other (also if the settlement happened in a 
+ * group then changes group's state as well)
+ * 
+ * if its not included in any group then it settles all
+ * the groups
+ * 
+ * @param {{user_id: string, data: object}} param0 
+ * @param {session} session
+ * @returns newSettlement
+ */
+export const createSettleService = async ({user_id, data}, session) => {
+
+  let {
+    settlement_description,
+    payer_wallet_id,
+    payer_id,
+    receiver_wallet_id,
+    receiver_id,
+    group_id,
+    status,
+    amount
+  } = data;
+
+  if (status === "sent") {
+    payer_id = user_id;
+
+    if (payer_wallet_id) {
+      await modifyWalletBalance({id: payer_wallet_id, amount: -1*amount}, session);
+    }
+
+  } else if (status === "receiver") {
+    receiver_id = user_id;
+
+    if (receiver_wallet_id) {
+      await modifyWalletBalance({id: receiver_wallet_id, amount}, session);
+    }
+
+  }
+
+  await handleSettlementRelations({payer_id, receiver_id, amount, group_id}, session);
+
+  if(!group_id) {
+    await settleAllGroups(payer_id.toString(), receiver_id.toString(), session);
+  }
+
+  const {status: excludedStatus , ...rest} = data;
+
+  rest.payer_id = payer_id;
+  rest.receiver_id = receiver_id;
+
+  /**
+   * .session(session) doesn't work on create queries
+   */
+  const doc = await settlement.create([rest], {session});
+  const newSettlement = doc[0];
+
+  if(!newSettlement) throw new ErrorHandler(`db operation failed to create new settlement`);
+
+  try {
+    await sendNewSettlementPushNotification({settlement: newSettlement, active_user_id: user_id, isPayer: status === "sent", inGroup: group_id})
+  } catch (error) {
+    logger.warn(error);
+  }
+
+  logger.info(`settlement ${newSettlement._id} created by user ${user_id}`);
+  return newSettlement;
 }
 
-export const revertSettlementEffects = async (curSettlement) => {
+
+
+/**
+ * NOTE - Don't send anything other than description for now
+ * @param {{settlement_id: string, data: object}} param0 
+ * @returns updated settlement
+ */
+export const updateSettleService = async ({ settlement_id, data} ) => {
+  if(data.amount || data.payer_id || data.receiver_id) throw new ErrorHandler(`Client requested more details updated then supported for settlement ${settlement_id}`);
+
+  let existingSettle = await findSettlementById(settlement_id);
+  if (!existingSettle) throw new ErrorHandler(`Settlement not found: ${settlement_id}`);
+
+  const updatedSettle = await settlement.findByIdAndUpdate( settlement_id, data, { new: true, runValidators: true });
+
+  if (!updatedSettle) throw new ErrorHandler(`Update operation failed for settlemenet ${settlement_id}`);
+
+  logger.info(`settlement ${settlement_id} updated`);
+  return updatedSettle;
+}
+
+
+/**
+ * 
+ * here we take the existing session and 
+ * revert all the changes made by it
+ * 
+ * @param {string} settlement_id 
+ * @param {session} session 
+ * @returns nothing
+ */
+export const deleteSettleService = async (settlement_id, session) => {
+
+  let curSettlement = await findSettlementById(settlement_id, session);
+
+  if (!curSettlement) throw new ErrorHandler(`Settlement not found: ${settlement_id}`);
+
+  await revertSettlementEffects(curSettlement, session);
+
+  let query = withSession(settlement.findByIdAndDelete(settlement_id), session);
+  const deletedSettlement = await query;
+
+  if(!deletedSettlement) throw new ErrorHandler(`delete operation failed on settlement ${settlement_id}`);
+  logger.info(`settlement ${settlement_id} deleted`);
+}
+
+
+/**
+ * 
+ * @param {string} settlement_id 
+ * @returns settlement with names contained
+ */
+export const fetchSettlementDetails = async (settlement_id) => {
+  const settleObj = await findSettlementById(settlement_id);
+  
+  if (!settleObj) {
+      throw new ErrorHandler(`Settlement not found: ${settlement_id}`);
+  }
+
+  const curSettlement = settleObj.toObject();
+
+  const payer = await findUserById(curSettlement.payer_id);
+  if(!payer) throw new ErrorHandler(`Payer ${curSettlement.payer_id} not found for settlement ${settlement_id}`);
+
+  const receiver = await findUserById(curSettlement.receiver_id);
+  if(!receiver) throw new ErrorHandler(`Receiver ${curSettlement.receiver_id} not found for settlement ${settlement_id}`);
+
+  return {...curSettlement, payer_name: payer.name, receiver_name: receiver.name};
+}
+
+
+/**
+ * 
+ * it updates group's state as well user's state according to settlement
+ * 
+ * @param {{payer_id: string, receiver_id: string, amount: number, group_id: string}} param0
+ * @param {session} session
+ */
+export const handleSettlementRelations = async ({payer_id, receiver_id, amount, group_id}, session) => {
+
+  if(!amount || !payer_id || !receiver_id) throw new ErrorHandler(`Invalid settlement details to update relations`);
+
+  if (group_id){
+    await distributeAmount({
+      groupId: group_id,
+      giverId: payer_id,
+      borrowers: [{user_id: receiver_id, amount}],
+    }, session);
+  }
+
+  await updateFriendlyExchangeStatesOnLending({
+    lender_id: payer_id,
+    borrowers: [{user_id: receiver_id, amount}],
+  }, session);
+
+}
+
+
+
+/**
+ * 
+ * Reverts wallets data and then process
+ * settlement creation function with 
+ * upside down data
+ * 
+ * @param {object} curSettlement 
+ * @param {session} session 
+ */
+export const revertSettlementEffects = async (curSettlement, session) => {
   try {
-    console.log("reverting settlement effects");
+
     if (curSettlement.payer_wallet_id) {
       await modifyWalletBalance({
         id: curSettlement.payer_wallet_id,
         amount: curSettlement.amount,
-      });
+      }, session);
     }
 
     if (curSettlement.receiver_wallet_id) {
@@ -37,7 +203,7 @@ export const revertSettlementEffects = async (curSettlement) => {
         id: curSettlement.receiver_wallet_id,
         amount: -curSettlement.amount,
         zeroTrue: true
-      });
+      }, session);
     }
 
     await handleSettlementRelations({
@@ -45,23 +211,42 @@ export const revertSettlementEffects = async (curSettlement) => {
       receiver_id: curSettlement.payer_id,
       amount: curSettlement.amount,
       group_id: curSettlement?.group_id,
-    });
-    console.log("settlement effects reverted");
+    }, session);
+
   } catch (error) {
-    console.log("Error reverting settlement", error);
+    throw error;
   }
 };
 
-export const findSettlementById = async (id) => {
-  console.log("finding settlement by id");
-  const curSettlement = await settlement.findById(id);
-  if (!curSettlement) return null;
-  console.log("found settlement by id");
+
+
+/**
+ * 
+ * @param {string} settlement_id 
+ * @param {session} session 
+ * @returns settlement if found else nothing
+ */
+export const findSettlementById = async (settlement_id, session) => {
+
+  let query = withSession( settlement.findById(settlement_id), session);
+  const curSettlement = await query;
+
+  if(!curSettlement) {
+    logger.error(`Settlement not found: ${settlement_id}`);
+    return;
+  }
+
   return curSettlement;
 }
 
+
+/**
+ * 
+ * @param {{userId: string, group_id: string}} param0 
+ * @returns array of settlement
+ * @throws use in try catch only
+ */
 export const findUserSettlements = async ({userId, group_id}) => {
-  console.log("finding user settlements");
   let filter = {
     $or: [
       { "payer_id": userId },
@@ -70,21 +255,133 @@ export const findUserSettlements = async ({userId, group_id}) => {
   };
 
   if (group_id) {
-    filter.group_id = group_id; // Filter by group if provided
+    filter.group_id = group_id;
   }
 
-  const settlements = await settlement.find(filter).sort({
-    created_at: -1,
+  const settlements = await settlement.find(filter).select("_id settlement_description payer_id  receiver_id amount createdAt ").sort({
+    createdAt: -1,
   });
-  console.log("found user settlements");
-  return settlements;
+
+  const WithDetailsSettlements = await Promise.all(settlements.map(async (settlementObj) => {
+    try {
+        const settlement = settlementObj.toObject();
+        const payer = await findUserById(settlement.payer_id);
+        if (!payer) {
+            logger.warn(`User not found: ${settlement.payer_id}, included in settlement ${settlement._id}`);
+        }
+
+        const payer_name = settlement.payer_id.toString() === userId.toString() ? "You" : payer?.name || "unkown";
+
+        const receiver = await findUserById(settlement.receiver_id);
+        if (!receiver) {
+            logger.warn(`User not found: ${settlement.receiver_id}, included in settlement ${settlement._id}`);
+        }
+
+        const receiver_name = settlement.receiver_id.toString() === userId.toString() ? "you" : receiver?.name || "unkown";
+
+        return {
+            ...settlement,
+            type: "settlement",
+            payer_name,
+            receiver_name
+        };
+    } catch (error) {
+        logger.warn(error);
+        return {
+            ...settlement,
+            type: "settlement",
+            payer_name: "unknown",
+            receiver_name: "unknown"
+        };
+    }
+  }));
+
+  return WithDetailsSettlements;
 }
 
+
+/**
+ * 
+ * @param {string} group_id 
+ * @returns array of settlements
+ */
 export const findGroupSettlements = async (group_id) => {
-  console.log("finding group settlements");
   const settlements = await settlement.find({group_id});
-  if (!settlements) return null;
-  console.log("found group settlements");
   return settlements;
 }
 
+
+/**
+ * Gets user id and utilized the user's tokens to send notifications
+ * @param {{user_id: string, notification_title: string, notification_body: string}} param0 
+ * @returns nothing
+ */
+export const settlementPushNotificationService = async ({user_id, notification_title, notification_body}) => {
+
+  const user = await findUserById(user_id);
+
+  if (!user) {
+      logger.warn(`User not found: ${user_id}`);
+      throw new ErrorHandler(`User ${user_id} not found to send notification of settlement`);
+  }
+
+  const tokens = user.accessTokens || [];
+
+  if(tokens.length === 0) return;
+
+  for (const token of tokens) {
+      try {
+          await addPushJob({token, title: notification_title, body: notification_body});
+      } catch (tokenErr) {
+          logger.error(`Failed to ${notification_title} settlement push notification`);
+      }
+  }
+}
+
+
+
+/**
+ * Sends push notification for showing a user created settlement
+ * 
+ * @param {{settlement: object, active_user_id: string, isPayer: boolean, inGroup: boolean}} param0
+ * @returns nothing if success else throws error
+ */
+export const sendNewSettlementPushNotification = async({settlement, active_user_id, isPayer, inGroup}) => {
+  try{
+      const active_user = await findUserById(active_user_id);
+      if(!active_user) {
+          logger.warn(`user not found ${active_user_id}, terminating push notification for settlement creation`);
+          return;
+      }
+
+      const title = "🤝🏻 Settled";
+
+      if(inGroup) {
+        const active_group = await findGroupById(settlement.group_id);
+        if(!active_group) throw new ErrorHandler(`Group not found: ${settlement.group_id}`);
+
+        let body = `Dues marked settled by ${active_user.name} in ${active_group.group_title}`
+        let notificationReceiver = settlement.payer_id;
+
+        if(isPayer) {
+          body = `${active_user.name} has settled their dues in ${active_group.group_title}.`;
+          notificationReceiver = settlement.receiver_id;
+        }
+
+        await settlementPushNotificationService({user_id: notificationReceiver, notification_title: title, notification_body: body});
+
+      } else {
+        let body = `All dues marked settled by ${active_user.name}`
+        let notificationReceiver = settlement.payer_id;
+
+        if(isPayer) {
+          body = `${active_user.name} has settled all of their dues.`;
+          notificationReceiver = settlement.receiver_id;
+        }
+        await settlementPushNotificationService({user_id: notificationReceiver, notification_title: title, notification_body: body});
+      }
+  }
+  catch(err){
+      throw err;
+  }
+}

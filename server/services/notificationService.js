@@ -1,50 +1,56 @@
 import nodemailer from "nodemailer";
 import admin from "firebase-admin";
 import { google } from "googleapis";
-import path from "path";
-import { fileURLToPath } from 'url';
 import axios from "axios";
+import logger from "../logger/index.js";
+import ErrorHandler from "../middlewares/error.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const FCM_API_URL = process.env.FCM_API_URL;
 
 
-
-export const sendEmail = ({toMail, subject, text}) => {
-    console.log("sending email");
+/**
+ * utilizes email and pass to send mail
+ * @param {{toMail: email, subject: string, text: string, html: html}} param0
+ * 
+ */
+export const sendEmail = async ({toMail, subject, text, html}) => {
+  try {
     const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        auth: {
-          user: 'expensetracker414@gmail.com',
-          pass: 'buygfdapgkgjofol',
-        },
-      });
-    
+      host: 'smtp.gmail.com',
+      port: 465,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
     
     const mailOptions = {
-        from: 'expensetraker414@gmail.com',
+        from: '"Expenzz" <expensetraker414@gmail.com>',
         to: toMail,
         subject,
-        text
+        text,
+        html
     };
     
-    // Send the email
-    transporter.sendMail(mailOptions, function(error, info){
-        if (error) {
-        console.log('Error:', error);
-        } else {
-        console.log('Email sent:', info.response);
-        console.log("email sent to: ", toMail);
-        }
-    });
-    console.log("email sent");
+    const info = await transporter.sendMail(mailOptions);
+    logger.info(`email sent to ${toMail} with response: ${info.response}`);
+  } catch (error) {
+    throw error;
+  }
 }
 
-const FCM_API_URL = 'https://fcm.googleapis.com/v1/projects/expensetracker-451815/messages:send';
 
-
+/**
+ * 
+ * @param {{token: string, title: string, body: string}} param0 
+ * @returns response object if sent successfully
+ */
 export const sendNotificationService = async ({token, title, body}) => {
+
+  /**
+   * message body for notification, works 
+   * for android and ios both
+   */
   const message = {
     notification: {
       title,
@@ -66,9 +72,10 @@ export const sendNotificationService = async ({token, title, body}) => {
   };
 
   try {
-    console.log("Sending notification");
+
     const response = await admin.messaging().send(message);
     const accessToken =  await getAccessToken();
+
     const notificationBody = {
       message: {
         token: token,
@@ -78,7 +85,12 @@ export const sendNotificationService = async ({token, title, body}) => {
         }
       }
     };
+
     let notificationResponse={};
+
+    /**
+     * request to google api with access token
+     */
     axios.post(FCM_API_URL, notificationBody, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -89,43 +101,72 @@ export const sendNotificationService = async ({token, title, body}) => {
       notificationResponse=res.data;
     })
     .catch(err => {
-      console.error('Error sending notification:', err.response?.data || err.message);
+      logger.debug(`push notification not sent`);
+      logger.error(err?.response?.data);
+      logger.error(err?.message);
+      logger.warn(err.response?.data || err.message);
     });
-    console.log("Notification sent successfully:");
+
+    logger.debug(`notification sent ${title}`);
     return {response, accessToken, notificationResponse};
   } catch (error) {
-    console.error("Error sending notification:", error);
-    throw error;
+    /**
+     * @todo for multiple reasons tokens expire,
+     * hence need to remove expired tokens else
+     * redis will explode with corrupted tokens in queue
+     */
+    if (
+      error.code === "messaging/registration-token-not-registered" ||
+      error.errorInfo?.code === "messaging/registration-token-not-registered"
+    ) {
+      logger.info("Invalid FCM token:", token);
+    } else {
+      logger.warn(`error sending notification:`, error);
+      throw error;
+    }
   }
-
 }
 
+
+/**
+ * access token cached in-memory,
+ * for an hour
+ */
+let cachedToken = null;
+let tokenExpiry = 0;
+
+
+/**
+ * 
+ * @returns access token
+ */
 export const getAccessToken = async () => {
-  console.log("Getting access token");
+  const now = Date.now();
+
+  /**
+   * reuses cachedToken if it's not expired
+   */
+  if (cachedToken && tokenExpiry > now) {
+    return cachedToken;
+  }
+
   const firebaseKey = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!firebaseKey) throw new ErrorHandler(`env not set, missing firebase service account`);
 
-  if (!firebaseKey) {
-    throw new Error('Missing FIREBASE_SERVICE_ACCOUNT env var');
-  }
-
-  let parsedKey;
-  try {
-    parsedKey = JSON.parse(firebaseKey);
-  } catch (err) {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT is not valid JSON');
-  }
+  const parsedKey = JSON.parse(Buffer.from(firebaseKey, "base64").toString("utf-8"));
 
   const auth = new google.auth.GoogleAuth({
-    // keyFile: parsedKey, // path to the service account key
     credentials: parsedKey,
     scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
   });
 
-  try {
-    const accessToken = await auth.getAccessToken();
-    return accessToken;
-  } catch (error) {
-    console.error("Error fetching access token:", error);
-    throw error;
-  }
-}
+  const tokenResponse = await auth.getAccessToken();
+
+  /**
+   * caching token with a minute as buffer
+   */
+  cachedToken = tokenResponse;
+  tokenExpiry = now + (tokenResponse.res?.data?.expires_in ?? 3600) * 1000 - 60000;
+
+  return cachedToken;
+};
