@@ -2,7 +2,7 @@ import ErrorHandler from "../middlewares/error.js";
 import { sendToken } from "../utils/features.js";
 import logger from "../logger/index.js";
 
-import { addFriendsService, addFutureFriendsService, findBorrowersAndRemind, findTodaySpend, findUserById, getFriends, getUserExchangeState, handleGoogleAccessTokenLogin, handleGoogleIdTokenLogin, loginUser, mergeWithDummy, numAlreadyExists, pushNotificationTokenUpdate, registerUser, removeFutureFriend, resetUserPassword, sendBorrowerRemainder, sendOtpMail, tempPhoneCheckService, unifyUserSpendsHistory, updateUserDetails, verifyReceivedOtp } from "../services/userService.js";
+import { addFriendsService, addFutureFriendsService, addOrCreateDummy, findBorrowersAndRemind, findTodaySpend, findUserById, getFriends, getUserExchangeState, handleGoogleAccessTokenLogin, handleGoogleIdTokenLogin, loginUser, mergeWithDummy, numAlreadyExists, pushNotificationTokenUpdate, registerUser, removeFutureFriend, resetUserPassword, sendBorrowerRemainder, sendOtpMail, tempPhoneCheckService, unifyUserSpendsHistory, updateUserDetails, verifyReceivedOtp } from "../services/userService.js";
 import { findUserWallets } from "../services/walletService.js";
 import { findUserGroups } from "../services/groupService.js";
 import { findUserExpenses } from "../services/expenseService.js";
@@ -589,6 +589,26 @@ export const getUserById = async (req, res, next) => {
     next(error);
   }
 }
+
+/**
+ * 
+ * @returns response with no data
+ */
+export const addContactFriend = async (req, res, next) => {
+  try {
+    const user_id = req.user._id;
+    const { givenName, phone_num } = req.body;
+
+    const isDummy = await addOrCreateDummy({ user_id, givenName, phone_num });
+
+    return res.status(STATUS_CODES.OK).json({
+      message: "Friend added",
+      data: { isDummy }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 
 /**

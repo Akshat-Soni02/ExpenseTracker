@@ -354,6 +354,38 @@ export const mergeWithDummy = async ({ user_id, phone_num }, session) => {
   return dummyUser;
 };
 
+/**
+ * 
+ * @todo remove app test link and add some other image link
+ */
+export const addOrCreateDummy = async ({ user_id, givenName, phone_num }) => {
+  const curUser = await findUserById(user_id);
+  if (!curUser) throw new ErrorHandler(`User ${email} not found, cannot add friends`);
+
+  let isDummy = true;
+
+  let existingAccount = await user.findOne({ phone_number: phone_num });
+  if(existingAccount && !existingAccount.is_dummy) isDummy = false;
+
+  /**
+   * here adding email so other email
+   * serivces don't break
+   */
+  if(!existingAccount) {
+    existingAccount = await user.create({
+      name: givenName,
+      profile_photo: {
+        url: "https://res.cloudinary.com/dt2ul4vgd/image/upload/v1749569853/userProfiles/apptest%40gmail.com.jpg",
+        public_id: "userProfiles/apptest@gmail.com",
+      },
+      phone_number: phone_num,
+      email: `${uuidv4()}@gmail.com`
+    });
+  }
+
+  await addUserFriend({ invitee: existingAccount, inviter: curUser });
+  return isDummy;
+}
 
 /**
  * 
@@ -479,7 +511,7 @@ export const getFriends = async (user_id) => {
 
   const friends = await user
     .find({ _id: { $in: friendIds } })
-    .select("name profile_photo email");
+    .select("name profile_photo email phone_number");
 
   const friendsWithAmounts = friends.map((friend) => ({
     _id: friend._id,
@@ -488,6 +520,7 @@ export const getFriends = async (user_id) => {
     profile_photo: friend.profile_photo?.url || "https://res.cloudinary.com/dgn8yfqs4/image/upload/v1740736643/userProfiles/akshatsonibhl99%40gmail.com.jpg",
     amount: friendsMap.get(friend._id.toString()) || 0,
     type: typeMap.get(friend._id.toString()) || undefined,
+    phone_number: friend.phone_number || 1111111111
   }));
 
   return friendsWithAmounts;
