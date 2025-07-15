@@ -28,7 +28,10 @@ import {
   getUserFutureFriends,
   googleLoginAccesstoken,
   removeFriendInvite,
-  getUnifiedData
+  getUnifiedData,
+  userPhoneNumCheck,
+  phoneNumAvailabilityCheck,
+  mergeToDummy
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 import multer from "multer";
@@ -63,6 +66,7 @@ router.post("/login",validate(LoginSchema), login);
 router.post("/send-otp",validate(SendOtpSchema), sendOtp);
 router.post("/verify-otp",validate(VerifyOtpSchema), verifyOtp);
 router.post("/reset-password",validate(ResetPasswordSchema), resetPassword);
+router.post("/first-merge-to-dummy/:phone_num", isAuthenticated, mergeToDummy);
 router.post("/send-invites", isAuthenticated,validate(AddUserFriendsBodySchema), addUserFriends);
 router.post("/auto-add-friends",validate(autoAddFutureFriendsSchema), autoAddFutureFriends);
 router.post("/remind-borrowers", isAuthenticated, remindBorrowers);
@@ -71,6 +75,8 @@ router.post("/remove-friend-invite", isAuthenticated,validate(RemoveFriendInvite
 
 //* GET APIs *//
 router.get("/me", isAuthenticated, getMyProfile);
+router.get("/user-phone-number-check", isAuthenticated, userPhoneNumCheck);
+router.get("/phone-number-availability-check", isAuthenticated, phoneNumAvailabilityCheck);
 router.get("/logout", isAuthenticated, logout);
 router.get("/groups", isAuthenticated, getMyGroups);
 router.get("/expenses", isAuthenticated, getMyExpenses);

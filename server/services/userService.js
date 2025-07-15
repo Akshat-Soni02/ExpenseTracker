@@ -137,6 +137,44 @@ export const handleGoogleIdTokenLogin = async ( idToken ) => {
   return existingUser;
 }
 
+/**
+ * This is a temporary service to force existing users
+ * to enter their phone number
+ * @param {string} user_id 
+ * @returns boolean
+ */
+export const tempPhoneCheckService = async(user_id) => {
+  let loggedUser = await user.findById(user_id).select("phone_number");
+  if(!loggedUser) throw new ErrorHandler(`no user with this phone number exists`);
+
+  if(!loggedUser.phone_number) return false;
+  return true;
+}
+
+/**
+ * Checks for already existing user
+ * with similiar phone number
+ * 
+ * @param {{user_id: string, phone_num: number}} param0 
+ * @returns { acquired: boolean, takenByDummy: boolean }
+ */
+export const numAlreadyExists = async({user_id, phone_num}) => {
+  const existingNum = await user.findOne({ phone_number: phone_num }).select("_id phone_number is_dummy");
+  
+  if (existingNum && existingNum._id.toString() !== user_id) {
+    if(!existingNum.is_dummy) {
+      throw new ErrorHandler(`Phone number +91${phone_num} is already in use by another user`, STATUS_CODES.BAD_REQUEST, {
+        errorType: ERROR_TYPES.INVALID_OPERATION,
+        exposeToClient: true,
+      });
+    } else {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 
 /**
  * 
@@ -231,12 +269,90 @@ export const updateUserDetails = async ({ user_id , data , file}) => {
       data.profile_photo = media;
   }
 
+  if (data.phone_number) {
+    const existingUser = await user.findOne({ phone_number: data.phone_number });
+    if (existingUser && existingUser._id.toString() !== user_id && !existingUser.is_dummy) {
+      throw new ErrorHandler(`Account already exists with Phone number +91${data.phone_number}`, STATUS_CODES.BAD_REQUEST, {
+        errorType: ERROR_TYPES.INVALID_OPERATION,
+        exposeToClient: true,
+      });
+    }
+  }
+
   const updatedUser = await user.findByIdAndUpdate(user_id, data, {new: true, runValidators: true});
   if(!updatedUser) throw new ErrorHandler(`update error for user: ${user_id}`);
 
   logger.info(`user ${user_id} details updated`);
   return updatedUser;
 }
+
+
+/**
+ * We merge all the indetifying info of user to their dummy
+ * account thus we don't need to change other relations of user
+ * 
+ * @param {{user_id: string, phone_num: number}} param0 
+ * @returns dummy account
+ */
+export const mergeWithDummy = async ({ user_id, phone_num }, session) => {
+  const dummyUser = await user.findOne({ phone_number: phone_num }).session(session);
+  if (!dummyUser) {
+    logger.warn(`Merge fail for user ${user_id}, phone number ${phone_num}`);
+    throw new ErrorHandler(`No dummy account with number ${phone_num}`, STATUS_CODES.BAD_REQUEST);
+  }
+
+  const loggedUser = await user.findById(user_id).select("+password").session(session);
+  if (!loggedUser) {
+    logger.warn(`User not found ${user_id}, cannot perform merge with ${phone_num}`);
+    throw new ErrorHandler(`Failed to fetch ${user_id} data`);
+  }
+
+
+  await user.updateOne(
+    { _id: user_id },
+    {
+      $set: { is_active: false, email: `${loggedUser._id}@gmail.com` },
+      $unset: {
+        phone_number: "",
+        password: "",
+      },
+    },
+    { session }
+  );
+  
+  logger.debug(`Saved user ${loggedUser._id}, now changing dummy data`);
+
+  dummyUser.name = loggedUser.name;
+  dummyUser.email = loggedUser.email;
+  dummyUser.profile_photo.public_id = loggedUser.profile_photo.public_id;
+  dummyUser.profile_photo.url = loggedUser.profile_photo.url;
+
+  for (const provider of loggedUser.oauth) {
+    const exists = dummyUser.oauth.some(
+      (dummyProvider) =>
+        dummyProvider.auth_id === provider.auth_id &&
+        dummyProvider.auth_provider === provider.auth_provider
+    );
+    if (!exists) {
+      dummyUser.oauth.push(provider);
+    }
+  }
+
+  for (const accessToken of loggedUser.accessTokens) {
+    if (!dummyUser.accessTokens.includes(accessToken)) {
+      dummyUser.accessTokens.push(accessToken);
+    }
+  }
+
+  console.log("now the password is " + loggedUser.password);
+  dummyUser.password = loggedUser.password;
+  dummyUser.is_dummy = false;
+
+  await dummyUser.save({session});
+
+  logger.info(`Merged user ${user_id} into dummy account ${dummyUser._id}`);
+  return dummyUser;
+};
 
 
 /**
