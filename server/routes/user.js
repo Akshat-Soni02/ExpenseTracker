@@ -31,7 +31,8 @@ import {
   getUnifiedData,
   userPhoneNumCheck,
   phoneNumAvailabilityCheck,
-  mergeToDummy
+  mergeToDummy,
+  addContactFriend
 } from "../controller/userController.js";
 import { isAuthenticated } from "../middlewares/auth.js";
 import multer from "multer";
@@ -68,6 +69,7 @@ router.post("/verify-otp",validate(VerifyOtpSchema), verifyOtp);
 router.post("/reset-password",validate(ResetPasswordSchema), resetPassword);
 router.post("/first-merge-to-dummy/:phone_num", isAuthenticated, mergeToDummy);
 router.post("/send-invites", isAuthenticated,validate(AddUserFriendsBodySchema), addUserFriends);
+router.post("/add-contact-friend", isAuthenticated, addContactFriend);
 router.post("/auto-add-friends",validate(autoAddFutureFriendsSchema), autoAddFutureFriends);
 router.post("/remind-borrowers", isAuthenticated, remindBorrowers);
 router.post("/remind-borrower/:borrower_id", isAuthenticated,validate(RemindBorrowerParamsSchema), remindBorrower);
