@@ -8,10 +8,18 @@ const userSchema = new mongoose.Schema(
     },
     phone_number: {
       type: Number,
+      unique: true,
+    },
+    is_dummy: {
+      type: Boolean,
+      default: false
+    },
+    is_active: {
+      type: Boolean,
+      default: true
     },
     email: {
       type: String,
-      required: true,
       unique: true,
     },
     profile_photo: {

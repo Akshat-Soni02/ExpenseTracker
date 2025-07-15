@@ -2,7 +2,7 @@ import ErrorHandler from "../middlewares/error.js";
 import { sendToken } from "../utils/features.js";
 import logger from "../logger/index.js";
 
-import { addFriendsService, addFutureFriendsService, findBorrowersAndRemind, findTodaySpend, findUserById, getFriends, getUserExchangeState, handleGoogleAccessTokenLogin, handleGoogleIdTokenLogin, loginUser, pushNotificationTokenUpdate, registerUser, removeFutureFriend, resetUserPassword, sendBorrowerRemainder, sendOtpMail, unifyUserSpendsHistory, updateUserDetails, verifyReceivedOtp } from "../services/userService.js";
+import { addFriendsService, addFutureFriendsService, findBorrowersAndRemind, findTodaySpend, findUserById, getFriends, getUserExchangeState, handleGoogleAccessTokenLogin, handleGoogleIdTokenLogin, loginUser, mergeWithDummy, numAlreadyExists, pushNotificationTokenUpdate, registerUser, removeFutureFriend, resetUserPassword, sendBorrowerRemainder, sendOtpMail, tempPhoneCheckService, unifyUserSpendsHistory, updateUserDetails, verifyReceivedOtp } from "../services/userService.js";
 import { findUserWallets } from "../services/walletService.js";
 import { findUserGroups } from "../services/groupService.js";
 import { findUserExpenses } from "../services/expenseService.js";
@@ -11,6 +11,7 @@ import { findUserSettlements } from "../services/settlementService.js";
 import { findUserDetectedTransactions } from "../services/detectedTransactionService.js";
 import { getUserBills } from "../services/billService.js";
 import { STATUS_CODES } from "../config/constants.js";
+import { withTransaction } from "../utils/transaction.js";
 
 
 /**
@@ -58,6 +59,41 @@ export const googleLogin = async (req, res, next) => {
   }
 };
 
+/**
+ * 
+ * @returns res with boolean for num check
+ */
+export const userPhoneNumCheck = async (req, res, next) => {
+  try {
+    const user_id = req.user.id;
+    const hasPhoneNumber = await tempPhoneCheckService(user_id);
+    logger.debug("Check phone number status for " + user_id + " got " + hasPhoneNumber);
+
+    res.status(STATUS_CODES.OK).json({ message: hasPhoneNumber ? "Already has phone number" : "Doesn't have phone number", data: { hasPhoneNumber } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * 
+ * @returns res with boolean for acquired (dummy account) or not
+ * based on which we can alert user
+ * @throws error if number is taken by another user
+ */
+export const phoneNumAvailabilityCheck = async (req, res, next) => {
+  try {
+    const user_id = req.user.id;
+    const { phone_num } = req.query;
+
+    const acquired = await numAlreadyExists({ user_id, phone_num: Number(phone_num) });
+
+    res.status(STATUS_CODES.OK).json({ message: acquired ? "Number taken by dummy account" : "Number Available", data: { isPhoneNumAcquired: acquired } });
+  } catch (error) {
+    next(error);
+  }
+}
+
 
 /**
  * registers with default photo
@@ -86,6 +122,25 @@ export const login = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * 
+ * Issue new token since user_id is 
+ * changed
+ */
+export const mergeToDummy = async (req, res, next) => {
+  try {
+    const user_id = req.user.id;
+    const { phone_num } = req.params;
+
+    const mergedUser = await withTransaction(async (session) => {
+      return await mergeWithDummy({ user_id, phone_num: Number(phone_num) }, session);
+    });
+    sendToken(mergedUser, res, "Number changed", 200);
+  } catch (error) {
+    next(error);
+  }
+}
 
 
 /**

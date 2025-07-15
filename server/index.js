@@ -49,7 +49,6 @@ import { scheduleCronJobs } from "./services/schedulerService.js";
 import { initQueueWorkers } from "./queues/index.js";
 import logger from "./logger/index.js";
 
-
 const app = express();
 const PORT = config.port || 3002;
 const URI = config.mongoUri;
