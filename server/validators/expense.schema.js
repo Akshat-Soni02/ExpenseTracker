@@ -72,6 +72,32 @@ export const createExpenseSchema = z.object({
 });
 
 
+//Simplified helper function for array/ string conversion
+const stringOrArrayToArray=(schema) => {
+  return z.union([
+    // Direct Array Input
+    z.array(schema),
+    // String input JSON or single value
+    z.string().transform((str,ctx) => {
+      try 
+      {
+        const parsed =JSON.parse(str);
+        if (Array.isArray(parsed))
+        {
+          return parsed;
+        }
+        return [parsed];
+      } catch {
+        // If JSON parsing fails treat as single string value
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Invalid JSON string or array format",
+        });
+        return z.NEVER;
+      }
+    })
+  ]).pipe(z.array(schema));
+};
 
 export const updateExpenseSchema = z.object({
     params: z.object({
@@ -111,8 +137,10 @@ export const updateExpenseSchema = z.object({
       .optional(),
       created_at_date_time: z.coerce.date().or(z.string().datetime()).optional(),
 
-      lenders: z.array(lenderBorrowerSchema).optional(),
-      borrowers: z.array(lenderBorrowerSchema).optional(),
+      // lenders: z.array(lenderBorrowerSchema).optional(),
+      // borrowers: z.array(lenderBorrowerSchema).optional(),
+      lenders: stringOrArrayToArray(lenderBorrowerSchema).optional(),
+      borrowers: stringOrArrayToArray(lenderBorrowerSchema).optional(),
     }),
     query: z.object({}).optional(), // Add fields if you want to validate query
     file: z.any().optional(),

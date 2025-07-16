@@ -60,6 +60,10 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+/**
+ * @todo some requests are not validated
+ */
+
 //* POST APIs *//
 router.post("/new",validate(RegisterSchema), register);
 router.post("/auth/google",validate(GoogleUserSchema), googleLoginAccesstoken);

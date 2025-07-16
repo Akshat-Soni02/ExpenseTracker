@@ -38,6 +38,7 @@ import walletRouter from "./routes/wallet.js";
 import groupRouter from "./routes/group.js";
 import budgetRouter from "./routes/budget.js";
 import settlementRouter from "./routes/settlement.js";
+import categoryRouter from "./routes/category.js"
 import expenseRouter from "./routes/expense.js";
 import billRouter from "./routes/bill.js";
 import personalTransactionRouter from "./routes/personalTransaction.js";
@@ -122,6 +123,7 @@ app.use("/api/v1/users", userRouter);
 app.use("/api/v1/wallets", walletRouter);
 app.use("/api/v1/groups", groupRouter);
 app.use("/api/v1/settlements", settlementRouter);
+app.use("/api/v1/categories", categoryRouter);
 app.use("/api/v1/bills", billRouter);
 app.use("/api/v1/budgets",budgetRouter);
 app.use("/api/v1/personal-transactions",personalTransactionRouter);
